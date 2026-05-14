@@ -12,3 +12,6 @@
 # Logs and temp
 *.log
 temp_*
+
+# Local tool folders
+.claude/
