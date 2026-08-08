@@ -1,5 +1,5 @@
 //@version=6
-indicator("Sessions 1.3.0", shorttitle="Sessions", overlay=true,
+indicator("Sessions 1.4.0", shorttitle="Sessions", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -10,8 +10,8 @@ string tz       = input.string("America/New_York", "Timezone",
     options=["America/New_York","America/Chicago","America/Los_Angeles",
              "Europe/London","Europe/Berlin","Asia/Tokyo","Asia/Singapore"],
     group=GEN)
-int    prev_days   = input.int(1, "Show Previous Sessions", minval=0, maxval=10, group=GEN)
-string bsty_in     = input.string("Dotted", "Box Border Style",
+int    prev_days   = input.int(10, "Show Previous Sessions", minval=0, maxval=10, group=GEN)
+string bsty_in     = input.string("None", "Box Border Style",
     options=["None","Solid","Dashed","Dotted"], group=GEN)
 int    bw_in       = input.int(1, "Box Border Width", minval=1, maxval=4, group=GEN)
 int    extend_bars = input.int(5, "H-Line Extension (bars)", minval=0, maxval=500, group=GEN)
@@ -32,7 +32,7 @@ string asia_s_in  = input.string("18:00", "",  group=GS, inline="asia",
              "14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
-string asia_e_in  = input.string("02:00", "—", group=GS, inline="asia",
+string asia_e_in  = input.string("01:00", "—", group=GS, inline="asia",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
              "07:00","07:15","07:30","07:45","08:00","08:15","08:30","08:45","09:00","09:15","09:30","09:45","10:00","10:15",
@@ -41,12 +41,12 @@ string asia_e_in  = input.string("02:00", "—", group=GS, inline="asia",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
 string asia_lbl   = input.string("Asia", "Label", group=GS, inline="asia_lbl")
-string asia_h_tag = input.string("AS High", "High Tag", group=GS, inline="asia_lbl2")
-string asia_l_tag = input.string("AS Low",  "Low Tag",  group=GS, inline="asia_lbl2")
+string asia_h_tag = input.string("Asia High", "High Tag", group=GS, inline="asia_lbl2")
+string asia_l_tag = input.string("Asia Low",  "Low Tag",  group=GS, inline="asia_lbl2")
 
 bool   show_lon   = input.bool(true,  "London",         group=GS, inline="lon")
 color  lon_col    = input.color(color.new(#2196F3, 85), "", group=GS, inline="lon")
-string lon_s_in   = input.string("02:00", "",  group=GS, inline="lon",
+string lon_s_in   = input.string("01:00", "",  group=GS, inline="lon",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
              "07:00","07:15","07:30","07:45","08:00","08:15","08:30","08:45","09:00","09:15","09:30","09:45","10:00","10:15",
@@ -63,8 +63,8 @@ string lon_e_in   = input.string("07:00", "—", group=GS, inline="lon",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
 string lon_lbl    = input.string("London", "Label", group=GS, inline="lon_lbl")
-string lon_h_tag  = input.string("LO High", "High Tag", group=GS, inline="lon_lbl2")
-string lon_l_tag  = input.string("LO Low",  "Low Tag",  group=GS, inline="lon_lbl2")
+string lon_h_tag  = input.string("London High", "High Tag", group=GS, inline="lon_lbl2")
+string lon_l_tag  = input.string("London Low",  "Low Tag",  group=GS, inline="lon_lbl2")
 
 bool   show_nyam  = input.bool(true,  "NY AM",         group=GS, inline="nyam")
 color  nyam_col   = input.color(color.new(#4CAF50, 85), "", group=GS, inline="nyam")
@@ -85,11 +85,11 @@ string nyam_e_in  = input.string("11:30", "—", group=GS, inline="nyam",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
 string nyam_lbl   = input.string("NY AM", "Label", group=GS, inline="nyam_lbl")
-string nyam_h_tag = input.string("AM High", "High Tag", group=GS, inline="nyam_lbl2")
-string nyam_l_tag = input.string("AM Low",  "Low Tag",  group=GS, inline="nyam_lbl2")
+string nyam_h_tag = input.string("NY AM High", "High Tag", group=GS, inline="nyam_lbl2")
+string nyam_l_tag = input.string("NY AM Low",  "Low Tag",  group=GS, inline="nyam_lbl2")
 
-bool   show_lunch = input.bool(false, "Lunch",          group=GS, inline="lunch")
-color  lunch_col  = input.color(color.new(#B2B2B2, 80), "", group=GS, inline="lunch")
+bool   show_lunch = input.bool(true, "NY Lunch",          group=GS, inline="lunch")
+color  lunch_col  = input.color(color.new(#787B86, 80), "", group=GS, inline="lunch")
 string lunch_s_in = input.string("11:30", "",  group=GS, inline="lunch",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
@@ -106,11 +106,11 @@ string lunch_e_in = input.string("13:30", "—", group=GS, inline="lunch",
              "14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
-string lunch_lbl   = input.string("Lunch", "Label", group=GS, inline="lunch_lbl")
-string lunch_h_tag = input.string("LH High", "High Tag", group=GS, inline="lunch_lbl2")
-string lunch_l_tag = input.string("LH Low",  "Low Tag",  group=GS, inline="lunch_lbl2")
+string lunch_lbl   = input.string("NY Lunch", "Label", group=GS, inline="lunch_lbl")
+string lunch_h_tag = input.string("NY Lunch High", "High Tag", group=GS, inline="lunch_lbl2")
+string lunch_l_tag = input.string("NY Lunch Low",  "Low Tag",  group=GS, inline="lunch_lbl2")
 
-bool   show_nypm  = input.bool(false, "NY PM",          group=GS, inline="nypm")
+bool   show_nypm  = input.bool(true, "NY PM",          group=GS, inline="nypm")
 color  nypm_col   = input.color(color.new(#9C27B0, 85), "", group=GS, inline="nypm")
 string nypm_s_in  = input.string("13:30", "",  group=GS, inline="nypm",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
@@ -129,8 +129,8 @@ string nypm_e_in  = input.string("16:00", "—", group=GS, inline="nypm",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
 string nypm_lbl   = input.string("NY PM", "Label", group=GS, inline="nypm_lbl")
-string nypm_h_tag = input.string("PM High", "High Tag", group=GS, inline="nypm_lbl2")
-string nypm_l_tag = input.string("PM Low",  "Low Tag",  group=GS, inline="nypm_lbl2")
+string nypm_h_tag = input.string("NY PM High", "High Tag", group=GS, inline="nypm_lbl2")
+string nypm_l_tag = input.string("NY PM Low",  "Low Tag",  group=GS, inline="nypm_lbl2")
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUTS — BOX LABELS
@@ -139,7 +139,7 @@ string GBL = "Box Labels"
 bool   show_box_lbl = input.bool(true,    "Show Box Labels", group=GBL)
 string box_lbl_pos  = input.string("Top Left", "Position", group=GBL,
     options=["Top Left","Top Center","Top Right","Center","Bottom Left","Bottom Center","Bottom Right"])
-color  box_lbl_col  = input.color(#616161, "Color", group=GBL)
+color  box_lbl_col  = input.color(#000000, "Color", group=GBL)
 string box_lbl_size = input.string("small", "Size", group=GBL,
     options=["tiny","small","normal","large"])
 
@@ -161,11 +161,11 @@ bool   sl_show_nyam  = input.bool(true,  "NY AM",  group=GLL, inline="sl_nyam")
 string nyam_sl_pos   = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_nyam")
 color  nyam_sl_col   = input.color(#4CAF50, "", group=GLL, inline="sl_nyam")
 
-bool   sl_show_lunch = input.bool(false, "Lunch",  group=GLL, inline="sl_lunch")
+bool   sl_show_lunch = input.bool(true, "NY Lunch",  group=GLL, inline="sl_lunch")
 string lunch_sl_pos  = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_lunch")
-color  lunch_sl_col  = input.color(#B2B2B2, "", group=GLL, inline="sl_lunch")
+color  lunch_sl_col  = input.color(#787B86, "", group=GLL, inline="sl_lunch")
 
-bool   sl_show_nypm  = input.bool(false, "NY PM",  group=GLL, inline="sl_nypm")
+bool   sl_show_nypm  = input.bool(true, "NY PM",  group=GLL, inline="sl_nypm")
 string nypm_sl_pos   = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_nypm")
 color  nypm_sl_col   = input.color(#9C27B0, "", group=GLL, inline="sl_nypm")
 
