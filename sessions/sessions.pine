@@ -1,5 +1,5 @@
 //@version=6
-indicator("Sessions 1.6.0", shorttitle="Sessions", overlay=true,
+indicator("Sessions 1.7.0", shorttitle="Sessions", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -15,6 +15,9 @@ string bsty_in     = input.string("None", "Box Border Style",
     options=["None","Solid","Dashed","Dotted"], group=GEN)
 int    bw_in       = input.int(1, "Box Border Width", minval=1, maxval=4, group=GEN)
 int    extend_bars = input.int(5, "H-Line Extension (bars)", minval=0, maxval=500, group=GEN)
+bool   show_mid    = input.bool(false, "Show Session Midpoint", group=GEN, tooltip="Draw a horizontal line at (High + Low) / 2 inside each session's box. Uses the session's own color. Terminates at the end of the session box.")
+string mid_sty_in  = input.string("Dashed", "Midpoint Style", options=["Solid","Dashed","Dotted"], group=GEN)
+int    mid_w       = input.int(1, "Midpoint Thickness", minval=1, maxval=4, group=GEN)
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -265,7 +268,7 @@ f_in_sess(sh, sm, eh, em) =>
     int tc = cur_h * 60 + cur_m
     te > ts ? (tc >= ts and tc < te) : (tc >= ts or tc < te)
 
-f_trim_sess(bxs, his, los, lts, rts, dyn, max_n) =>
+f_trim_sess(bxs, his, los, lts, rts, dyn, mln, max_n) =>
     while array.size(bxs) > max_n
         box.delete(array.shift(bxs))
         array.shift(his)
@@ -273,6 +276,7 @@ f_trim_sess(bxs, his, los, lts, rts, dyn, max_n) =>
         array.shift(lts)
         array.shift(rts)
         array.shift(dyn)
+        line.delete(array.shift(mln))
 
 f_trim_hl(hll, lll, hlt, llt, hla, lla, htt, ltt, max_n) =>
     while array.size(hll) > max_n
@@ -318,6 +322,7 @@ var label[] asia_ll_lbls = array.new_label()
 var int[]   asia_hl_t    = array.new_int()
 var int[]   asia_ll_t    = array.new_int()
 var int[]   asia_day_n   = array.new_int()
+var line[]  asia_mid_lns = array.new_line()
 
 bool asia_now   = f_in_sess(asia_sh, asia_sm, asia_eh, asia_em)
 bool asia_start = asia_now and not asia_in
@@ -351,7 +356,9 @@ if asia_start and tf_ok
     array.push(asia_hl_t, time)
     array.push(asia_ll_t, time)
     array.push(asia_day_n, tday_num)
-    f_trim_sess(asia_bxs, asia_his, asia_los, asia_lt, asia_rt, asia_day_n, max_ol)
+    mid = line.new(time, (high + low) / 2.0, time + bar_ms, (high + low) / 2.0, xloc=xloc.bar_time, color=na, width=0)
+    array.push(asia_mid_lns, mid)
+    f_trim_sess(asia_bxs, asia_his, asia_los, asia_lt, asia_rt, asia_day_n, asia_mid_lns, max_ol)
     f_trim_hl(asia_hl_lns, asia_ll_lns, asia_hl_tkn, asia_ll_tkn, asia_hl_lbls, asia_ll_lbls, asia_hl_t, asia_ll_t, max_ol)
 
 if asia_in and not asia_start
@@ -390,6 +397,14 @@ if n_asia > 0
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
         box.set_text_valign(b,   bx_valign(box_lbl_pos))
+        line  mid_a    = array.get(asia_mid_lns, i)
+        float mid_prc_a = (array.get(asia_his, i) + array.get(asia_los, i)) / 2.0
+        bool  mid_vis_a = show_mid and show_asia and tf_ok and day_ok_a
+        line.set_xy1(mid_a, array.get(asia_lt, i), mid_prc_a)
+        line.set_xy2(mid_a, array.get(asia_rt, i), mid_prc_a)
+        line.set_color(mid_a, mid_vis_a ? color.new(asia_col, 0) : na)
+        line.set_width(mid_a, mid_vis_a ? mid_w : 0)
+        line.set_style(mid_a, ls(mid_sty_in))
         float h_prc_a = array.get(asia_his,  i)
         float l_prc_a = array.get(asia_los,  i)
         int   h_t1_a  = array.get(asia_hl_t, i)
@@ -461,6 +476,7 @@ var label[] lon_ll_lbls = array.new_label()
 var int[]   lon_hl_t    = array.new_int()
 var int[]   lon_ll_t    = array.new_int()
 var int[]   lon_day_n   = array.new_int()
+var line[]  lon_mid_lns = array.new_line()
 
 bool lon_now   = f_in_sess(lon_sh, lon_sm, lon_eh, lon_em)
 bool lon_start = lon_now and not lon_in
@@ -494,7 +510,9 @@ if lon_start and tf_ok
     array.push(lon_hl_t, time)
     array.push(lon_ll_t, time)
     array.push(lon_day_n, tday_num)
-    f_trim_sess(lon_bxs, lon_his, lon_los, lon_lt, lon_rt, lon_day_n, max_ol)
+    mid = line.new(time, (high + low) / 2.0, time + bar_ms, (high + low) / 2.0, xloc=xloc.bar_time, color=na, width=0)
+    array.push(lon_mid_lns, mid)
+    f_trim_sess(lon_bxs, lon_his, lon_los, lon_lt, lon_rt, lon_day_n, lon_mid_lns, max_ol)
     f_trim_hl(lon_hl_lns, lon_ll_lns, lon_hl_tkn, lon_ll_tkn, lon_hl_lbls, lon_ll_lbls, lon_hl_t, lon_ll_t, max_ol)
 
 if lon_in and not lon_start
@@ -533,6 +551,14 @@ if n_lon > 0
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
         box.set_text_valign(b,   bx_valign(box_lbl_pos))
+        line  mid_l    = array.get(lon_mid_lns, i)
+        float mid_prc_l = (array.get(lon_his, i) + array.get(lon_los, i)) / 2.0
+        bool  mid_vis_l = show_mid and show_lon and tf_ok and day_ok_l
+        line.set_xy1(mid_l, array.get(lon_lt, i), mid_prc_l)
+        line.set_xy2(mid_l, array.get(lon_rt, i), mid_prc_l)
+        line.set_color(mid_l, mid_vis_l ? color.new(lon_col, 0) : na)
+        line.set_width(mid_l, mid_vis_l ? mid_w : 0)
+        line.set_style(mid_l, ls(mid_sty_in))
         float h_prc_l = array.get(lon_his,  i)
         float l_prc_l = array.get(lon_los,  i)
         int   h_t1_l  = array.get(lon_hl_t, i)
@@ -604,6 +630,7 @@ var label[] nyam_ll_lbls = array.new_label()
 var int[]   nyam_hl_t    = array.new_int()
 var int[]   nyam_ll_t    = array.new_int()
 var int[]   nyam_day_n   = array.new_int()
+var line[]  nyam_mid_lns = array.new_line()
 
 bool nyam_now   = f_in_sess(nyam_sh, nyam_sm, nyam_eh, nyam_em)
 bool nyam_start = nyam_now and not nyam_in
@@ -637,7 +664,9 @@ if nyam_start and tf_ok
     array.push(nyam_hl_t, time)
     array.push(nyam_ll_t, time)
     array.push(nyam_day_n, tday_num)
-    f_trim_sess(nyam_bxs, nyam_his, nyam_los, nyam_lt, nyam_rt, nyam_day_n, max_ol)
+    mid = line.new(time, (high + low) / 2.0, time + bar_ms, (high + low) / 2.0, xloc=xloc.bar_time, color=na, width=0)
+    array.push(nyam_mid_lns, mid)
+    f_trim_sess(nyam_bxs, nyam_his, nyam_los, nyam_lt, nyam_rt, nyam_day_n, nyam_mid_lns, max_ol)
     f_trim_hl(nyam_hl_lns, nyam_ll_lns, nyam_hl_tkn, nyam_ll_tkn, nyam_hl_lbls, nyam_ll_lbls, nyam_hl_t, nyam_ll_t, max_ol)
 
 if nyam_in and not nyam_start
@@ -676,6 +705,14 @@ if n_nyam > 0
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
         box.set_text_valign(b,   bx_valign(box_lbl_pos))
+        line  mid_n    = array.get(nyam_mid_lns, i)
+        float mid_prc_n = (array.get(nyam_his, i) + array.get(nyam_los, i)) / 2.0
+        bool  mid_vis_n = show_mid and show_nyam and tf_ok and day_ok_n
+        line.set_xy1(mid_n, array.get(nyam_lt, i), mid_prc_n)
+        line.set_xy2(mid_n, array.get(nyam_rt, i), mid_prc_n)
+        line.set_color(mid_n, mid_vis_n ? color.new(nyam_col, 0) : na)
+        line.set_width(mid_n, mid_vis_n ? mid_w : 0)
+        line.set_style(mid_n, ls(mid_sty_in))
         float h_prc_n = array.get(nyam_his,  i)
         float l_prc_n = array.get(nyam_los,  i)
         int   h_t1_n  = array.get(nyam_hl_t, i)
@@ -747,6 +784,7 @@ var label[] lh_ll_lbls = array.new_label()
 var int[]   lh_hl_t    = array.new_int()
 var int[]   lh_ll_t    = array.new_int()
 var int[]   lh_day_n   = array.new_int()
+var line[]  lh_mid_lns = array.new_line()
 
 bool lh_now   = f_in_sess(lunch_sh, lunch_sm, lunch_eh, lunch_em)
 bool lh_start = lh_now and not lh_in
@@ -780,7 +818,9 @@ if lh_start and tf_ok
     array.push(lh_hl_t, time)
     array.push(lh_ll_t, time)
     array.push(lh_day_n, tday_num)
-    f_trim_sess(lh_bxs, lh_his, lh_los, lh_lt, lh_rt, lh_day_n, max_ol)
+    mid = line.new(time, (high + low) / 2.0, time + bar_ms, (high + low) / 2.0, xloc=xloc.bar_time, color=na, width=0)
+    array.push(lh_mid_lns, mid)
+    f_trim_sess(lh_bxs, lh_his, lh_los, lh_lt, lh_rt, lh_day_n, lh_mid_lns, max_ol)
     f_trim_hl(lh_hl_lns, lh_ll_lns, lh_hl_tkn, lh_ll_tkn, lh_hl_lbls, lh_ll_lbls, lh_hl_t, lh_ll_t, max_ol)
 
 if lh_in and not lh_start
@@ -819,6 +859,14 @@ if n_lh > 0
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
         box.set_text_valign(b,   bx_valign(box_lbl_pos))
+        line  mid_lh    = array.get(lh_mid_lns, i)
+        float mid_prc_lh = (array.get(lh_his, i) + array.get(lh_los, i)) / 2.0
+        bool  mid_vis_lh = show_mid and show_lunch and tf_ok and day_ok_lh
+        line.set_xy1(mid_lh, array.get(lh_lt, i), mid_prc_lh)
+        line.set_xy2(mid_lh, array.get(lh_rt, i), mid_prc_lh)
+        line.set_color(mid_lh, mid_vis_lh ? color.new(lunch_col, 0) : na)
+        line.set_width(mid_lh, mid_vis_lh ? mid_w : 0)
+        line.set_style(mid_lh, ls(mid_sty_in))
         float h_prc_lh = array.get(lh_his,  i)
         float l_prc_lh = array.get(lh_los,  i)
         int   h_t1_lh  = array.get(lh_hl_t, i)
@@ -890,6 +938,7 @@ var label[] pm_ll_lbls = array.new_label()
 var int[]   pm_hl_t    = array.new_int()
 var int[]   pm_ll_t    = array.new_int()
 var int[]   pm_day_n   = array.new_int()
+var line[]  pm_mid_lns = array.new_line()
 
 bool pm_now   = f_in_sess(nypm_sh, nypm_sm, nypm_eh, nypm_em)
 bool pm_start = pm_now and not pm_in
@@ -923,7 +972,9 @@ if pm_start and tf_ok
     array.push(pm_hl_t, time)
     array.push(pm_ll_t, time)
     array.push(pm_day_n, tday_num)
-    f_trim_sess(pm_bxs, pm_his, pm_los, pm_lt, pm_rt, pm_day_n, max_ol)
+    mid = line.new(time, (high + low) / 2.0, time + bar_ms, (high + low) / 2.0, xloc=xloc.bar_time, color=na, width=0)
+    array.push(pm_mid_lns, mid)
+    f_trim_sess(pm_bxs, pm_his, pm_los, pm_lt, pm_rt, pm_day_n, pm_mid_lns, max_ol)
     f_trim_hl(pm_hl_lns, pm_ll_lns, pm_hl_tkn, pm_ll_tkn, pm_hl_lbls, pm_ll_lbls, pm_hl_t, pm_ll_t, max_ol)
 
 if pm_in and not pm_start
@@ -962,6 +1013,14 @@ if n_pm > 0
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
         box.set_text_valign(b,   bx_valign(box_lbl_pos))
+        line  mid_pm    = array.get(pm_mid_lns, i)
+        float mid_prc_pm = (array.get(pm_his, i) + array.get(pm_los, i)) / 2.0
+        bool  mid_vis_pm = show_mid and show_nypm and tf_ok and day_ok_pm
+        line.set_xy1(mid_pm, array.get(pm_lt, i), mid_prc_pm)
+        line.set_xy2(mid_pm, array.get(pm_rt, i), mid_prc_pm)
+        line.set_color(mid_pm, mid_vis_pm ? color.new(nypm_col, 0) : na)
+        line.set_width(mid_pm, mid_vis_pm ? mid_w : 0)
+        line.set_style(mid_pm, ls(mid_sty_in))
         float h_prc_pm = array.get(pm_his,  i)
         float l_prc_pm = array.get(pm_los,  i)
         int   h_t1_pm  = array.get(pm_hl_t, i)
