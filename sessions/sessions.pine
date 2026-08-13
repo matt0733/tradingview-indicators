@@ -1,5 +1,5 @@
 //@version=6
-indicator("Sessions 1.7.0", shorttitle="Sessions", overlay=true,
+indicator("Sessions 1.7.1", shorttitle="Sessions", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -153,23 +153,23 @@ string GLL = "Session Level Lines"
 bool   show_sl_lines = input.bool(true,  "Show H/L Lines", group=GLL)
 
 bool   sl_show_asia  = input.bool(true,  "Asia",   group=GLL, inline="sl_asia")
-string asia_sl_pos   = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_asia")
+string asia_sl_pos   = input.string("Right", "", options=["Left","Center","Right"], group=GLL, inline="sl_asia")
 color  asia_sl_col   = input.color(#FF9800, "", group=GLL, inline="sl_asia")
 
 bool   sl_show_lon   = input.bool(true,  "London", group=GLL, inline="sl_lon")
-string lon_sl_pos    = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_lon")
+string lon_sl_pos    = input.string("Right", "", options=["Left","Center","Right"], group=GLL, inline="sl_lon")
 color  lon_sl_col    = input.color(#2196F3, "", group=GLL, inline="sl_lon")
 
 bool   sl_show_nyam  = input.bool(true,  "NY AM",  group=GLL, inline="sl_nyam")
-string nyam_sl_pos   = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_nyam")
+string nyam_sl_pos   = input.string("Right", "", options=["Left","Center","Right"], group=GLL, inline="sl_nyam")
 color  nyam_sl_col   = input.color(#4CAF50, "", group=GLL, inline="sl_nyam")
 
 bool   sl_show_lunch = input.bool(true, "Lunch",     group=GLL, inline="sl_lunch")
-string lunch_sl_pos  = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_lunch")
+string lunch_sl_pos  = input.string("Right", "", options=["Left","Center","Right"], group=GLL, inline="sl_lunch")
 color  lunch_sl_col  = input.color(#787B86, "", group=GLL, inline="sl_lunch")
 
 bool   sl_show_nypm  = input.bool(true, "NY PM",  group=GLL, inline="sl_nypm")
-string nypm_sl_pos   = input.string("Center", "", options=["Left","Center","Right"], group=GLL, inline="sl_nypm")
+string nypm_sl_pos   = input.string("Right", "", options=["Left","Center","Right"], group=GLL, inline="sl_nypm")
 color  nypm_sl_col   = input.color(#9C27B0, "", group=GLL, inline="sl_nypm")
 
 int    sl_grace      = input.int(0, "Extend after taken (Candles)", group=GLL, minval=0, maxval=500)
