@@ -16,9 +16,7 @@ Scratchpad for indicator ideas, design decisions, and references. Claude reads t
 
 ## Indicators in progress
 
-| Name | Status | Notes |
-|------|--------|-------|
-|      |        |       |
+_(none)_
 
 ## References / inspiration
 
