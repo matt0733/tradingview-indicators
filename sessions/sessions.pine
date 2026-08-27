@@ -1,5 +1,5 @@
 //@version=6
-indicator("Sessions 1.7.1", shorttitle="Sessions", overlay=true,
+indicator("Sessions 1.8.0", shorttitle="Sessions", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -179,6 +179,7 @@ bool   sl_show_date  = input.bool(true,  "Show Date in Label", group=GLL)
 string sl_sty_in     = input.string("Solid",  "Line Style", options=["Solid","Dashed","Dotted"], group=GLL)
 int    sl_w          = input.int(1, "Thickness", minval=1, maxval=4, group=GLL)
 string sl_lbl_sz     = input.string("small", "Label Size", options=["tiny","small","normal","large"], group=GLL)
+bool   sl_lbl_past   = input.bool(false, "Labels past line end", group=GLL, tooltip="Place all H/L labels one bar past the right end of each line, at the line's price level. Chip points left back at the line — no vertical gap. Overrides the Left/Center/Right position when on.")
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -201,11 +202,12 @@ lbl_sz(s) =>
         "normal" => size.normal
         =>          size.small
 
-sl_lbl_x(pos, x1, x2) =>
-    switch pos
+sl_lbl_x(pos, x1, x2, past, bms) =>
+    base = switch pos
         "Left"   => x1
         "Center" => int((x1 + x2) / 2)
         =>          x2
+    past ? x2 + bms : base
 
 f_mmdd(t) =>
     m = month(t, tz)
@@ -217,17 +219,19 @@ sl_lbl_txt(nm, prc, t) =>
     p_str = sl_show_price ? " (" + str.tostring(prc, format.mintick) + ")" : ""
     nm + d_str + p_str
 
-sl_lbl_sty_hi(pos) =>
-    switch pos
+sl_lbl_sty_hi(pos, past) =>
+    base = switch pos
         "Left"   => label.style_label_lower_left
         "Center" => label.style_label_down
         =>          label.style_label_lower_right
+    past ? label.style_label_left : base
 
-sl_lbl_sty_lo(pos) =>
-    switch pos
+sl_lbl_sty_lo(pos, past) =>
+    base = switch pos
         "Left"   => label.style_label_upper_left
         "Center" => label.style_label_up
         =>          label.style_label_upper_right
+    past ? label.style_label_left : base
 
 bx_halign(pos) =>
     switch pos
@@ -441,15 +445,15 @@ if n_asia > 0
         line.set_style(l_ln_a, ls(sl_sty_in))
         label hl_lbl_a = array.get(asia_hl_lbls, i)
         label ll_lbl_a = array.get(asia_ll_lbls, i)
-        label.set_x(hl_lbl_a, sl_lbl_x(asia_sl_pos, h_t1_a, h_x2_a))
+        label.set_x(hl_lbl_a, sl_lbl_x(asia_sl_pos, h_t1_a, h_x2_a, sl_lbl_past, bar_ms))
         label.set_y(hl_lbl_a, h_prc_a)
-        label.set_style(hl_lbl_a, sl_lbl_sty_hi(asia_sl_pos))
+        label.set_style(hl_lbl_a, sl_lbl_sty_hi(asia_sl_pos, sl_lbl_past))
         label.set_text(hl_lbl_a, sl_lbl_txt(asia_h_tag, h_prc_a, h_t1_a))
         label.set_size(hl_lbl_a, lbl_sz(sl_lbl_sz))
         label.set_textcolor(hl_lbl_a, h_vis_a ? color.new(asia_sl_col, 0) : na)
-        label.set_x(ll_lbl_a, sl_lbl_x(asia_sl_pos, l_t1_a, l_x2_a))
+        label.set_x(ll_lbl_a, sl_lbl_x(asia_sl_pos, l_t1_a, l_x2_a, sl_lbl_past, bar_ms))
         label.set_y(ll_lbl_a, l_prc_a)
-        label.set_style(ll_lbl_a, sl_lbl_sty_lo(asia_sl_pos))
+        label.set_style(ll_lbl_a, sl_lbl_sty_lo(asia_sl_pos, sl_lbl_past))
         label.set_text(ll_lbl_a, sl_lbl_txt(asia_l_tag, l_prc_a, l_t1_a))
         label.set_size(ll_lbl_a, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_a, l_vis_a ? color.new(asia_sl_col, 0) : na)
@@ -595,15 +599,15 @@ if n_lon > 0
         line.set_style(l_ln_l, ls(sl_sty_in))
         label hl_lbl_l = array.get(lon_hl_lbls, i)
         label ll_lbl_l = array.get(lon_ll_lbls, i)
-        label.set_x(hl_lbl_l, sl_lbl_x(lon_sl_pos, h_t1_l, h_x2_l))
+        label.set_x(hl_lbl_l, sl_lbl_x(lon_sl_pos, h_t1_l, h_x2_l, sl_lbl_past, bar_ms))
         label.set_y(hl_lbl_l, h_prc_l)
-        label.set_style(hl_lbl_l, sl_lbl_sty_hi(lon_sl_pos))
+        label.set_style(hl_lbl_l, sl_lbl_sty_hi(lon_sl_pos, sl_lbl_past))
         label.set_text(hl_lbl_l, sl_lbl_txt(lon_h_tag, h_prc_l, h_t1_l))
         label.set_size(hl_lbl_l, lbl_sz(sl_lbl_sz))
         label.set_textcolor(hl_lbl_l, h_vis_l ? color.new(lon_sl_col, 0) : na)
-        label.set_x(ll_lbl_l, sl_lbl_x(lon_sl_pos, l_t1_l, l_x2_l))
+        label.set_x(ll_lbl_l, sl_lbl_x(lon_sl_pos, l_t1_l, l_x2_l, sl_lbl_past, bar_ms))
         label.set_y(ll_lbl_l, l_prc_l)
-        label.set_style(ll_lbl_l, sl_lbl_sty_lo(lon_sl_pos))
+        label.set_style(ll_lbl_l, sl_lbl_sty_lo(lon_sl_pos, sl_lbl_past))
         label.set_text(ll_lbl_l, sl_lbl_txt(lon_l_tag, l_prc_l, l_t1_l))
         label.set_size(ll_lbl_l, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_l, l_vis_l ? color.new(lon_sl_col, 0) : na)
@@ -749,15 +753,15 @@ if n_nyam > 0
         line.set_style(l_ln_n, ls(sl_sty_in))
         label hl_lbl_n = array.get(nyam_hl_lbls, i)
         label ll_lbl_n = array.get(nyam_ll_lbls, i)
-        label.set_x(hl_lbl_n, sl_lbl_x(nyam_sl_pos, h_t1_n, h_x2_n))
+        label.set_x(hl_lbl_n, sl_lbl_x(nyam_sl_pos, h_t1_n, h_x2_n, sl_lbl_past, bar_ms))
         label.set_y(hl_lbl_n, h_prc_n)
-        label.set_style(hl_lbl_n, sl_lbl_sty_hi(nyam_sl_pos))
+        label.set_style(hl_lbl_n, sl_lbl_sty_hi(nyam_sl_pos, sl_lbl_past))
         label.set_text(hl_lbl_n, sl_lbl_txt(nyam_h_tag, h_prc_n, h_t1_n))
         label.set_size(hl_lbl_n, lbl_sz(sl_lbl_sz))
         label.set_textcolor(hl_lbl_n, h_vis_n ? color.new(nyam_sl_col, 0) : na)
-        label.set_x(ll_lbl_n, sl_lbl_x(nyam_sl_pos, l_t1_n, l_x2_n))
+        label.set_x(ll_lbl_n, sl_lbl_x(nyam_sl_pos, l_t1_n, l_x2_n, sl_lbl_past, bar_ms))
         label.set_y(ll_lbl_n, l_prc_n)
-        label.set_style(ll_lbl_n, sl_lbl_sty_lo(nyam_sl_pos))
+        label.set_style(ll_lbl_n, sl_lbl_sty_lo(nyam_sl_pos, sl_lbl_past))
         label.set_text(ll_lbl_n, sl_lbl_txt(nyam_l_tag, l_prc_n, l_t1_n))
         label.set_size(ll_lbl_n, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_n, l_vis_n ? color.new(nyam_sl_col, 0) : na)
@@ -903,15 +907,15 @@ if n_lh > 0
         line.set_style(l_ln_lh, ls(sl_sty_in))
         label hl_lbl_lh = array.get(lh_hl_lbls, i)
         label ll_lbl_lh = array.get(lh_ll_lbls, i)
-        label.set_x(hl_lbl_lh, sl_lbl_x(lunch_sl_pos, h_t1_lh, h_x2_lh))
+        label.set_x(hl_lbl_lh, sl_lbl_x(lunch_sl_pos, h_t1_lh, h_x2_lh, sl_lbl_past, bar_ms))
         label.set_y(hl_lbl_lh, h_prc_lh)
-        label.set_style(hl_lbl_lh, sl_lbl_sty_hi(lunch_sl_pos))
+        label.set_style(hl_lbl_lh, sl_lbl_sty_hi(lunch_sl_pos, sl_lbl_past))
         label.set_text(hl_lbl_lh, sl_lbl_txt(lunch_h_tag, h_prc_lh, h_t1_lh))
         label.set_size(hl_lbl_lh, lbl_sz(sl_lbl_sz))
         label.set_textcolor(hl_lbl_lh, h_vis_lh ? color.new(lunch_sl_col, 0) : na)
-        label.set_x(ll_lbl_lh, sl_lbl_x(lunch_sl_pos, l_t1_lh, l_x2_lh))
+        label.set_x(ll_lbl_lh, sl_lbl_x(lunch_sl_pos, l_t1_lh, l_x2_lh, sl_lbl_past, bar_ms))
         label.set_y(ll_lbl_lh, l_prc_lh)
-        label.set_style(ll_lbl_lh, sl_lbl_sty_lo(lunch_sl_pos))
+        label.set_style(ll_lbl_lh, sl_lbl_sty_lo(lunch_sl_pos, sl_lbl_past))
         label.set_text(ll_lbl_lh, sl_lbl_txt(lunch_l_tag, l_prc_lh, l_t1_lh))
         label.set_size(ll_lbl_lh, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_lh, l_vis_lh ? color.new(lunch_sl_col, 0) : na)
@@ -1057,15 +1061,15 @@ if n_pm > 0
         line.set_style(l_ln_pm, ls(sl_sty_in))
         label hl_lbl_pm = array.get(pm_hl_lbls, i)
         label ll_lbl_pm = array.get(pm_ll_lbls, i)
-        label.set_x(hl_lbl_pm, sl_lbl_x(nypm_sl_pos, h_t1_pm, h_x2_pm))
+        label.set_x(hl_lbl_pm, sl_lbl_x(nypm_sl_pos, h_t1_pm, h_x2_pm, sl_lbl_past, bar_ms))
         label.set_y(hl_lbl_pm, h_prc_pm)
-        label.set_style(hl_lbl_pm, sl_lbl_sty_hi(nypm_sl_pos))
+        label.set_style(hl_lbl_pm, sl_lbl_sty_hi(nypm_sl_pos, sl_lbl_past))
         label.set_text(hl_lbl_pm, sl_lbl_txt(nypm_h_tag, h_prc_pm, h_t1_pm))
         label.set_size(hl_lbl_pm, lbl_sz(sl_lbl_sz))
         label.set_textcolor(hl_lbl_pm, h_vis_pm ? color.new(nypm_sl_col, 0) : na)
-        label.set_x(ll_lbl_pm, sl_lbl_x(nypm_sl_pos, l_t1_pm, l_x2_pm))
+        label.set_x(ll_lbl_pm, sl_lbl_x(nypm_sl_pos, l_t1_pm, l_x2_pm, sl_lbl_past, bar_ms))
         label.set_y(ll_lbl_pm, l_prc_pm)
-        label.set_style(ll_lbl_pm, sl_lbl_sty_lo(nypm_sl_pos))
+        label.set_style(ll_lbl_pm, sl_lbl_sty_lo(nypm_sl_pos, sl_lbl_past))
         label.set_text(ll_lbl_pm, sl_lbl_txt(nypm_l_tag, l_prc_pm, l_t1_pm))
         label.set_size(ll_lbl_pm, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_pm, l_vis_pm ? color.new(nypm_sl_col, 0) : na)
