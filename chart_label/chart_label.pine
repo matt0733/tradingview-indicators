@@ -1,0 +1,110 @@
+//@version=6
+indicator("Chart Label 1.2", shorttitle="Label", overlay=true)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUTS — CONTENT
+// ═══════════════════════════════════════════════════════════════════════════
+string GC = "Content"
+string line3_mode = input.string("Live", "Line 3",
+    options=["Live","Backtesting","Paper Trading"], group=GC)
+string line4_text = input.string("Trade Info Here", "Line 4", group=GC)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUTS — POSITION & SIZE
+// ═══════════════════════════════════════════════════════════════════════════
+string GP = "Position & Size"
+string pos_in  = input.string("Lower Center", "Position",
+    options=["Upper Left","Upper Center","Upper Right","Lower Left","Lower Center","Lower Right"], group=GP)
+string size_in = input.string("Medium", "Size",
+    options=["Small","Medium","Large"], group=GP)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUTS — COLORS
+// ═══════════════════════════════════════════════════════════════════════════
+string GCOL = "Colors"
+color bg_col    = input.color(color.white,  "Background",             group=GCOL)
+color line1_col = input.color(color.red,   "Line 1 (Ticker / TF)",   group=GCOL)
+color line2_col = input.color(color.black,  "Line 2 (Day / Date)",    group=GCOL)
+color line3_col = input.color(#3498DB,      "Line 3 (Mode)",          group=GCOL)
+color line4_col = input.color(color.black,  "Line 4",                 group=GCOL)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUTS — BORDER
+// ═══════════════════════════════════════════════════════════════════════════
+string GB = "Border"
+bool  show_border = input.bool(true,        "Show Border",       group=GB)
+color border_col  = input.color(color.black,"Border Color",      group=GB)
+int   border_w    = input.int(2,            "Border Thickness",  minval=1, maxval=5, group=GB)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+tfString() =>
+    m = timeframe.multiplier
+    timeframe.isseconds ? str.tostring(m) + "s" :
+      timeframe.isminutes ? (m >= 60 and m % 60 == 0 ? str.tostring(m / 60) + "h" : str.tostring(m) + "m") :
+      timeframe.isdaily   ? str.tostring(m) + "d" :
+      timeframe.isweekly  ? str.tostring(m) + "w" :
+      timeframe.ismonthly ? str.tostring(m) + "Mo" : timeframe.period
+
+dayName(int d) =>
+    switch d
+        1 => "SUN"
+        2 => "MON"
+        3 => "TUE"
+        4 => "WED"
+        5 => "THU"
+        6 => "FRI"
+        7 => "SAT"
+        => ""
+
+posOf(string s) =>
+    switch s
+        "Upper Left"    => position.top_left
+        "Upper Center"  => position.top_center
+        "Upper Right"   => position.top_right
+        "Lower Left"    => position.bottom_left
+        "Lower Center"  => position.bottom_center
+        "Lower Right"   => position.bottom_right
+        => position.top_right
+
+sizeOf(string s) =>
+    switch s
+        "Small"  => size.small
+        "Medium" => size.normal
+        "Large"  => size.large
+        => size.normal
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+var table t = na
+
+if barstate.islast
+    if not na(t)
+        table.delete(t)
+
+    tz     = syminfo.timezone
+    dow    = dayName(dayofweek(time, tz))
+    dt     = str.format_time(time, "MM/dd/yy", tz)
+    tf_str = tfString()
+
+    line1 = syminfo.ticker + " " + tf_str
+    line2 = dow + " " + dt
+
+    txt_size = sizeOf(size_in)
+    frame_w  = show_border ? border_w : 0
+
+    t := table.new(posOf(pos_in), 1, 4,
+         bgcolor      = bg_col,
+         border_width = 0,
+         frame_width  = frame_w,
+         frame_color  = border_col)
+
+    table.cell(t, 0, 0, line1,      text_color=line1_col, text_size=txt_size, bgcolor=bg_col)
+    table.cell(t, 0, 1, line2,      text_color=line2_col, text_size=txt_size, bgcolor=bg_col)
+    table.cell(t, 0, 2, line3_mode, text_color=line3_col, text_size=txt_size, bgcolor=bg_col)
+    table.cell(t, 0, 3, line4_text, text_color=line4_col, text_size=txt_size, bgcolor=bg_col)
+
+// Force overlay onto main pane (Pine puts table-only scripts in their own pane otherwise)
+plot(na, display=display.none, editable=false)
