@@ -1,5 +1,5 @@
 //@version=6
-indicator("Macros 1.1.0", shorttitle="Macros", overlay=true,
+indicator("Macros 1.2.0", shorttitle="Macros", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -10,8 +10,8 @@ string tz  = input.string("America/New_York", "Timezone",
     options=["America/New_York","America/Chicago","America/Los_Angeles",
              "Europe/London","Europe/Berlin","Asia/Tokyo","Asia/Singapore"],
     group=GEN)
-int    prev_days      = input.int(3, "Show Previous Days", minval=0, maxval=10, group=GEN,
-    tooltip="How many prior trading days of macros to keep drawn on the chart.")
+int    prev_days      = input.int(3, "Show Previous Days", minval=0, maxval=20, group=GEN,
+    tooltip="How many prior trading days of macros to keep drawn on the chart. TradingView caps each object type at 500; with all 24 macros enabled and 20 days back the oldest ones may be dropped automatically.")
 string placement      = input.string("Envelope", "Box Placement",
     options=["Below","Above","Auto","Envelope"], group=GEN,
     tooltip="'Auto' puts the box below the candles when price is in the lower half of the day's range and above when it's in the upper half. 'Envelope' wraps the box around the window's full high-to-low range. Below/Above/Auto boxes slide further away if a later bar in the window would encroach.")
