@@ -1,5 +1,5 @@
 //@version=6
-indicator("Macros 1.0.0", shorttitle="Macros", overlay=true,
+indicator("Macros 1.1.0", shorttitle="Macros", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -12,14 +12,20 @@ string tz  = input.string("America/New_York", "Timezone",
     group=GEN)
 int    prev_days      = input.int(3, "Show Previous Days", minval=0, maxval=10, group=GEN,
     tooltip="How many prior trading days of macros to keep drawn on the chart.")
-int    box_offset_tks = input.int(40, "Box Offset (ticks below window low)", minval=0, group=GEN,
-    tooltip="Ticks between the low of the window's first bar and the top of the label box.")
-int    box_height_tks = input.int(20, "Box Height (ticks)", minval=1, group=GEN)
-color  box_col        = input.color(color.new(#FF9800, 75), "Box Color", group=GEN)
+string placement      = input.string("Envelope", "Box Placement",
+    options=["Below","Above","Auto","Envelope"], group=GEN,
+    tooltip="'Auto' puts the box below the candles when price is in the lower half of the day's range and above when it's in the upper half. 'Envelope' wraps the box around the window's full high-to-low range. Below/Above/Auto boxes slide further away if a later bar in the window would encroach.")
+int    box_offset_tks = input.int(40, "Box Offset (ticks from candles)", minval=0, group=GEN,
+    tooltip="Ticks between the candle extreme and the near edge of the label box. Ignored in Envelope mode — the box wraps tightly around the window's high and low.")
+int    box_height_tks = input.int(40, "Box Height (ticks)", minval=1, group=GEN,
+    tooltip="Ignored in Envelope mode — height is determined by the window's price range.")
+string box_lbl_pos    = input.string("Top Left", "Box Label Position",
+    options=["Top Left","Top Center","Top Right","Center","Bottom Left","Bottom Center","Bottom Right"], group=GEN,
+    tooltip="Position of the macro title inside the box. For Envelope mode 'Top Left' usually reads best; for Below/Above 'Center' is cleanest.")
+color  box_col        = input.color(color.new(#FF9800, 80), "Box Color", group=GEN)
 color  box_text_col   = input.color(color.new(#000000, 0), "Box Text", group=GEN)
-string box_text_sz    = input.string("auto", "Box Text Size",
-    options=["auto","tiny","small","normal","large"], group=GEN,
-    tooltip="'auto' shrinks/grows text to fit the box as you zoom the chart.")
+int    box_text_sz    = input.int(8, "Box Text Size (px)", minval=6, maxval=72, group=GEN,
+    tooltip="Pixel size for the macro title inside the box.")
 bool   box_text_bold  = input.bool(true, "Box Text Bold", group=GEN)
 color  ray_col        = input.color(color.new(#000000, 0), "M.O. Ray Color", group=GEN)
 int    ray_w          = input.int(1, "M.O. Ray Width", minval=1, maxval=4, group=GEN)
@@ -27,8 +33,7 @@ string ray_sty_in     = input.string("Solid", "M.O. Ray Style",
     options=["Solid","Dashed","Dotted"], group=GEN)
 string mo_text        = input.string("M.O.", "M.O. Label Text", group=GEN)
 color  mo_text_col    = input.color(color.new(#000000, 0), "M.O. Text Color", group=GEN)
-string mo_text_sz     = input.string("small", "M.O. Text Size",
-    options=["tiny","small","normal","large"], group=GEN)
+int    mo_text_sz     = input.int(12, "M.O. Text Size (px)", minval=6, maxval=72, group=GEN)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUTS — MACROS
@@ -68,20 +73,28 @@ bool e_1550 = input.bool(true, "15:50-16:10", group=NYPM, inline="pm2")
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
-lbl_sz(s) =>
-    switch s
-        "auto"   => size.auto
-        "tiny"   => size.tiny
-        "small"  => size.small
-        "normal" => size.normal
-        "large"  => size.large
-        =>          size.small
-
 ls(s) =>
     switch s
         "Dashed" => line.style_dashed
         "Dotted" => line.style_dotted
         =>          line.style_solid
+
+bx_halign(pos) =>
+    switch pos
+        "Top Right"     => text.align_right
+        "Top Center"    => text.align_center
+        "Bottom Right"  => text.align_right
+        "Bottom Center" => text.align_center
+        "Center"        => text.align_center
+        =>                text.align_left
+
+bx_valign(pos) =>
+    switch pos
+        "Bottom Left"   => text.align_bottom
+        "Bottom Center" => text.align_bottom
+        "Bottom Right"  => text.align_bottom
+        "Center"        => text.align_center
+        =>                text.align_top
 
 fmt_lbl(hr) =>
     string suf = hr < 12 ? "AM" : "PM"
@@ -97,11 +110,15 @@ type MacroDef
     bool   enabled
 
 type MacroInst
-    int   def_idx
-    box   bx
-    line  ln
-    label mo_lbl
-    int   day_n
+    int    def_idx
+    box    bx
+    line   ln
+    label  mo_lbl
+    int    day_n
+    string mode
+    float  hi_anchor
+    float  lo_anchor
+    bool   live
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DEF ARRAY (built once at start)
@@ -153,6 +170,16 @@ var int today_ord = 0
 if new_day
     today_ord += 1
 
+// Track today's price range for auto-placement decisions
+var float day_hi = na
+var float day_lo = na
+if new_day or na(day_hi)
+    day_hi := high
+    day_lo := low
+else
+    day_hi := math.max(day_hi, high)
+    day_lo := math.min(day_lo, low)
+
 int n_def = array.size(defs)
 if tf_ok and n_def > 0
     for i = 0 to n_def - 1
@@ -163,24 +190,81 @@ if tf_ok and n_def > 0
         bool was_in = array.get(prev_in, i)
 
         if in_now and not was_in and d.enabled
-            float lo_ref  = low
-            float box_top = lo_ref - box_offset_tks * syminfo.mintick
-            float box_bot = box_top - box_height_tks * syminfo.mintick
-            int   t_end   = time + 20 * 60 * 1000
+            // Decide mode
+            string mode = ""
+            if placement == "Above"
+                mode := "above"
+            else if placement == "Envelope"
+                mode := "envelope"
+            else if placement == "Auto"
+                float rng = day_hi - day_lo
+                mode := (rng > 0 and (open - day_lo) / rng >= 0.5) ? "above" : "below"
+            else
+                mode := "below"
+            float pad     = box_offset_tks * syminfo.mintick
+            float height  = box_height_tks * syminfo.mintick
+            float box_top = na
+            float box_bot = na
+            if mode == "below"
+                box_top := low - pad
+                box_bot := box_top - height
+            else if mode == "above"
+                box_bot := high + pad
+                box_top := box_bot + height
+            else
+                box_top := high
+                box_bot := low
+            int t_end = time + 20 * 60 * 1000
             b = box.new(time, box_top, t_end, box_bot, xloc=xloc.bar_time,
                         bgcolor=box_col, border_color=na, border_width=0,
-                        text=d.title, text_color=box_text_col, text_size=lbl_sz(box_text_sz),
-                        text_halign=text.align_center, text_valign=text.align_center,
+                        text=d.title, text_color=box_text_col, text_size=box_text_sz,
+                        text_halign=bx_halign(box_lbl_pos), text_valign=bx_valign(box_lbl_pos),
                         text_formatting=box_text_bold ? text.format_bold : text.format_none)
             ln = line.new(time, open, t_end, open, xloc=xloc.bar_time,
                           color=ray_col, width=ray_w, style=ls(ray_sty_in))
             mo = label.new(t_end, open, mo_text, xloc=xloc.bar_time,
                            style=label.style_label_left,
                            color=color.new(color.white, 100),
-                           textcolor=mo_text_col, size=lbl_sz(mo_text_sz))
-            array.push(insts, MacroInst.new(i, b, ln, mo, today_ord))
+                           textcolor=mo_text_col, size=mo_text_sz)
+            array.push(insts, MacroInst.new(i, b, ln, mo, today_ord, mode, high, low, true))
 
         array.set(prev_in, i, in_now)
+
+// Vertical tracking: expand/slide live boxes as the window's price range develops
+int n_inst = array.size(insts)
+if n_inst > 0 and tf_ok
+    for j = 0 to n_inst - 1
+        MacroInst m = array.get(insts, j)
+        MacroDef  d = array.get(defs, m.def_idx)
+        int ts = d.sh * 60 + 50
+        int te = ((d.sh + 1) % 24) * 60 + 10
+        bool still_in = te > ts ? (tc >= ts and tc < te) : (tc >= ts or tc < te)
+        if m.live and still_in and today_ord - m.day_n <= 1
+            float pad    = box_offset_tks * syminfo.mintick
+            float height = box_height_tks * syminfo.mintick
+            bool tracks_hi = m.mode == "above" or m.mode == "envelope"
+            bool tracks_lo = m.mode == "below" or m.mode == "envelope"
+            bool changed   = false
+            if tracks_hi and high > m.hi_anchor
+                m.hi_anchor := high
+                changed := true
+            if tracks_lo and low < m.lo_anchor
+                m.lo_anchor := low
+                changed := true
+            if changed
+                if m.mode == "below"
+                    float top = m.lo_anchor - pad
+                    box.set_top(m.bx, top)
+                    box.set_bottom(m.bx, top - height)
+                else if m.mode == "above"
+                    float bot = m.hi_anchor + pad
+                    box.set_bottom(m.bx, bot)
+                    box.set_top(m.bx, bot + height)
+                else
+                    box.set_top(m.bx, m.hi_anchor)
+                    box.set_bottom(m.bx, m.lo_anchor)
+        else if m.live and not still_in
+            m.live := false
 
 // Prune instances older than prev_days
 while array.size(insts) > 0 and today_ord - array.first(insts).day_n > prev_days
