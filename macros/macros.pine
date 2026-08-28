@@ -1,0 +1,190 @@
+//@version=6
+indicator("Macros 1.0.0", shorttitle="Macros", overlay=true,
+          max_boxes_count=500, max_lines_count=500, max_labels_count=500)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUTS — GENERAL
+// ═══════════════════════════════════════════════════════════════════════════
+string GEN = "General"
+string tz  = input.string("America/New_York", "Timezone",
+    options=["America/New_York","America/Chicago","America/Los_Angeles",
+             "Europe/London","Europe/Berlin","Asia/Tokyo","Asia/Singapore"],
+    group=GEN)
+int    prev_days      = input.int(3, "Show Previous Days", minval=0, maxval=10, group=GEN,
+    tooltip="How many prior trading days of macros to keep drawn on the chart.")
+int    box_offset_tks = input.int(40, "Box Offset (ticks below window low)", minval=0, group=GEN,
+    tooltip="Ticks between the low of the window's first bar and the top of the label box.")
+int    box_height_tks = input.int(20, "Box Height (ticks)", minval=1, group=GEN)
+color  box_col        = input.color(color.new(#FF9800, 75), "Box Color", group=GEN)
+color  box_text_col   = input.color(color.new(#000000, 0), "Box Text", group=GEN)
+string box_text_sz    = input.string("auto", "Box Text Size",
+    options=["auto","tiny","small","normal","large"], group=GEN,
+    tooltip="'auto' shrinks/grows text to fit the box as you zoom the chart.")
+bool   box_text_bold  = input.bool(true, "Box Text Bold", group=GEN)
+color  ray_col        = input.color(color.new(#000000, 0), "M.O. Ray Color", group=GEN)
+int    ray_w          = input.int(1, "M.O. Ray Width", minval=1, maxval=4, group=GEN)
+string ray_sty_in     = input.string("Solid", "M.O. Ray Style",
+    options=["Solid","Dashed","Dotted"], group=GEN)
+string mo_text        = input.string("M.O.", "M.O. Label Text", group=GEN)
+color  mo_text_col    = input.color(color.new(#000000, 0), "M.O. Text Color", group=GEN)
+string mo_text_sz     = input.string("small", "M.O. Text Size",
+    options=["tiny","small","normal","large"], group=GEN)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUTS — MACROS
+// ═══════════════════════════════════════════════════════════════════════════
+string ASIA = "Hourly Asia Session Macros (16:50-01:10 EST)"
+bool e_1650 = input.bool(true, "16:50-17:10", group=ASIA, inline="a1")
+bool e_1750 = input.bool(true, "17:50-18:10", group=ASIA, inline="a1")
+bool e_1850 = input.bool(true, "18:50-19:10", group=ASIA, inline="a1")
+bool e_1950 = input.bool(true, "19:50-20:10", group=ASIA, inline="a2")
+bool e_2050 = input.bool(true, "20:50-21:10", group=ASIA, inline="a2")
+bool e_2150 = input.bool(true, "21:50-22:10", group=ASIA, inline="a2")
+bool e_2250 = input.bool(true, "22:50-23:10", group=ASIA, inline="a3")
+bool e_2350 = input.bool(true, "23:50-00:10", group=ASIA, inline="a3")
+bool e_0050 = input.bool(true, "00:50-01:10", group=ASIA, inline="a3")
+
+string LON = "Hourly London Session Macros (01:50-06:10 EST)"
+bool e_0150 = input.bool(true, "01:50-02:10", group=LON, inline="l1")
+bool e_0250 = input.bool(true, "02:50-03:10", group=LON, inline="l1")
+bool e_0350 = input.bool(true, "03:50-04:10", group=LON, inline="l1")
+bool e_0450 = input.bool(true, "04:50-05:10", group=LON, inline="l2")
+bool e_0550 = input.bool(true, "05:50-06:10", group=LON, inline="l2")
+
+string NYAM = "Hourly New York AM Macros (06:50-11:10 EST)"
+bool e_0650 = input.bool(true, "06:50-07:10", group=NYAM, inline="am1")
+bool e_0750 = input.bool(true, "07:50-08:10", group=NYAM, inline="am1")
+bool e_0850 = input.bool(true, "08:50-09:10", group=NYAM, inline="am1")
+bool e_0950 = input.bool(true, "09:50-10:10", group=NYAM, inline="am2")
+bool e_1050 = input.bool(true, "10:50-11:10", group=NYAM, inline="am2")
+
+string NYPM = "Hourly New York PM Macros (11:50-16:10 EST)"
+bool e_1150 = input.bool(true, "11:50-12:10", group=NYPM, inline="pm1")
+bool e_1250 = input.bool(true, "12:50-13:10", group=NYPM, inline="pm1")
+bool e_1350 = input.bool(true, "13:50-14:10", group=NYPM, inline="pm1")
+bool e_1450 = input.bool(true, "14:50-15:10", group=NYPM, inline="pm2")
+bool e_1550 = input.bool(true, "15:50-16:10", group=NYPM, inline="pm2")
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+lbl_sz(s) =>
+    switch s
+        "auto"   => size.auto
+        "tiny"   => size.tiny
+        "small"  => size.small
+        "normal" => size.normal
+        "large"  => size.large
+        =>          size.small
+
+ls(s) =>
+    switch s
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+        =>          line.style_solid
+
+fmt_lbl(hr) =>
+    string suf = hr < 12 ? "AM" : "PM"
+    int h12 = hr == 0 ? 12 : (hr > 12 ? hr - 12 : hr)
+    str.tostring(h12) + ":50" + suf + " Macro"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+type MacroDef
+    int    sh
+    string title
+    bool   enabled
+
+type MacroInst
+    int   def_idx
+    box   bx
+    line  ln
+    label mo_lbl
+    int   day_n
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEF ARRAY (built once at start)
+// ═══════════════════════════════════════════════════════════════════════════
+var array<MacroDef> defs    = array.new<MacroDef>()
+var array<bool>     prev_in = array.new<bool>()
+
+if barstate.isfirst
+    array.push(defs, MacroDef.new(16, fmt_lbl(16), e_1650))
+    array.push(defs, MacroDef.new(17, fmt_lbl(17), e_1750))
+    array.push(defs, MacroDef.new(18, fmt_lbl(18), e_1850))
+    array.push(defs, MacroDef.new(19, fmt_lbl(19), e_1950))
+    array.push(defs, MacroDef.new(20, fmt_lbl(20), e_2050))
+    array.push(defs, MacroDef.new(21, fmt_lbl(21), e_2150))
+    array.push(defs, MacroDef.new(22, fmt_lbl(22), e_2250))
+    array.push(defs, MacroDef.new(23, fmt_lbl(23), e_2350))
+    array.push(defs, MacroDef.new(0,  fmt_lbl(0),  e_0050))
+    array.push(defs, MacroDef.new(1,  fmt_lbl(1),  e_0150))
+    array.push(defs, MacroDef.new(2,  fmt_lbl(2),  e_0250))
+    array.push(defs, MacroDef.new(3,  fmt_lbl(3),  e_0350))
+    array.push(defs, MacroDef.new(4,  fmt_lbl(4),  e_0450))
+    array.push(defs, MacroDef.new(5,  fmt_lbl(5),  e_0550))
+    array.push(defs, MacroDef.new(6,  fmt_lbl(6),  e_0650))
+    array.push(defs, MacroDef.new(7,  fmt_lbl(7),  e_0750))
+    array.push(defs, MacroDef.new(8,  fmt_lbl(8),  e_0850))
+    array.push(defs, MacroDef.new(9,  fmt_lbl(9),  e_0950))
+    array.push(defs, MacroDef.new(10, fmt_lbl(10), e_1050))
+    array.push(defs, MacroDef.new(11, fmt_lbl(11), e_1150))
+    array.push(defs, MacroDef.new(12, fmt_lbl(12), e_1250))
+    array.push(defs, MacroDef.new(13, fmt_lbl(13), e_1350))
+    array.push(defs, MacroDef.new(14, fmt_lbl(14), e_1450))
+    array.push(defs, MacroDef.new(15, fmt_lbl(15), e_1550))
+    for i = 0 to array.size(defs) - 1
+        array.push(prev_in, false)
+
+var array<MacroInst> insts = array.new<MacroInst>()
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROCESSING
+// ═══════════════════════════════════════════════════════════════════════════
+int cur_h  = hour(time, tz)
+int cur_m  = minute(time, tz)
+int tc     = cur_h * 60 + cur_m
+int bar_ms = timeframe.in_seconds() * 1000
+bool tf_ok = timeframe.in_seconds() <= 300
+
+bool new_day = ta.change(time("D")) != 0
+var int today_ord = 0
+if new_day
+    today_ord += 1
+
+int n_def = array.size(defs)
+if tf_ok and n_def > 0
+    for i = 0 to n_def - 1
+        MacroDef d = array.get(defs, i)
+        int ts = d.sh * 60 + 50
+        int te = ((d.sh + 1) % 24) * 60 + 10
+        bool in_now = te > ts ? (tc >= ts and tc < te) : (tc >= ts or tc < te)
+        bool was_in = array.get(prev_in, i)
+
+        if in_now and not was_in and d.enabled
+            float lo_ref  = low
+            float box_top = lo_ref - box_offset_tks * syminfo.mintick
+            float box_bot = box_top - box_height_tks * syminfo.mintick
+            int   t_end   = time + 20 * 60 * 1000
+            b = box.new(time, box_top, t_end, box_bot, xloc=xloc.bar_time,
+                        bgcolor=box_col, border_color=na, border_width=0,
+                        text=d.title, text_color=box_text_col, text_size=lbl_sz(box_text_sz),
+                        text_halign=text.align_center, text_valign=text.align_center,
+                        text_formatting=box_text_bold ? text.format_bold : text.format_none)
+            ln = line.new(time, open, t_end, open, xloc=xloc.bar_time,
+                          color=ray_col, width=ray_w, style=ls(ray_sty_in))
+            mo = label.new(t_end, open, mo_text, xloc=xloc.bar_time,
+                           style=label.style_label_left,
+                           color=color.new(color.white, 100),
+                           textcolor=mo_text_col, size=lbl_sz(mo_text_sz))
+            array.push(insts, MacroInst.new(i, b, ln, mo, today_ord))
+
+        array.set(prev_in, i, in_now)
+
+// Prune instances older than prev_days
+while array.size(insts) > 0 and today_ord - array.first(insts).day_n > prev_days
+    MacroInst old = array.shift(insts)
+    box.delete(old.bx)
+    line.delete(old.ln)
+    label.delete(old.mo_lbl)
