@@ -1,0 +1,630 @@
+//@version=6
+// SMT Divergence 1.2.1
+//
+// 1.2.1
+//   - Fixed: when both comparison symbols confirmed the same pair of swings they shared one
+//     label, and if the line carrying that label was later removed by Hide Inside or the
+//     same-Pivot-A collapse, the text went with it and the surviving line was left blank.
+//     Measured at 9 of 100 signals. The label is now handed to the surviving twin, with its
+//     style and colours restored for the current Label Style.
+//
+// 1.2.0
+//   - New "Min Divergence (ATR)" setting, default 1.0. A divergence now has to be at least this
+//     multiple of the comparison market's own ATR(14) to count. Previously any miss qualified,
+//     including one a fraction of a point wide, which is measurement noise rather than a
+//     liquidity event. Measured over 22 days of 1 minute MNQ against ES and YM, split into four
+//     independent periods, this improved hit rate in 4 of 4 periods by an average of 2.25
+//     percentage points, at the cost of roughly half the signals. Set to 0 for the old behaviour.
+//
+// 1.1.0
+//   - Crossing Tolerance is now measured in ATR rather than a fixed percentage of price, so
+//     one setting means the same thing on every timeframe and instrument. BREAKING: the old
+//     scale (each step = 0.01% of price) no longer applies; each step is now 0.1 x ATR(14).
+//   - Labels sit at the middle of the line, offset far enough perpendicular that the line no
+//     longer runs through the lettering. The old offset was about a fifth of the text height,
+//     which is why the dashes struck through it. When both comparison symbols confirm the same
+//     pair of swings they share one label ("ES1!/YM1!") instead of two overprinting each other.
+//   - New "Label Style" setting: Badge (filled tag in the line's colour, white lettering),
+//     Text (bare lettering, no box) or Marker (small triangle only, name in the tooltip).
+//   - Hide Inside SMTs now also collapses same-side SMTs that share a Pivot A, keeping the
+//     most extreme one. This removes the fan of near-duplicate lines off a single swing.
+//   - Comparison feeds are only requested when enabled, so a disabled or invalid Symbol 2
+//     can no longer affect the script.
+//   - New defaults: Symbol 1 CME_MINI:ES1! and Symbol 2 CBOT_MINI:YM1!, both enabled,
+//     Pivot A Strength 3, Sync Tolerance 1, Crossing Tolerance 3 (0.3 ATR),
+//     Max SMTs per side 15, Remove on Invalidation on, label text black.
+//
+// 1.0.0
+//   - Initial release.
+indicator(title = "SMT Divergence 1.2.1", shorttitle = "SMT", overlay = true, max_lines_count = 500, max_labels_count = 500, max_bars_back = 1200)
+
+i_useComp1 = input.bool(true, "Symbol 1", inline = "c1", group = "Comparison", tooltip = "Enable the first comparison market.")
+i_comp1Symbol = input.symbol("CME_MINI:ES1!", "", inline = "c1", group = "Comparison", tooltip = "Primary market used to confirm SMT divergence against the chart you are viewing. Example: use ES while viewing NQ, or NQ while viewing ES.")
+i_comp1Inverse = input.bool(false, "Inverse Corr.", inline = "c1", group = "Comparison", tooltip = "Use when this symbol normally moves opposite to the chart symbol. Highs on one market are compared against lows on the other, and lows are compared against highs.")
+i_useComp2 = input.bool(true, "Symbol 2", inline = "c2", group = "Comparison", tooltip = "Enable a second comparison market.")
+i_comp2Symbol = input.symbol("CBOT_MINI:YM1!", "", inline = "c2", group = "Comparison", tooltip = "Optional second market used to confirm SMT divergence against the chart you are viewing.")
+i_comp2Inverse = input.bool(false, "Inverse Corr.", inline = "c2", group = "Comparison", tooltip = "Use when this symbol normally moves opposite to the chart symbol. Highs on one market are compared against lows on the other, and lows are compared against highs.")
+i_pivotAStrength = input.int(3, "Pivot A Strength", minval = 1, maxval = 10, group = "Detection Settings", tooltip = "Strength required for the older Pivot A on the market that takes liquidity. 1 means the normal 3-candle swing. Higher values require more candles on each side of Pivot A, making the filter stricter. Pivot B stays a fast confirmed 3-candle swing.")
+i_syncTol = input.int(1, "Sync Tolerance", minval = 0, maxval = 3, group = "Detection Settings", tooltip = "How many candles apart matching pivots are allowed to be between the chart and comparison symbol. Use 0 for exact same-bar matching, or up to 3 for looser alignment. 0 is stricter than it looks: a less liquid comparison symbol has minutes with no trades, and those bars carry the previous value forward, which shifts where its pivots land. 1 is a good default for index futures.")
+i_maxSignalSpan = input.int(180, "Max SMT Span", minval = 10, maxval = 1000, group = "Detection Settings", tooltip = "Maximum candles allowed between the two SMT pivots. Higher values find wider structures but can add clutter and run slower.")
+i_crossTol = input.int(3, "Crossing Tolerance", minval = 0, maxval = 10, group = "Detection Settings", tooltip = "Allows a small cross through the SMT line before rejecting it. 0 is strict. Each step adds 0.1 x ATR(14), so 3 = 0.3 ATR. Measuring in ATR means the same setting stays equally strict on a 1 minute chart and on a daily chart.")
+i_minDivATR = input.float(1.0, "Min Divergence (ATR)", minval = 0.0, maxval = 5.0, step = 0.1, group = "Detection Settings", tooltip = "Smallest divergence that counts, measured in the comparison market's own ATR(14). Without this any miss qualifies, including one a fraction of a point wide, which is measurement noise rather than a liquidity event. 0 disables the filter. Raising it roughly halves the signal count at 1.0.")
+i_maxPerSide = input.int(15, "Max SMTs per side", minval = 1, maxval = 100, group = "Detection Settings", tooltip = "Maximum bearish SMTs and maximum bullish SMTs kept on the chart at the same time. Older signals are removed first.")
+i_removeOnInval = input.bool(true, "Remove on Invalidation", group = "Detection Settings", tooltip = "When enabled, bearish SMTs are removed after price closes above their high, and bullish SMTs are removed after price closes below their low. Useful live, because it leaves only structure that is still valid. Be aware that it also deletes every SMT that failed, so scrolling back through history with this on makes the indicator look far more accurate than it was in real time. Turn it off when judging the tool.")
+i_hideInside = input.bool(true, "Hide Inside SMTs", group = "Detection Settings", tooltip = "Hides SMTs contained inside a more extreme same-side SMT, and collapses same-side SMTs that share a Pivot A down to the most extreme one, leaving the most relevant SMTs. Like Remove on Invalidation, this drops signals after the fact, so history looks cleaner than the live experience.")
+i_bearLineColor = input.color(color.red, "Bearish", inline = "lc", group = "Line Settings", tooltip = "Color used for bearish SMT lines.")
+i_bullLineColor = input.color(color.blue, "Bullish", inline = "lc", group = "Line Settings", tooltip = "Color used for bullish SMT lines.")
+i_lineStyle = input.string("Dashed", "Style", inline = "ls", group = "Line Settings", options = ["Solid", "Dashed", "Dotted"], tooltip = "Visual style used for SMT lines.")
+i_lineWidth = input.int(1, "Width", inline = "ls", group = "Line Settings", minval = 1, maxval = 4, tooltip = "Thickness of the SMT lines.")
+i_labelMode = input.string("Text", "Label Style", group = "Line Settings", options = ["Badge", "Text", "Marker"], tooltip = "All three sit at the middle of the SMT line. Text draws bare lettering with no box, in the colour set below, offset clear of the line. Badge draws a filled tag in the line's colour with white lettering. Marker draws only a small coloured triangle and puts the symbol name in the hover tooltip, for the cleanest chart.")
+i_textSize = input.string("Small", "Text", inline = "tx", group = "Line Settings", options = ["Tiny", "Small", "Normal", "Large"], tooltip = "Size of the text shown near the middle of each SMT line.")
+i_textColor = input.color(color.black, "", inline = "tx", group = "Line Settings", tooltip = "Color of the lettering in Text mode. Badge mode always uses white on the line's colour, and Marker mode shows no lettering.")
+
+int PIVOT_LOOKBACK = 1
+int MAX_HISTORY = 1200
+int MAX_SWINGS = 240
+float atrVal = nz(ta.atr(14), high - low)
+float textGap = atrVal * 0.04
+// Crossing tolerance as a fraction of price, derived from ATR so one setting is equally strict
+// on every timeframe. Held as a fraction rather than a point value so that when it is applied
+// against a comparison symbol's own price level it stays correct on a different price scale.
+float crossTolFrac = i_crossTol * 0.1 * nz(atrVal / close, 0.0)
+
+lineStyleConst = switch i_lineStyle
+    "Solid" => line.style_solid
+    "Dashed" => line.style_dashed
+    => line.style_dotted
+
+labelSizeConst = switch i_textSize
+    "Tiny" => size.tiny
+    "Small" => size.small
+    "Normal" => size.normal
+    => size.large
+
+// Roughly how tall the chosen text is, relative to "Small", used to space colliding labels.
+float textSizeMult = switch i_textSize
+    "Tiny" => 0.7
+    "Small" => 1.0
+    "Normal" => 1.35
+    => 1.9
+
+symbolLabel(string symbol) =>
+    array<string> parts = str.split(symbol, ":")
+    array.size(parts) > 1 ? array.get(parts, array.size(parts) - 1) : symbol
+
+// Only pull a comparison feed when it is enabled, so a disabled or invalid symbol cannot
+// affect the script. When disabled the chart's own ticker is used and the results are ignored.
+string comp1Req = i_useComp1 ? i_comp1Symbol : syminfo.tickerid
+string comp2Req = i_useComp2 ? i_comp2Symbol : syminfo.tickerid
+[comp1_h, comp1_l, comp1_atr] = request.security(comp1Req, timeframe.period, [high, low, ta.atr(14)], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+[comp2_h, comp2_l, comp2_atr] = request.security(comp2Req, timeframe.period, [high, low, ta.atr(14)], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+// Smallest divergence that counts, in the comparison market's own units. Held per symbol because
+// ES and YM are quoted on different scales. nz() leaves the filter open rather than closed when
+// ATR is not yet available, so warm-up bars are not silently dropped.
+float comp1MinDiv = i_minDivATR * nz(comp1_atr, 0.0)
+float comp2MinDiv = i_minDivATR * nz(comp2_atr, 0.0)
+
+var array<float> chartHistH = array.new<float>()
+var array<float> chartHistL = array.new<float>()
+var array<float> comp1HistH = array.new<float>()
+var array<float> comp1HistL = array.new<float>()
+var array<float> comp2HistH = array.new<float>()
+var array<float> comp2HistL = array.new<float>()
+array.push(chartHistH, high), array.push(chartHistL, low)
+array.push(comp1HistH, comp1_h), array.push(comp1HistL, comp1_l)
+array.push(comp2HistH, comp2_h), array.push(comp2HistL, comp2_l)
+if array.size(chartHistH) > MAX_HISTORY
+    array.shift(chartHistH), array.shift(chartHistL)
+    array.shift(comp1HistH), array.shift(comp1HistL)
+    array.shift(comp2HistH), array.shift(comp2HistL)
+
+float chartPH = ta.pivothigh(high, PIVOT_LOOKBACK, PIVOT_LOOKBACK)
+float chartPL = ta.pivotlow(low, PIVOT_LOOKBACK, PIVOT_LOOKBACK)
+float comp1PH = ta.pivothigh(comp1_h, PIVOT_LOOKBACK, PIVOT_LOOKBACK)
+float comp1PL = ta.pivotlow(comp1_l, PIVOT_LOOKBACK, PIVOT_LOOKBACK)
+float comp2PH = ta.pivothigh(comp2_h, PIVOT_LOOKBACK, PIVOT_LOOKBACK)
+float comp2PL = ta.pivotlow(comp2_l, PIVOT_LOOKBACK, PIVOT_LOOKBACK)
+float chartA_PH = ta.pivothigh(high, i_pivotAStrength, i_pivotAStrength)
+float chartA_PL = ta.pivotlow(low, i_pivotAStrength, i_pivotAStrength)
+float comp1A_PH = ta.pivothigh(comp1_h, i_pivotAStrength, i_pivotAStrength)
+float comp1A_PL = ta.pivotlow(comp1_l, i_pivotAStrength, i_pivotAStrength)
+float comp2A_PH = ta.pivothigh(comp2_h, i_pivotAStrength, i_pivotAStrength)
+float comp2A_PL = ta.pivotlow(comp2_l, i_pivotAStrength, i_pivotAStrength)
+
+var array<int> chartSBar = array.new<int>()
+var array<float> chartSPrice = array.new<float>()
+var array<bool> chartSIsHigh = array.new<bool>()
+var array<int> comp1SBar = array.new<int>()
+var array<float> comp1SPrice = array.new<float>()
+var array<bool> comp1SIsHigh = array.new<bool>()
+var array<int> comp2SBar = array.new<int>()
+var array<float> comp2SPrice = array.new<float>()
+var array<bool> comp2SIsHigh = array.new<bool>()
+var array<int> chartASBar = array.new<int>()
+var array<float> chartASPrice = array.new<float>()
+var array<bool> chartASIsHigh = array.new<bool>()
+var array<int> comp1ASBar = array.new<int>()
+var array<float> comp1ASPrice = array.new<float>()
+var array<bool> comp1ASIsHigh = array.new<bool>()
+var array<int> comp2ASBar = array.new<int>()
+var array<float> comp2ASPrice = array.new<float>()
+var array<bool> comp2ASIsHigh = array.new<bool>()
+
+addSwing(array<int> bars, array<float> prices, array<bool> sides, int b, float px, bool isHigh) =>
+    bool dup = false
+    int sz = array.size(bars)
+    if sz > 0
+        for i = 0 to sz - 1
+            if array.get(bars, i) == b and array.get(sides, i) == isHigh
+                dup := true
+                break
+    if not dup
+        array.push(bars, b), array.push(prices, px), array.push(sides, isHigh)
+        if array.size(bars) > MAX_SWINGS
+            array.shift(bars), array.shift(prices), array.shift(sides)
+
+findNearAny(array<int> bars, array<bool> sides, int targetBar, bool wantHigh, int tol) =>
+    int bestI = -1, bestD = tol + 1, sz = array.size(bars)
+    if sz > 0
+        for n = 0 to sz - 1
+            int i = sz - 1 - n
+            int b = array.get(bars, i)
+            if b < targetBar - tol
+                break
+            if b <= targetBar + tol and array.get(sides, i) == wantHigh
+                int d = math.abs(b - targetBar)
+                if d <= tol and d < bestD
+                    bestD := d, bestI := i
+    bestI
+
+findNearBefore(array<int> bars, array<bool> sides, int targetBar, int limitBar, bool wantHigh, int tol) =>
+    int bestI = -1, bestD = tol + 1, sz = array.size(bars)
+    if sz > 0
+        for n = 0 to sz - 1
+            int i = sz - 1 - n
+            int b = array.get(bars, i)
+            if b < targetBar - tol
+                break
+            if b < limitBar and b <= targetBar + tol and array.get(sides, i) == wantHigh
+                int d = math.abs(b - targetBar)
+                if d <= tol and d < bestD
+                    bestD := d, bestI := i
+    bestI
+
+var array<line> sigLines = array.new<line>()
+var array<label> sigLabels = array.new<label>()
+var array<float> sigInvalPx = array.new<float>()
+var array<bool> sigIsBear = array.new<bool>()
+var array<int> sigBarA = array.new<int>()
+var array<int> sigBarB = array.new<int>()
+var array<float> sigPxA = array.new<float>()
+var array<float> sigPxB = array.new<float>()
+var array<string> sigTag = array.new<string>()
+var array<int> sigLabelBar = array.new<int>()
+var array<float> sigLabelPx = array.new<float>()
+var array<bool> sigLabelShown = array.new<bool>()
+var array<int> dedupA = array.new<int>()
+var array<int> dedupB = array.new<int>()
+var array<bool> dedupBear = array.new<bool>()
+var array<string> dedupTag = array.new<string>()
+
+pairSeen(int barA, int barB, bool isBear, string tag) =>
+    bool seen = false
+    int sz = array.size(dedupA)
+    if sz > 0
+        for i = 0 to sz - 1
+            if array.get(dedupA, i) == barA and array.get(dedupB, i) == barB and array.get(dedupBear, i) == isBear and array.get(dedupTag, i) == tag
+                seen := true
+                break
+    seen
+
+markPair(int barA, int barB, bool isBear, string tag) =>
+    array.push(dedupA, barA), array.push(dedupB, barB), array.push(dedupBear, isBear), array.push(dedupTag, tag)
+    if array.size(dedupA) > 500
+        array.shift(dedupA), array.shift(dedupB), array.shift(dedupBear), array.shift(dedupTag)
+
+findSignalForB(int barB, bool isBear, string tag) =>
+    int found = -1, sz = array.size(sigBarB)
+    if sz > 0
+        for i = 0 to sz - 1
+            if array.get(sigBarB, i) == barB and array.get(sigIsBear, i) == isBear and array.get(sigTag, i) == tag
+                found := i
+                break
+    found
+
+labelStyleFor(bool isBear, bool twin) =>
+    string st = label.style_none
+    if not twin
+        if i_labelMode == "Badge"
+            st := isBear ? label.style_label_down : label.style_label_up
+        else if i_labelMode == "Marker"
+            st := isBear ? label.style_triangledown : label.style_triangleup
+    st
+
+removeSignal(int i) =>
+    // If this signal carries the visible label for a pair the other comparison symbol also drew,
+    // hand that label to the surviving twin before deleting, otherwise the twin's line is left on
+    // the chart with no text and no way to tell which market produced it.
+    if array.get(sigLabelShown, i)
+        int hBarA = array.get(sigBarA, i)
+        int hBarB = array.get(sigBarB, i)
+        bool hBear = array.get(sigIsBear, i)
+        int hsz = array.size(sigBarA)
+        for j = 0 to hsz - 1
+            if j != i and array.get(sigBarA, j) == hBarA and array.get(sigBarB, j) == hBarB and array.get(sigIsBear, j) == hBear and not array.get(sigLabelShown, j)
+                label heir = array.get(sigLabels, j)
+                string heirText = array.get(sigTag, i) + "/" + array.get(sigTag, j)
+                if i_labelMode == "Marker"
+                    label.set_tooltip(heir, heirText)
+                else
+                    label.set_text(heir, heirText)
+                // The twin was created hidden, so restore the style and colours for the mode.
+                label.set_style(heir, labelStyleFor(hBear, false))
+                if i_labelMode == "Badge"
+                    label.set_color(heir, hBear ? i_bearLineColor : i_bullLineColor)
+                    label.set_textcolor(heir, color.white)
+                array.set(sigLabelShown, j, true)
+                break
+    line.delete(array.get(sigLines, i)), label.delete(array.get(sigLabels, i))
+    array.remove(sigLines, i), array.remove(sigLabels, i), array.remove(sigInvalPx, i), array.remove(sigIsBear, i)
+    array.remove(sigBarA, i), array.remove(sigBarB, i), array.remove(sigPxA, i), array.remove(sigPxB, i), array.remove(sigTag, i)
+    array.remove(sigLabelBar, i), array.remove(sigLabelPx, i), array.remove(sigLabelShown, i)
+
+candidateBetterForSameB(int barA, float pxA, float pxB, int oldI) =>
+    float oldA = array.get(sigPxA, oldI), oldB = array.get(sigPxB, oldI)
+    int oldBarA = array.get(sigBarA, oldI)
+    float newDist = math.abs(pxB - pxA), oldDist = math.abs(oldB - oldA)
+    newDist < oldDist or (newDist == oldDist and barA > oldBarA)
+
+findSignalForA(int barA, bool isBear, string tag) =>
+    int found = -1, sz = array.size(sigBarA)
+    if sz > 0
+        for i = 0 to sz - 1
+            if array.get(sigBarA, i) == barA and array.get(sigIsBear, i) == isBear and array.get(sigTag, i) == tag
+                found := i
+                break
+    found
+
+candidateBetterForSameA(int barB, float pxB, bool isBear, int oldI) =>
+    float oldPxB = array.get(sigPxB, oldI)
+    int oldBarB = array.get(sigBarB, oldI)
+    bool moreExtreme = isBear ? pxB > oldPxB : pxB < oldPxB
+    moreExtreme or (pxB == oldPxB and barB > oldBarB)
+
+signalExtreme(float pxA, float pxB, bool isBear) =>
+    isBear ? math.max(pxA, pxB) : math.min(pxA, pxB)
+
+isInsideExisting(int barA, float pxA, int barB, float pxB, bool isBear, string tag) =>
+    bool hide = false
+    if i_hideInside
+        int sz = array.size(sigBarA)
+        if sz > 0
+            int candLeft = math.min(barA, barB)
+            int candRight = math.max(barA, barB)
+            float candExtreme = signalExtreme(pxA, pxB, isBear)
+            for i = 0 to sz - 1
+                if array.get(sigIsBear, i) == isBear and array.get(sigTag, i) == tag
+                    int oldLeft = math.min(array.get(sigBarA, i), array.get(sigBarB, i))
+                    int oldRight = math.max(array.get(sigBarA, i), array.get(sigBarB, i))
+                    bool timeInside = oldLeft <= candLeft and oldRight >= candRight and (oldLeft < candLeft or oldRight > candRight)
+                    float oldExtreme = signalExtreme(array.get(sigPxA, i), array.get(sigPxB, i), isBear)
+                    bool oldMoreRelevant = isBear ? oldExtreme >= candExtreme : oldExtreme <= candExtreme
+                    if timeInside and oldMoreRelevant
+                        hide := true
+                        break
+    hide
+
+removeInsideSignals(int barA, float pxA, int barB, float pxB, bool isBear, string tag) =>
+    if i_hideInside
+        int sz = array.size(sigBarA)
+        if sz > 0
+            int newLeft = math.min(barA, barB)
+            int newRight = math.max(barA, barB)
+            float newExtreme = signalExtreme(pxA, pxB, isBear)
+            for i = sz - 1 to 0
+                if array.get(sigIsBear, i) == isBear and array.get(sigTag, i) == tag
+                    int oldLeft = math.min(array.get(sigBarA, i), array.get(sigBarB, i))
+                    int oldRight = math.max(array.get(sigBarA, i), array.get(sigBarB, i))
+                    bool oldInside = newLeft <= oldLeft and newRight >= oldRight and (newLeft < oldLeft or newRight > oldRight)
+                    float oldExtreme = signalExtreme(array.get(sigPxA, i), array.get(sigPxB, i), isBear)
+                    bool newMoreRelevant = isBear ? newExtreme >= oldExtreme : newExtreme <= oldExtreme
+                    if oldInside and newMoreRelevant
+                        removeSignal(i)
+
+crossOkFromArrays(array<float> highs, array<float> lows, int barA, float pxA, int barB, float pxB, bool isBear) =>
+    bool ok = true
+    int span = barB - barA - 1
+    int firstBar = bar_index - array.size(highs) + 1
+    if span > 0 and span <= i_maxSignalSpan
+        for d = 1 to span
+            int idx = barA + d - firstBar
+            if idx < 0 or idx >= array.size(highs)
+                ok := false
+                break
+            float linePx = pxA + (pxB - pxA) * (d * 1.0 / (barB - barA))
+            float tolPx = math.abs(linePx) * crossTolFrac
+            float testPx = isBear ? array.get(highs, idx) : array.get(lows, idx)
+            bool crossed = isBear ? testPx > linePx + tolPx : testPx < linePx - tolPx
+            if crossed
+                ok := false
+                break
+    else if span > i_maxSignalSpan
+        ok := false
+    ok
+
+chartCrossOk(int barA, float pxA, int barB, float pxB, bool isBear) =>
+    crossOkFromArrays(chartHistH, chartHistL, barA, pxA, barB, pxB, isBear)
+
+compCrossOk(array<float> highs, array<float> lows, int barA, float pxA, int barB, float pxB, bool isBear) =>
+    crossOkFromArrays(highs, lows, barA, pxA, barB, pxB, isBear)
+
+drawSMT(int barA, float pxA, int barB, float pxB, bool isBear, string tag) =>
+    int cnt = 0, sz = array.size(sigIsBear)
+    if sz > 0
+        for i = 0 to sz - 1
+            if array.get(sigIsBear, i) == isBear
+                cnt += 1
+    if cnt >= i_maxPerSide
+        int sz2 = array.size(sigIsBear)
+        if sz2 > 0
+            for i = 0 to sz2 - 1
+                if array.get(sigIsBear, i) == isBear
+                    removeSignal(i)
+                    break
+    color lineColor = isBear ? i_bearLineColor : i_bullLineColor
+    // Sit the label at the middle of the line, offset far enough perpendicular that the line
+    // cannot run through the lettering. textGap is ATR * 0.04, so Text clears by about 0.24 ATR
+    // which is comfortably more than one line of type at any normal zoom.
+    int anchorBar = int(math.round((barA + barB) / 2.0))
+    float lineAtAnchor = pxA + (pxB - pxA) * ((anchorBar - barA) * 1.0 / (barB - barA))
+    float labelOffset = switch i_labelMode
+        "Text" => textGap * 6.0 * textSizeMult
+        "Marker" => textGap * 2.0
+        => 0.0
+    float labelPx = isBear ? lineAtAnchor + labelOffset : lineAtAnchor - labelOffset
+    // When the other comparison symbol has already drawn this exact pair of swings, add this
+    // symbol's name to that label instead of printing a second one on top of it.
+    string labelText = tag
+    bool isTwin = false
+    int ssz = array.size(sigBarA)
+    if ssz > 0
+        for i = 0 to ssz - 1
+            if array.get(sigBarA, i) == barA and array.get(sigBarB, i) == barB and array.get(sigIsBear, i) == isBear and array.get(sigTag, i) != tag and array.get(sigLabelShown, i)
+                label twin = array.get(sigLabels, i)
+                string merged = array.get(sigTag, i) + "/" + tag
+                if i_labelMode == "Marker"
+                    label.set_tooltip(twin, merged)
+                else
+                    label.set_text(twin, merged)
+                labelText := ""
+                isTwin := true
+                break
+    if not isTwin
+        // Merging removes nearly all collisions. This only steps a label clear of a different
+        // SMT whose Pivot B lands within a couple of bars. Hidden twins are skipped.
+        float labelStep = textGap * 9.0 * textSizeMult
+        int lblCount = array.size(sigLabelPx)
+        int nudges = 0
+        bool clash = true
+        while clash and nudges < 4
+            clash := false
+            if lblCount > 0
+                for i = 0 to lblCount - 1
+                    if array.get(sigLabelShown, i) and math.abs(array.get(sigLabelBar, i) - anchorBar) <= 2 and math.abs(array.get(sigLabelPx, i) - labelPx) < labelStep * 0.9
+                        clash := true
+                        break
+            if clash
+                labelPx := isBear ? labelPx + labelStep : labelPx - labelStep
+                nudges += 1
+    bool marker = i_labelMode == "Marker"
+    color lblBg = isTwin or i_labelMode == "Text" ? color.new(color.white, 100) : lineColor
+    color lblText = i_labelMode == "Badge" ? color.white : i_textColor
+    line ln = line.new(barA, pxA, barB, pxB, xloc = xloc.bar_index, color = lineColor, style = lineStyleConst, width = i_lineWidth)
+    label lb = label.new(anchorBar, labelPx, marker ? "" : labelText, xloc = xloc.bar_index, style = labelStyleFor(isBear, isTwin), color = lblBg, textcolor = lblText, size = labelSizeConst, tooltip = marker and not isTwin ? tag : "")
+    array.push(sigLines, ln), array.push(sigLabels, lb), array.push(sigInvalPx, isBear ? math.max(pxA, pxB) : math.min(pxA, pxB)), array.push(sigIsBear, isBear)
+    array.push(sigBarA, barA), array.push(sigBarB, barB), array.push(sigPxA, pxA), array.push(sigPxB, pxB), array.push(sigTag, tag)
+    array.push(sigLabelBar, anchorBar), array.push(sigLabelPx, labelPx), array.push(sigLabelShown, not isTwin)
+
+emitSMT(int barA, float pxA, int barB, float pxB, bool isBear, string tag) =>
+    if barA >= 0 and not pairSeen(barA, barB, isBear, tag) and not isInsideExisting(barA, pxA, barB, pxB, isBear, tag)
+        bool proceed = true
+        int sameBI = findSignalForB(barB, isBear, tag)
+        if sameBI >= 0
+            if candidateBetterForSameB(barA, pxA, pxB, sameBI)
+                removeSignal(sameBI)
+            else
+                proceed := false
+        // Collapse the fan of SMTs that share a Pivot A down to the single most extreme one.
+        if proceed and i_hideInside
+            int sameAI = findSignalForA(barA, isBear, tag)
+            if sameAI >= 0
+                if candidateBetterForSameA(barB, pxB, isBear, sameAI)
+                    removeSignal(sameAI)
+                else
+                    proceed := false
+        if proceed
+            removeInsideSignals(barA, pxA, barB, pxB, isBear, tag)
+            markPair(barA, barB, isBear, tag)
+            drawSMT(barA, pxA, barB, pxB, isBear, tag)
+
+f_chartBearish(float compMinDiv, bool run, int newBar, float newPx, bool inverse, string tag, array<int> cBars, array<float> cPrices, array<bool> cSides, array<float> cHistH, array<float> cHistL, array<int> aBars, array<float> aPrices, array<bool> aSides) =>
+    if run
+        bool compSide = not inverse
+        int compBI = findNearAny(cBars, cSides, newBar, compSide, i_syncTol)
+        if compBI >= 0
+            int compBBar = array.get(cBars, compBI)
+            float compBPx = array.get(cPrices, compBI)
+            int bestABar = -1
+            float bestAPx = -999999.0
+            int chSz = array.size(aBars)
+            if chSz >= 2
+                for n = 0 to chSz - 1
+                    int j = chSz - 1 - n
+                    if array.get(aSides, j)
+                        int barA = array.get(aBars, j)
+                        int span = newBar - barA
+                        if span > i_maxSignalSpan
+                            break
+                        float pxA = array.get(aPrices, j)
+                        int compAI = findNearBefore(cBars, cSides, barA, compBBar, compSide, i_syncTol)
+                        if span > 0 and compAI >= 0
+                            int compABar = array.get(cBars, compAI)
+                            float compAPx = array.get(cPrices, compAI)
+                            bool compDiverged = inverse ? compBPx > compAPx : compBPx < compAPx
+                            bool divBigEnough = math.abs(compBPx - compAPx) >= compMinDiv
+                            bool valid = compBBar - compABar <= i_maxSignalSpan and newPx > pxA and compDiverged and divBigEnough and chartCrossOk(barA, pxA, newBar, newPx, true) and compCrossOk(cHistH, cHistL, compABar, compAPx, compBBar, compBPx, compSide) and not pairSeen(barA, newBar, true, tag)
+                            if valid and (pxA > bestAPx or (pxA == bestAPx and barA > bestABar))
+                                bestABar := barA, bestAPx := pxA
+            emitSMT(bestABar, bestAPx, newBar, newPx, true, tag)
+
+f_chartBullish(float compMinDiv, bool run, int newBar, float newPx, bool inverse, string tag, array<int> cBars, array<float> cPrices, array<bool> cSides, array<float> cHistH, array<float> cHistL, array<int> aBars, array<float> aPrices, array<bool> aSides) =>
+    if run
+        bool compSide = inverse
+        int compBI = findNearAny(cBars, cSides, newBar, compSide, i_syncTol)
+        if compBI >= 0
+            int compBBar = array.get(cBars, compBI)
+            float compBPx = array.get(cPrices, compBI)
+            int bestABar = -1
+            float bestAPx = 999999.0
+            int chSz = array.size(aBars)
+            if chSz >= 2
+                for n = 0 to chSz - 1
+                    int j = chSz - 1 - n
+                    if not array.get(aSides, j)
+                        int barA = array.get(aBars, j)
+                        int span = newBar - barA
+                        if span > i_maxSignalSpan
+                            break
+                        float pxA = array.get(aPrices, j)
+                        int compAI = findNearBefore(cBars, cSides, barA, compBBar, compSide, i_syncTol)
+                        if span > 0 and compAI >= 0
+                            int compABar = array.get(cBars, compAI)
+                            float compAPx = array.get(cPrices, compAI)
+                            bool compDiverged = inverse ? compBPx < compAPx : compBPx > compAPx
+                            bool divBigEnough = math.abs(compBPx - compAPx) >= compMinDiv
+                            bool valid = compBBar - compABar <= i_maxSignalSpan and newPx < pxA and compDiverged and divBigEnough and chartCrossOk(barA, pxA, newBar, newPx, false) and compCrossOk(cHistH, cHistL, compABar, compAPx, compBBar, compBPx, compSide) and not pairSeen(barA, newBar, false, tag)
+                            if valid and (pxA < bestAPx or (pxA == bestAPx and barA > bestABar))
+                                bestABar := barA, bestAPx := pxA
+            emitSMT(bestABar, bestAPx, newBar, newPx, false, tag)
+
+f_compBearish(float compMinDiv, bool run, int compNewBar, float compNewPx, bool inverse, string tag, array<int> cBars, array<float> cPrices, array<bool> cSides, array<float> cHistH, array<float> cHistL, array<int> aBars, array<float> aPrices, array<bool> aSides) =>
+    if run
+        int chartBI = findNearAny(chartSBar, chartSIsHigh, compNewBar, true, i_syncTol)
+        if chartBI >= 0
+            int chartBBar = array.get(chartSBar, chartBI)
+            float chartBPx = array.get(chartSPrice, chartBI)
+            bool compSide = not inverse
+            int bestABar = -1
+            float bestAPx = 999999.0
+            int chSz = array.size(chartSBar)
+            if chSz >= 2
+                for n = 0 to chSz - 2
+                    int j = chSz - 2 - n
+                    if j != chartBI and array.get(chartSIsHigh, j)
+                        int barA = array.get(chartSBar, j)
+                        int span = chartBBar - barA
+                        if span > i_maxSignalSpan
+                            break
+                        float pxA = array.get(chartSPrice, j)
+                        int compAI = findNearBefore(aBars, aSides, barA, compNewBar, compSide, i_syncTol)
+                        if span > 0 and compAI >= 0
+                            int compABar = array.get(aBars, compAI)
+                            float compAPx = array.get(aPrices, compAI)
+                            bool compTookExpected = inverse ? compNewPx < compAPx : compNewPx > compAPx
+                            bool divBigEnough = math.abs(compNewPx - compAPx) >= compMinDiv
+                            bool valid = compNewBar - compABar <= i_maxSignalSpan and chartBPx < pxA and compTookExpected and divBigEnough and chartCrossOk(barA, pxA, chartBBar, chartBPx, true) and compCrossOk(cHistH, cHistL, compABar, compAPx, compNewBar, compNewPx, compSide) and not pairSeen(barA, chartBBar, true, tag)
+                            if valid and (pxA < bestAPx or (pxA == bestAPx and barA > bestABar))
+                                bestABar := barA, bestAPx := pxA
+            emitSMT(bestABar, bestAPx, chartBBar, chartBPx, true, tag)
+
+f_compBullish(float compMinDiv, bool run, int compNewBar, float compNewPx, bool inverse, string tag, array<int> cBars, array<float> cPrices, array<bool> cSides, array<float> cHistH, array<float> cHistL, array<int> aBars, array<float> aPrices, array<bool> aSides) =>
+    if run
+        int chartBI = findNearAny(chartSBar, chartSIsHigh, compNewBar, false, i_syncTol)
+        if chartBI >= 0
+            int chartBBar = array.get(chartSBar, chartBI)
+            float chartBPx = array.get(chartSPrice, chartBI)
+            bool compSide = inverse
+            int bestABar = -1
+            float bestAPx = -999999.0
+            int chSz = array.size(chartSBar)
+            if chSz >= 2
+                for n = 0 to chSz - 2
+                    int j = chSz - 2 - n
+                    if j != chartBI and not array.get(chartSIsHigh, j)
+                        int barA = array.get(chartSBar, j)
+                        int span = chartBBar - barA
+                        if span > i_maxSignalSpan
+                            break
+                        float pxA = array.get(chartSPrice, j)
+                        int compAI = findNearBefore(aBars, aSides, barA, compNewBar, compSide, i_syncTol)
+                        if span > 0 and compAI >= 0
+                            int compABar = array.get(aBars, compAI)
+                            float compAPx = array.get(aPrices, compAI)
+                            bool compTookExpected = inverse ? compNewPx > compAPx : compNewPx < compAPx
+                            bool divBigEnough = math.abs(compNewPx - compAPx) >= compMinDiv
+                            bool valid = compNewBar - compABar <= i_maxSignalSpan and chartBPx > pxA and compTookExpected and divBigEnough and chartCrossOk(barA, pxA, chartBBar, chartBPx, false) and compCrossOk(cHistH, cHistL, compABar, compAPx, compNewBar, compNewPx, compSide) and not pairSeen(barA, chartBBar, false, tag)
+                            if valid and (pxA > bestAPx or (pxA == bestAPx and barA > bestABar))
+                                bestABar := barA, bestAPx := pxA
+            emitSMT(bestABar, bestAPx, chartBBar, chartBPx, false, tag)
+
+int off = PIVOT_LOOKBACK
+int offA = i_pivotAStrength
+string comp1Label = symbolLabel(i_comp1Symbol)
+string comp2Label = symbolLabel(i_comp2Symbol)
+bool chartH = not na(chartPH), chartL = not na(chartPL)
+bool comp1H = i_useComp1 and not na(comp1PH), comp1L = i_useComp1 and not na(comp1PL)
+bool comp2H = i_useComp2 and not na(comp2PH), comp2L = i_useComp2 and not na(comp2PL)
+bool chartAH = not na(chartA_PH), chartAL = not na(chartA_PL)
+bool comp1AH = i_useComp1 and not na(comp1A_PH), comp1AL = i_useComp1 and not na(comp1A_PL)
+bool comp2AH = i_useComp2 and not na(comp2A_PH), comp2AL = i_useComp2 and not na(comp2A_PL)
+bool comp1LeadBear = i_comp1Inverse ? comp1L : comp1H
+bool comp1LeadBull = i_comp1Inverse ? comp1H : comp1L
+bool comp2LeadBear = i_comp2Inverse ? comp2L : comp2H
+bool comp2LeadBull = i_comp2Inverse ? comp2H : comp2L
+float comp1LeadBearPx = i_comp1Inverse ? comp1PL : comp1PH
+float comp1LeadBullPx = i_comp1Inverse ? comp1PH : comp1PL
+float comp2LeadBearPx = i_comp2Inverse ? comp2PL : comp2PH
+float comp2LeadBullPx = i_comp2Inverse ? comp2PH : comp2PL
+
+if chartH
+    addSwing(chartSBar, chartSPrice, chartSIsHigh, bar_index - off, chartPH, true)
+if chartL
+    addSwing(chartSBar, chartSPrice, chartSIsHigh, bar_index - off, chartPL, false)
+if comp1H
+    addSwing(comp1SBar, comp1SPrice, comp1SIsHigh, bar_index - off, comp1PH, true)
+if comp1L
+    addSwing(comp1SBar, comp1SPrice, comp1SIsHigh, bar_index - off, comp1PL, false)
+if comp2H
+    addSwing(comp2SBar, comp2SPrice, comp2SIsHigh, bar_index - off, comp2PH, true)
+if comp2L
+    addSwing(comp2SBar, comp2SPrice, comp2SIsHigh, bar_index - off, comp2PL, false)
+if chartAH
+    addSwing(chartASBar, chartASPrice, chartASIsHigh, bar_index - offA, chartA_PH, true)
+if chartAL
+    addSwing(chartASBar, chartASPrice, chartASIsHigh, bar_index - offA, chartA_PL, false)
+if comp1AH
+    addSwing(comp1ASBar, comp1ASPrice, comp1ASIsHigh, bar_index - offA, comp1A_PH, true)
+if comp1AL
+    addSwing(comp1ASBar, comp1ASPrice, comp1ASIsHigh, bar_index - offA, comp1A_PL, false)
+if comp2AH
+    addSwing(comp2ASBar, comp2ASPrice, comp2ASIsHigh, bar_index - offA, comp2A_PH, true)
+if comp2AL
+    addSwing(comp2ASBar, comp2ASPrice, comp2ASIsHigh, bar_index - offA, comp2A_PL, false)
+
+f_chartBearish(comp1MinDiv, i_useComp1 and chartH, bar_index - off, chartPH, i_comp1Inverse, comp1Label, comp1SBar, comp1SPrice, comp1SIsHigh, comp1HistH, comp1HistL, chartASBar, chartASPrice, chartASIsHigh)
+f_chartBullish(comp1MinDiv, i_useComp1 and chartL, bar_index - off, chartPL, i_comp1Inverse, comp1Label, comp1SBar, comp1SPrice, comp1SIsHigh, comp1HistH, comp1HistL, chartASBar, chartASPrice, chartASIsHigh)
+f_compBearish(comp1MinDiv, comp1LeadBear, bar_index - off, comp1LeadBearPx, i_comp1Inverse, comp1Label, comp1SBar, comp1SPrice, comp1SIsHigh, comp1HistH, comp1HistL, comp1ASBar, comp1ASPrice, comp1ASIsHigh)
+f_compBullish(comp1MinDiv, comp1LeadBull, bar_index - off, comp1LeadBullPx, i_comp1Inverse, comp1Label, comp1SBar, comp1SPrice, comp1SIsHigh, comp1HistH, comp1HistL, comp1ASBar, comp1ASPrice, comp1ASIsHigh)
+f_chartBearish(comp2MinDiv, i_useComp2 and chartH, bar_index - off, chartPH, i_comp2Inverse, comp2Label, comp2SBar, comp2SPrice, comp2SIsHigh, comp2HistH, comp2HistL, chartASBar, chartASPrice, chartASIsHigh)
+f_chartBullish(comp2MinDiv, i_useComp2 and chartL, bar_index - off, chartPL, i_comp2Inverse, comp2Label, comp2SBar, comp2SPrice, comp2SIsHigh, comp2HistH, comp2HistL, chartASBar, chartASPrice, chartASIsHigh)
+f_compBearish(comp2MinDiv, comp2LeadBear, bar_index - off, comp2LeadBearPx, i_comp2Inverse, comp2Label, comp2SBar, comp2SPrice, comp2SIsHigh, comp2HistH, comp2HistL, comp2ASBar, comp2ASPrice, comp2ASIsHigh)
+f_compBullish(comp2MinDiv, comp2LeadBull, bar_index - off, comp2LeadBullPx, i_comp2Inverse, comp2Label, comp2SBar, comp2SPrice, comp2SIsHigh, comp2HistH, comp2HistL, comp2ASBar, comp2ASPrice, comp2ASIsHigh)
+
+int nSigs = array.size(sigLines)
+if nSigs > 0 and i_removeOnInval
+    for i = nSigs - 1 to 0
+        float px = array.get(sigInvalPx, i)
+        bool isBear = array.get(sigIsBear, i)
+        bool drop = isBear ? close > px : close < px
+        if drop
+            removeSignal(i)
