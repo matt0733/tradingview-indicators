@@ -36,7 +36,7 @@ an apparent 95.8% hit rate.
 | Inverse Corr. | off | For markets that move opposite the chart |
 | Pivot A Strength | 3 | Bars each side required for the older pivot |
 | Sync Tolerance | 1 | How far apart matching pivots may sit |
-| Max SMT Span | 180 | Max bars between the two pivots |
+| Max SMT Span | 20 | Max bars between the two pivots |
 | Crossing Tolerance | 3 | How far price may pierce the line, in 0.1 × ATR steps |
 | Min Divergence (ATR) | 1.0 | Smallest divergence that counts |
 | Max SMTs per side | 15 | Combined across both comparison symbols |
@@ -52,7 +52,30 @@ between train-half and test-half performance: −0.055.** Settings that look bes
 in one period tell you nothing about the next. Tuning these is fitting noise.
 
 The defaults are chosen for signal legibility and data quality, not backtested
-edge, with two exceptions noted below.
+edge, with the exceptions noted below.
+
+### Max SMT Span is the exception — keep it short
+
+Wide SMTs carry no measurable edge. Over ~15 days of 1-minute MNQ against ES and
+YM, changing the input (not post-filtering results) gave:
+
+| Max SMT Span | Signals | Mean edge | Positive folds |
+|---|---|---|---|
+| 15 | 435 | +7.35 | 3/4 |
+| **20 (default)** | **572** | **+7.65** | **4/4** |
+| 30 | 773 | +6.98 | 3/4 |
+| 40 | 935 | +4.48 | 3/4 |
+| 60 | 1,174 | +2.70 | 3/4 |
+| 180 (old default) | 1,616 | +3.85 | 3/4 |
+
+There is a sharp cliff between 30 and 40.
+
+Two qualifications. First, this **only holds in combination with Min Divergence**:
+paired across 8 folds, span 20 beat span 180 by +3.8 points with Min Divergence at
+1.0, but only +0.9 with it at 0. The grid search above predated the Min Divergence
+filter, which is why it saw span as flat — both measurements were right for what
+they tested. Second, the evidence is suggestive rather than settled: t = 2.0,
+p = 0.09, and 2 of 8 folds went the other way.
 
 ### Crossing Tolerance is measured in ATR
 
@@ -96,6 +119,19 @@ across the board:
 
 If YM ever produces gappy pivots during thin overnight hours, MYM is the cleaner
 Dow feed.
+
+### YM fires far more often than ES, and always will
+
+Rolling correlation of 1-minute returns against the chart: MNQ↔ES median **0.884**,
+MNQ↔YM median **0.515**. The Dow is 30 price-weighted industrials, the Nasdaq-100
+is tech-heavy; they genuinely disagree, so a divergence between them is often
+sector rotation rather than a liquidity event. No setting removes that.
+
+Measured over ~15 days at Max SMT Span 180, YM produced 70 signals/day against
+ES's 40.7, for the same edge. At span 20 that falls to 31/day for YM and 8.2/day
+for ES, with YM's mean edge rising from +3.9 to +7.1 (positive in 7 of 8 folds).
+If YM is still too noisy after that, turning Symbol 2 off is the honest remedy —
+ES alone at span 20 measured +9.11 points, the cleanest configuration tested.
 
 ## Validation
 
