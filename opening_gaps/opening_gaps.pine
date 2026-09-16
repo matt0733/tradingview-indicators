@@ -1,5 +1,5 @@
 //@version=6
-indicator("Opening Gaps 1.0.0", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.1.0", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -8,6 +8,8 @@ indicator("Opening Gaps 1.0.0", shorttitle="Opening Gaps", overlay=true,
 string GEN = "『 GENERAL 』"
 int ext_bars = input.int(20, "Extend Right (bars)", minval=0, maxval=500, group=GEN, display=display.none,
     tooltip="How far past the current bar every gap line reaches. Labels sit at the right end of the lines.")
+bool show_date = input.bool(true, "Show Date in Labels", group=GEN, display=display.none,
+    tooltip="Append the date of the gap's open to every label, as MM/DD — e.g. 'NWOG High 09/13' and '25% 09/13'. All five levels of a gap carry the open's date, including the level taken from the prior close.")
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUTS — OPENING GAPS
@@ -93,6 +95,8 @@ type Gap
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
+const string TZ = "America/New_York"
+
 ls(s) =>
     switch s
         "Dashed" => line.style_dashed
@@ -112,6 +116,11 @@ lbl_sty(pos) =>
         "Bottom" => label.style_label_upper_left
         =>          label.style_label_left
 
+f_mmdd(t) =>
+    m = month(t, TZ)
+    d = dayofmonth(t, TZ)
+    (m < 10 ? "0" : "") + str.tostring(m) + "/" + (d < 10 ? "0" : "") + str.tostring(d)
+
 draw_level(Gap g, GapCfg c, int x1, int x2, float y, string sty, int w, string txt) =>
     g.lines.push(line.new(x1, y, x2, y, xloc=xloc.bar_time, color=c.lcol, style=ls(sty), width=w))
     g.labels.push(label.new(x2, y, txt, xloc=xloc.bar_time, style=lbl_sty(c.tpos),
@@ -120,17 +129,19 @@ draw_level(Gap g, GapCfg c, int x1, int x2, float y, string sty, int w, string t
 
 // Draws one gap: High/Low from where each price was set, mid/quarters from the open.
 // Percent levels run from the open toward the prior close (25% = a quarter filled).
+// Every label carries the open's date, including the level taken from the prior close.
 draw_gap(GapCfg c, float pc, int pc_t, float op, int op_t, int x2) =>
     Gap g = Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<label>())
+    string dt = show_date ? " " + f_mmdd(op_t) : ""
     bool gap_dn = pc >= op
-    draw_level(g, c, gap_dn ? pc_t : op_t, x2, math.max(pc, op), c.lsty, c.lw, c.name + " High")
-    draw_level(g, c, gap_dn ? op_t : pc_t, x2, math.min(pc, op), c.lsty, c.lw, c.name + " Low")
+    draw_level(g, c, gap_dn ? pc_t : op_t, x2, math.max(pc, op), c.lsty, c.lw, c.name + " High" + dt)
+    draw_level(g, c, gap_dn ? op_t : pc_t, x2, math.min(pc, op), c.lsty, c.lw, c.name + " Low" + dt)
     float span = pc - op
     if c.qtr
-        draw_level(g, c, op_t, x2, op + span * 0.25, c.qsty, c.qw, "25%")
-        draw_level(g, c, op_t, x2, op + span * 0.75, c.qsty, c.qw, "75%")
+        draw_level(g, c, op_t, x2, op + span * 0.25, c.qsty, c.qw, c.name + " 25%" + dt)
+        draw_level(g, c, op_t, x2, op + span * 0.75, c.qsty, c.qw, c.name + " 75%" + dt)
     if c.mid
-        draw_level(g, c, op_t, x2, op + span * 0.5, c.msty, c.mw, "50%")
+        draw_level(g, c, op_t, x2, op + span * 0.5, c.msty, c.mw, c.name + " 50%" + dt)
     g
 
 clear_gap(Gap g) =>
@@ -161,8 +172,6 @@ extend_all(array<Gap> store, int x2) =>
 // ═══════════════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════════════
-const string TZ = "America/New_York"
-
 var GapCfg nw_cfg = GapCfg.new("NWOG", nw_on, nw_keep, nw_lcol, nw_lsty, nw_lw, nw_tcol, nw_tsz, nw_tpos,
                                nw_mid, nw_msty, nw_mw, nw_qtr, nw_qsty, nw_qw)
 var GapCfg nd_cfg = GapCfg.new("NDOG", nd_on, nd_keep, nd_lcol, nd_lsty, nd_lw, nd_tcol, nd_tsz, nd_tpos,

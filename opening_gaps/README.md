@@ -30,11 +30,23 @@ A gap where the open equals the prior close is not drawn.
   (e.g. 29494.125).
 - Lines keep extending after a gap fills.
 
+**Labels** name the gap and carry the date of its open, so several gaps of
+different types can sit on the chart without ambiguity:
+
+```
+NWOG High 09/13   NWOG 75% 09/13   NWOG 50% 09/13   NWOG 25% 09/13   NWOG Low 09/13
+```
+
+Every level of a gap shows the open's date, including the one taken from the
+prior close — the NWOG High above is Friday 09/11's close, labelled 09/13.
+Dates can be turned off with **Show Date in Labels**.
+
 ## Settings
 
 | Setting | Default | Notes |
 |---|---|---|
 | Extend Right (bars) | 20 | How far past the current bar lines and labels reach |
+| Show Date in Labels | on | Appends the open's date as MM/DD to every label |
 | *Gap* ▸ on/off | on | One checkbox per gap type |
 | Show Last | 1 | 1–10 most recent gaps of that type |
 | Line | NWOG `#673AB7` Solid 2 · NDOG `#2962FF` Solid 2 · RTH `#FF9800` Solid 1 | Color, style, width for High/Low |
@@ -100,3 +112,5 @@ On MNQZ2026 (CME_MINI), 2026-09-15:
 - Tested on MNQ only. Instruments whose bars don't start at 18:00 New York (for
   example crypto on 4h) may place NWOG/NDOG on the wrong bar.
 - Labels for small gaps overlap, since all five levels sit within a few points.
+  Naming the gap and adding the date makes each label longer, so they overlap
+  more than they used to. Turning off Show Date shortens them.
