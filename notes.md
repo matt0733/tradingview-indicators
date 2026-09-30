@@ -20,6 +20,23 @@ _(none)_
 
 ## Released
 
+### SMT Divergence 2.0.0 — `smt_divergence/` (2026-09-30)
+
+Rewrite of the LLM-written v1. See `smt_divergence/README.md` for measured results and settings.
+
+Design decisions:
+- Standard SMT definition: compare only the last two swings in each market. v1 searched every older swing in the span, firing ~38×/day at a near coin-flip hit rate out of sample.
+- Swing Length 5, Sync 2, Span 30, Min Divergence 1.0 × comparison ATR. Swing Length picked from 3/5/8 on Sept 10–30 data; all four length-5 variants were positive every week.
+- Evaluated on closed bars only, so signals can't appear and vanish intrabar.
+- Invalidated SMTs fade by default rather than being deleted, so history shows the misses.
+- One line per swing pair; label reads `ES1!/YM1!` when both comparison markets diverge.
+- Session filter optional, default All. NY AM looked best on v1 but has too few v2 signals to judge.
+
+Possible follow-ups (not requested yet):
+- `log.info()` output per the conventions above (not in 2.0.0).
+- Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
+- Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
+
 ### Opening Gaps 1.0.0 — `opening_gaps/` (2026-09-15)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.

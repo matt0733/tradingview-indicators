@@ -1,162 +1,104 @@
 # SMT Divergence
 
-Marks Smart Money Technique divergence between the chart symbol and one or two
-comparison markets. A bearish SMT is drawn when the chart takes a previous swing
-high and the comparison market fails to take its matching high; a bullish SMT
-when the chart takes a low and the comparison market holds.
+Marks Smart Money Technique divergence between the chart and one or two
+comparison markets, using the standard definition: compare the **last two swing
+highs** (or lows) in each market. If one market takes its previous swing and the
+other doesn't, that's an SMT.
 
-Lines connect the two chart pivots. The label at the midpoint names the market
-that disagreed.
+- Bearish SMT: a line joining the chart's last two swing highs.
+- Bullish SMT: a line joining the chart's last two swing lows.
+- The label at the midpoint names the market that disagreed. When both comparison
+  markets disagree on the same swings it reads `ES1!/YM1!`.
 
-## Read this first
+## What to expect
 
-Two settings **delete signals after the fact**, using information from after the
-signal fired. Both are on by default because they are useful live, and both make
-chart history look far more accurate than the indicator was in real time.
+SMT is a small edge, not a prediction. Measured on 1-minute MNQ against ES and YM,
+entering the bar after a signal appears, with a 2 × ATR target and stop over 30 bars:
 
-| Filter | Signals shown | Hit rate |
-|---|---|---|
-| No filter — what you actually saw live | 2,720 | 51.7% |
-| Kept by **Hide Inside SMTs** | 1,279 | 63.3% |
-| Deleted by Hide Inside | 1,441 | 41.5% |
-| Survived **Remove on Invalidation** | 76 | 95.8% |
-| Removed as invalidated | 2,644 | 50.4% |
+| | Signals/day | Hit rate | Same swings, no SMT condition |
+|---|---|---|---|
+| v2.0.0, Sept 10–30 2026 | ~7 | 58.5% | 51.2% |
+| v2.0.0 on the live MNQZ2026 chart, Sept 7–30 | ~7 | 55.8% | 50.7% |
+| v1.2.2 (old design), Sept 10–30 2026 | ~38 | 53.6% | 49.8% |
 
-Remove on Invalidation deletes, by definition, every SMT that price traded
-through. Scrolling back through history with it on shows 76 of 2,720 signals at
-an apparent 95.8% hit rate.
-
-**Turn both off when judging the tool. Leave them on when trading it.**
+The v2 edge was positive in each of the three weeks (+5, +10, +5 points). Two
+cautions: Swing Length 5 was chosen from a small grid on that same data, and three
+weeks is a short sample. Forward results are the real test.
 
 ## Settings
 
 | Setting | Default | Notes |
 |---|---|---|
 | Symbol 1 / Symbol 2 | `CME_MINI:ES1!`, `CBOT_MINI:YM1!` | Both enabled |
-| Inverse Corr. | off | For markets that move opposite the chart |
-| Pivot A Strength | 3 | Bars each side required for the older pivot |
-| Sync Tolerance | 1 | How far apart matching pivots may sit |
-| Max SMT Span | 20 | Max bars between the two pivots |
-| Crossing Tolerance | 3 | How far price may pierce the line, in 0.1 × ATR steps |
-| Min Divergence (ATR) | 1.0 | Smallest divergence that counts |
-| Max SMTs per side | 15 | Combined across both comparison symbols |
-| Remove on Invalidation | on | See warning above |
-| Hide Inside SMTs | on | See warning above |
-| Label Style | Text | Text, Badge or Marker |
+| Inverse | off | Compares chart highs with comparison lows, for markets that move opposite |
+| Swing Length | 5 | Bars required each side of a swing. 5 tested clearly better than 3 or 8 |
+| Sync Tolerance | 2 | How many bars apart matching swings may be |
+| Max SMT Span | 30 | Max bars between the two swings compared |
+| Min Divergence (ATR) | 1.0 | Comparison market's swings must differ by at least 1 × its ATR(14) |
+| Show SMTs during | All | Optional session filter: NY AM, London, both, or custom (New York time) |
+| Max SMTs shown | 10 | Oldest removed first |
+| When invalidated | Fade | Fade, Delete or Keep |
 
-### Do not tune the detection parameters for accuracy
+Alerts: **Bearish SMT**, **Bullish SMT**, or *Any alert() function call* for a
+message naming the chart and comparison symbol.
 
-Ninety configurations of Pivot A Strength, Sync Tolerance, Max Span and Crossing
-Tolerance were grid-searched over 22 days and split train/test. **Correlation
-between train-half and test-half performance: −0.055.** Settings that look best
-in one period tell you nothing about the next. Tuning these is fitting noise.
+### Faded does not mean the trade failed
 
-The defaults are chosen for signal legibility and data quality, not backtested
-edge, with the exceptions noted below.
+An SMT is invalidated once price closes beyond its extreme swing. Over days, price
+trades through almost every swing eventually. On the validation window 114 of 119
+SMTs ended up faded, including ones that moved well in their favour first. Fade is
+there so history shows the misses honestly instead of deleting them. "Delete"
+removes them and makes history look far more accurate than it was live.
 
-### Max SMT Span is the exception — keep it short
+### Signals never repaint
 
-Wide SMTs carry no measurable edge. Over ~15 days of 1-minute MNQ against ES and
-YM, changing the input (not post-filtering results) gave:
+Signals are only evaluated on closed bars. A line can't appear intrabar and then
+vanish.
 
-| Max SMT Span | Signals | Mean edge | Positive folds |
-|---|---|---|---|
-| 15 | 435 | +7.35 | 3/4 |
-| **20 (default)** | **572** | **+7.65** | **4/4** |
-| 30 | 773 | +6.98 | 3/4 |
-| 40 | 935 | +4.48 | 3/4 |
-| 60 | 1,174 | +2.70 | 3/4 |
-| 180 (old default) | 1,616 | +3.85 | 3/4 |
+## Why v2 was a rewrite
 
-There is a sharp cliff between 30 and 40.
+v1 searched every older swing within the span for *any* divergence, which fired
+about 38 times a day. Three weeks of live data it was never tuned on (Sept 10–30)
+showed a hit rate of 53.6% against 49.8% for ordinary swing pivots. That's close to
+a coin flip, and the improvements measured in-sample in v1.2.x mostly didn't hold.
+The detection was correct. The design produced too many weak signals.
 
-Two qualifications. First, this **only holds in combination with Min Divergence**:
-paired across 8 folds, span 20 beat span 180 by +3.8 points with Min Divergence at
-1.0, but only +0.9 with it at 0. The grid search above predated the Min Divergence
-filter, which is why it saw span as flat — both measurements were right for what
-they tested. Second, the evidence is suggestive rather than settled: t = 2.0,
-p = 0.09, and 2 of 8 folds went the other way.
+## What was tested and didn't help
 
-### Crossing Tolerance is measured in ATR
+Written down before running, each scored against a control with the same filter,
+on v1 signals Sept 10–30:
 
-It was a percentage of price before v1.1.0, which meant a fixed point value and
-wildly different strictness per timeframe. At the old default it worked out to
-5.88 points on MNQ — **57% of an average 1-minute bar**, but only 7% of an hourly
-bar. Each step is now 0.1 × ATR(14), so one setting is equally strict everywhere.
-
-### Min Divergence rejects noise
-
-Without it, any miss counts — including the comparison market missing its high by
-a quarter point, which is measurement noise rather than a liquidity event.
-Requiring the divergence to be at least 1× the comparison market's own ATR(14)
-improved hit rate in **4 of 4 independent periods, mean +2.25 percentage points**,
-at the cost of roughly half the signals. Live on a 2,800-bar window it cut 165
-signals to 100.
-
-### Sync Tolerance 0 is stricter than it looks
-
-A less liquid comparison symbol has minutes with no trades. Those bars carry the
-previous value forward, which shifts where its pivots land. At tolerance 0 those
-shifted pivots are simply missed. YM benefits about 2.4× more than ES from
-loosening it, which is exactly the staleness signature.
+| Idea | Result |
+|---|---|
+| Only when the swing sweeps a 60-bar extreme | **Worse**: −1.8 points |
+| London session only (2–5 ET) | No effect: +1.1 |
+| Enter only after a structure break (MSS) | Absolute hit rate unchanged; the later entry costs what the filter gains |
+| NY AM only (9:30–11:00 ET) | 60% on 46 signals, positive every week. Promising, too few to confirm. In v2 there are too few NY AM signals to judge yet |
 
 ## Choosing comparison symbols
 
-Micros are not worth switching to. MES tracks the same index as ES and arbitrage
-holds them within a tick, so the divergence carries the same information —
-**73% of signals are literally identical** between ES+YM and MES+MYM. Measured
-edge differences between the pairings sit inside the noise.
+Micros aren't worth switching to. MES tracks the same index as ES, and 73% of
+signals were identical between ES+YM and MES+MYM, with edge differences inside
+the noise. If YM gets gappy overnight, MYM is the cleaner Dow feed (1.68% stale
+1-minute bars against YM's 2.93%).
 
-Data quality is the only real differentiator, and it does not favour full-size
-across the board:
-
-| | Stale (forward-filled) bars on 1m |
-|---|---|
-| ES1! | 0.01% |
-| MES1! | 0.00% |
-| YM1! | 2.93% |
-| MYM1! | **1.68%** |
-
-If YM ever produces gappy pivots during thin overnight hours, MYM is the cleaner
-Dow feed.
-
-### YM fires far more often than ES, and always will
-
-Rolling correlation of 1-minute returns against the chart: MNQ↔ES median **0.884**,
-MNQ↔YM median **0.515**. The Dow is 30 price-weighted industrials, the Nasdaq-100
-is tech-heavy; they genuinely disagree, so a divergence between them is often
-sector rotation rather than a liquidity event. No setting removes that.
-
-Measured over ~15 days at Max SMT Span 180, YM produced 70 signals/day against
-ES's 40.7, for the same edge. At span 20 that falls to 31/day for YM and 8.2/day
-for ES, with YM's mean edge rising from +3.9 to +7.1 (positive in 7 of 8 folds).
-If YM is still too noisy after that, turning Symbol 2 off is the honest remedy —
-ES alone at span 20 measured +9.11 points, the cleanest configuration tested.
+YM will always disagree with MNQ more than ES does. Rolling correlation of
+1-minute returns: MNQ↔ES median 0.884, MNQ↔YM 0.515. The Dow is 30 price-weighted
+industrials and the Nasdaq-100 is tech-heavy, so some YM divergences are sector
+rotation, not liquidity. Turn Symbol 2 off if YM is too noisy.
 
 ## Validation
 
-- **Structural correctness** — 100 signals audited against raw MNQ/ES/YM bars:
-  endpoints are real swing highs (bearish) or lows (bullish), both pivots
-  confirmed, comparison market genuinely diverges, divergence clears the ATR
-  threshold, span and crossing and cap limits respected. 100/100, zero failures.
-- **No repainting** — a forced full recalculation reproduces identical line
-  geometry and identical label text.
-- **Algorithm fidelity** — an independent reconstruction from raw bars matched
-  the live output 37/37 on 1-minute and 13/13 on hourly.
-- **Inverse correlation** — feeding a perfectly inverted series with Inverse Corr.
-  on produces a bit-identical signal set to the original with it off (54 = 54).
-
-Against a control of *every* swing pivot with no divergence requirement, SMT
-signals run roughly 2–5 percentage points better on hit rate, varying by period.
+- **Matches an independent reconstruction**: all 121 signals on the live chart
+  (23,205 bars, Sept 7–30) matched a separately written model bar for bar, with
+  none missing on either side, and 121/121 labels matched, including merged ones.
+- **Fade logic**: all 114 invalidated SMTs drawn faded, all 5 intact ones solid.
+- **Compiles clean** on TradingView's compiler: 0 errors, 0 warnings.
+- **Full history**: runs without errors on 23,000+ bars.
 
 ## Known limits
 
-- Testing is MNQ against ES and YM, 1-minute, across roughly a month. Other
-  instruments and timeframes are untested.
-- Bar Replay is unverified — TradingView only materialises drawings near the
-  viewport there, so signal counts in replay could not be trusted.
-- Opposing-side signals can sit on the chart together. That is a range with
-  failed breaks at both ends, not a contradiction, but nothing indicates which
-  is more recent.
-- Label collision avoidance only knows about this script's own labels. It cannot
-  see other indicators' drawings.
+- Tested on MNQ against ES and YM, 1-minute, three weeks. Other instruments and
+  timeframes are untested.
+- Label placement only avoids this script's own labels; it can't see other
+  indicators' drawings.
