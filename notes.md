@@ -59,7 +59,7 @@ Possible follow-ups (not requested yet):
 
 Boxes over the 24 hourly :50–:10 macro windows with an M.O. (macro open) line. See `macros/README.md`.
 
-### Sessions 1.8.0 — `sessions/` (2026-08-26)
+### Sessions 1.9.0 — `sessions/` (2026-09-30)
 
 Asia, London, NY AM, Lunch and NY PM boxes with high/low level lines that stop, or disappear, once taken. See `sessions/README.md`.
 

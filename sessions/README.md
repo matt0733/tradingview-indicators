@@ -24,8 +24,10 @@ session's tag (for example `NY AM High`), and optionally the price and date.
 - A level is **taken** when price trades through it. Its line stops at that bar.
 - **Remove after taken** (on by default) deletes the line and label once taken.
   **Extend after taken** keeps it for that many more candles first.
-- **Labels past line end** puts every label one bar past the right end of its
-  line instead of in the position set per session.
+- **Labels past line end** puts each untaken label one bar past the right end of
+  its line instead of in the position set per session. Once a level is taken,
+  its label moves to the middle of the line, above a high and below a low, so it
+  does not run over later candles.
 
 ## Settings
 
@@ -50,6 +52,7 @@ session's tag (for example `NY AM High`), and optionally the price and date.
 
 | Version | Change |
 |---|---|
+| 1.9.0 | Taken levels: labels past line end sit mid-line, above highs and below lows |
 | 1.8.0 | Labels past line end option |
 | 1.7.1 | Level line labels default to Right |
 | 1.7.0 | Optional session midpoint line |
