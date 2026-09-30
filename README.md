@@ -32,4 +32,5 @@ against that market will be late or missing.
 
 ## License
 
-[MIT](LICENSE)
+[CC BY-NC 4.0](LICENSE): free to use, share and adapt for non-commercial
+purposes, with credit to matt0733. Commercial use needs permission.

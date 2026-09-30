@@ -15,3 +15,7 @@ temp_*
 
 # Local tool folders
 .claude/
+
+# Local drafts
+drafts/*
+!drafts/.gitkeep
