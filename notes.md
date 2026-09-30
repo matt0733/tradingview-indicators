@@ -37,9 +37,11 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.0.0 — `opening_gaps/` (2026-09-15)
+### Opening Gaps 1.1.0 — `opening_gaps/` (2026-09-16)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
+
+1.1.0: every label names its gap and carries the open's date. (1.0.0 released 2026-09-15.)
 
 Design decisions:
 - Gaps are lines, not boxes. Settings layout copies the reference graphic: per-gap checkbox + Show Last (1–10), then Line / Text / Mid Line / Quarters rows.
@@ -52,6 +54,18 @@ Design decisions:
 Possible follow-ups (not requested yet):
 - Stop extending lines, or fade them, once a gap is filled.
 - Stagger labels when all five levels of a small gap overlap.
+
+### Macros 1.2.0 — `macros/` (2026-08-28)
+
+Boxes over the 24 hourly :50–:10 macro windows with an M.O. (macro open) line. See `macros/README.md`.
+
+### Sessions 1.8.0 — `sessions/` (2026-08-26)
+
+Asia, London, NY AM, Lunch and NY PM boxes with high/low level lines that stop, or disappear, once taken. See `sessions/README.md`.
+
+### Chart Label 1.2 — `chart_label/` (2026-08-26)
+
+Four-line table with ticker/timeframe, day/date, trading mode and free text, for screenshots. See `chart_label/README.md`.
 
 ## References / inspiration
 

@@ -50,10 +50,12 @@ SMTs ended up faded, including ones that moved well in their favour first. Fade 
 there so history shows the misses honestly instead of deleting them. "Delete"
 removes them and makes history look far more accurate than it was live.
 
-### Signals never repaint
+### Signals print on closed bars only
 
-Signals are only evaluated on closed bars. A line can't appear intrabar and then
-vanish.
+Signals are only evaluated when a bar closes, so a line can't appear intrabar and
+then vanish. A full recalculation over the same bars reproduces every signal
+exactly. It has not yet been checked by recording signals during a live session
+and comparing them after a reload.
 
 ## Why v2 was a rewrite
 
@@ -100,5 +102,7 @@ rotation, not liquidity. Turn Symbol 2 off if YM is too noisy.
 
 - Tested on MNQ against ES and YM, 1-minute, three weeks. Other instruments and
   timeframes are untested.
+- Comparison markets need real-time data. Without a subscription TradingView
+  delays them, and live SMTs against a delayed market will be late or missing.
 - Label placement only avoids this script's own labels; it can't see other
   indicators' drawings.
