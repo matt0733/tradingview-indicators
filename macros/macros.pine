@@ -2,9 +2,9 @@
 indicator("Macros 1.2.0", shorttitle="Macros", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — GENERAL
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - GENERAL
+// ===========================================================================
 string GEN = "General"
 string tz  = input.string("America/New_York", "Timezone",
     options=["America/New_York","America/Chicago","America/Los_Angeles",
@@ -16,9 +16,9 @@ string placement      = input.string("Envelope", "Box Placement",
     options=["Below","Above","Auto","Envelope"], group=GEN,
     tooltip="'Auto' puts the box below the candles when price is in the lower half of the day's range and above when it's in the upper half. 'Envelope' wraps the box around the window's full high-to-low range. Below/Above/Auto boxes slide further away if a later bar in the window would encroach.")
 int    box_offset_tks = input.int(40, "Box Offset (ticks from candles)", minval=0, group=GEN,
-    tooltip="Ticks between the candle extreme and the near edge of the label box. Ignored in Envelope mode — the box wraps tightly around the window's high and low.")
+    tooltip="Ticks between the candle extreme and the near edge of the label box. Ignored in Envelope mode - the box wraps tightly around the window's high and low.")
 int    box_height_tks = input.int(40, "Box Height (ticks)", minval=1, group=GEN,
-    tooltip="Ignored in Envelope mode — height is determined by the window's price range.")
+    tooltip="Ignored in Envelope mode - height is determined by the window's price range.")
 string box_lbl_pos    = input.string("Top Left", "Box Label Position",
     options=["Top Left","Top Center","Top Right","Center","Bottom Left","Bottom Center","Bottom Right"], group=GEN,
     tooltip="Position of the macro title inside the box. For Envelope mode 'Top Left' usually reads best; for Below/Above 'Center' is cleanest.")
@@ -35,9 +35,9 @@ string mo_text        = input.string("M.O.", "M.O. Label Text", group=GEN)
 color  mo_text_col    = input.color(color.new(#000000, 0), "M.O. Text Color", group=GEN)
 int    mo_text_sz     = input.int(12, "M.O. Text Size (px)", minval=6, maxval=72, group=GEN)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — MACROS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - MACROS
+// ===========================================================================
 string ASIA = "Hourly Asia Session Macros (16:50-01:10 EST)"
 bool e_1650 = input.bool(true, "16:50-17:10", group=ASIA, inline="a1")
 bool e_1750 = input.bool(true, "17:50-18:10", group=ASIA, inline="a1")
@@ -70,9 +70,9 @@ bool e_1350 = input.bool(true, "13:50-14:10", group=NYPM, inline="pm1")
 bool e_1450 = input.bool(true, "14:50-15:10", group=NYPM, inline="pm2")
 bool e_1550 = input.bool(true, "15:50-16:10", group=NYPM, inline="pm2")
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 ls(s) =>
     switch s
         "Dashed" => line.style_dashed
@@ -101,9 +101,9 @@ fmt_lbl(hr) =>
     int h12 = hr == 0 ? 12 : (hr > 12 ? hr - 12 : hr)
     str.tostring(h12) + ":50" + suf + " Macro"
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 type MacroDef
     int    sh
     string title
@@ -120,9 +120,9 @@ type MacroInst
     float  lo_anchor
     bool   live
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // DEF ARRAY (built once at start)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 var array<MacroDef> defs    = array.new<MacroDef>()
 var array<bool>     prev_in = array.new<bool>()
 
@@ -156,9 +156,9 @@ if barstate.isfirst
 
 var array<MacroInst> insts = array.new<MacroInst>()
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // PROCESSING
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 int cur_h  = hour(time, tz)
 int cur_m  = minute(time, tz)
 int tc     = cur_h * 60 + cur_m

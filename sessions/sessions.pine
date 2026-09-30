@@ -2,9 +2,9 @@
 indicator("Sessions 1.8.0", shorttitle="Sessions", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — GENERAL
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - GENERAL
+// ===========================================================================
 string GEN = "General"
 string tz       = input.string("America/New_York", "Timezone",
     options=["America/New_York","America/Chicago","America/Los_Angeles",
@@ -20,9 +20,9 @@ string mid_sty_in  = input.string("Dashed", "Midpoint Style", options=["Solid","
 int    mid_w       = input.int(1, "Midpoint Thickness", minval=1, maxval=4, group=GEN)
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — SESSIONS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - SESSIONS
+// ===========================================================================
 string GS = "Sessions"
 
 bool   show_asia  = input.bool(true,  "Asia",          group=GS, inline="asia")
@@ -35,7 +35,7 @@ string asia_s_in  = input.string("18:00", "",  group=GS, inline="asia",
              "14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
-string asia_e_in  = input.string("01:00", "—", group=GS, inline="asia",
+string asia_e_in  = input.string("01:00", "-", group=GS, inline="asia",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
              "07:00","07:15","07:30","07:45","08:00","08:15","08:30","08:45","09:00","09:15","09:30","09:45","10:00","10:15",
@@ -57,7 +57,7 @@ string lon_s_in   = input.string("01:00", "",  group=GS, inline="lon",
              "14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
-string lon_e_in   = input.string("07:00", "—", group=GS, inline="lon",
+string lon_e_in   = input.string("07:00", "-", group=GS, inline="lon",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
              "07:00","07:15","07:30","07:45","08:00","08:15","08:30","08:45","09:00","09:15","09:30","09:45","10:00","10:15",
@@ -79,7 +79,7 @@ string nyam_s_in  = input.string("07:00", "",  group=GS, inline="nyam",
              "14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
-string nyam_e_in  = input.string("11:30", "—", group=GS, inline="nyam",
+string nyam_e_in  = input.string("11:30", "-", group=GS, inline="nyam",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
              "07:00","07:15","07:30","07:45","08:00","08:15","08:30","08:45","09:00","09:15","09:30","09:45","10:00","10:15",
@@ -101,7 +101,7 @@ string lunch_s_in = input.string("11:30", "",  group=GS, inline="lunch",
              "14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
-string lunch_e_in = input.string("13:30", "—", group=GS, inline="lunch",
+string lunch_e_in = input.string("13:30", "-", group=GS, inline="lunch",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
              "07:00","07:15","07:30","07:45","08:00","08:15","08:30","08:45","09:00","09:15","09:30","09:45","10:00","10:15",
@@ -123,7 +123,7 @@ string nypm_s_in  = input.string("13:30", "",  group=GS, inline="nypm",
              "14:00","14:15","14:30","14:45","15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15",
              "17:30","17:45","18:00","18:15","18:30","18:45","19:00","19:15","19:30","19:45","20:00","20:15","20:30","20:45",
              "21:00","21:15","21:30","21:45","22:00","22:15","22:30","22:45","23:00","23:15","23:30","23:45"])
-string nypm_e_in  = input.string("16:00", "—", group=GS, inline="nypm",
+string nypm_e_in  = input.string("16:00", "-", group=GS, inline="nypm",
     options=["00:00","00:15","00:30","00:45","01:00","01:15","01:30","01:45","02:00","02:15","02:30","02:45","03:00","03:15",
              "03:30","03:45","04:00","04:15","04:30","04:45","05:00","05:15","05:30","05:45","06:00","06:15","06:30","06:45",
              "07:00","07:15","07:30","07:45","08:00","08:15","08:30","08:45","09:00","09:15","09:30","09:45","10:00","10:15",
@@ -135,9 +135,9 @@ string nypm_lbl   = input.string("NY PM", "Label", group=GS, inline="nypm_lbl")
 string nypm_h_tag = input.string("NY PM High", "High Tag", group=GS, inline="nypm_lbl2")
 string nypm_l_tag = input.string("NY PM Low",  "Low Tag",  group=GS, inline="nypm_lbl2")
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — BOX LABELS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - BOX LABELS
+// ===========================================================================
 string GBL = "Box Labels"
 bool   show_box_lbl = input.bool(true,    "Show Box Labels", group=GBL)
 string box_lbl_pos  = input.string("Top Left", "Position", group=GBL,
@@ -146,9 +146,9 @@ color  box_lbl_col  = input.color(#000000, "Color", group=GBL)
 string box_lbl_size = input.string("small", "Size", group=GBL,
     options=["tiny","small","normal","large"])
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — SESSION HIGH/LOW LINES
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - SESSION HIGH/LOW LINES
+// ===========================================================================
 string GLL = "Session Level Lines"
 bool   show_sl_lines = input.bool(true,  "Show H/L Lines", group=GLL)
 
@@ -173,17 +173,17 @@ string nypm_sl_pos   = input.string("Right", "", options=["Left","Center","Right
 color  nypm_sl_col   = input.color(#9C27B0, "", group=GLL, inline="sl_nypm")
 
 int    sl_grace      = input.int(0, "Extend after taken (Candles)", group=GLL, minval=0, maxval=500)
-bool   sl_remove_taken = input.bool(true,  "Remove after taken", group=GLL, tooltip="Delete each H/L level line (and its label) once price takes it. Respects 'Extend after taken (Candles)' — the line stays for the grace period, then disappears. H and L are removed independently.")
+bool   sl_remove_taken = input.bool(true,  "Remove after taken", group=GLL, tooltip="Delete each H/L level line (and its label) once price takes it. Respects 'Extend after taken (Candles)' - the line stays for the grace period, then disappears. H and L are removed independently.")
 bool   sl_show_price = input.bool(true,  "Show Price in Label", group=GLL)
 bool   sl_show_date  = input.bool(true,  "Show Date in Label", group=GLL)
 string sl_sty_in     = input.string("Solid",  "Line Style", options=["Solid","Dashed","Dotted"], group=GLL)
 int    sl_w          = input.int(1, "Thickness", minval=1, maxval=4, group=GLL)
 string sl_lbl_sz     = input.string("small", "Label Size", options=["tiny","small","normal","large"], group=GLL)
-bool   sl_lbl_past   = input.bool(false, "Labels past line end", group=GLL, tooltip="Place all H/L labels one bar past the right end of each line, at the line's price level. Chip points left back at the line — no vertical gap. Overrides the Left/Center/Right position when on.")
+bool   sl_lbl_past   = input.bool(false, "Labels past line end", group=GLL, tooltip="Place all H/L labels one bar past the right end of each line, at the line's price level. Chip points left back at the line - no vertical gap. Overrides the Left/Center/Right position when on.")
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 int bar_ms    = int(timeframe.in_seconds() * 1000)
 int extend_ms = extend_bars * bar_ms
 int cur_h     = hour(time,   tz)
@@ -293,7 +293,7 @@ f_trim_hl(hll, lll, hlt, llt, hla, lla, htt, ltt, max_n) =>
         array.shift(htt)
         array.shift(ltt)
 
-// Trading-day counter — increments at the daily session roll (6pm ET for CME).
+// Trading-day counter - increments at the daily session roll (6pm ET for CME).
 // Used to hide session boxes from previous days respecting "Previous Sessions".
 bool new_day_d = ta.change(time("D")) != 0
 var int tday_num = 0
@@ -304,9 +304,9 @@ int max_ol = prev_days + 1
 bool tf_ok = timeframe.in_seconds() <= 3600
 bool border_on = bsty_in != "None"
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // ASIA
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 var bool    asia_in   = false
 var float   asia_hi   = na
 var float   asia_lo   = na
@@ -458,9 +458,9 @@ if n_asia > 0
         label.set_size(ll_lbl_a, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_a, l_vis_a ? color.new(asia_sl_col, 0) : na)
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // LONDON
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 var bool    lon_in   = false
 var float   lon_hi   = na
 var float   lon_lo   = na
@@ -612,9 +612,9 @@ if n_lon > 0
         label.set_size(ll_lbl_l, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_l, l_vis_l ? color.new(lon_sl_col, 0) : na)
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // NY AM
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 var bool    nyam_in   = false
 var float   nyam_hi   = na
 var float   nyam_lo   = na
@@ -766,9 +766,9 @@ if n_nyam > 0
         label.set_size(ll_lbl_n, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_n, l_vis_n ? color.new(nyam_sl_col, 0) : na)
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // LUNCH
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 var bool    lh_in   = false
 var float   lh_hi   = na
 var float   lh_lo   = na
@@ -920,9 +920,9 @@ if n_lh > 0
         label.set_size(ll_lbl_lh, lbl_sz(sl_lbl_sz))
         label.set_textcolor(ll_lbl_lh, l_vis_lh ? color.new(lunch_sl_col, 0) : na)
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // NY PM
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 var bool    pm_in   = false
 var float   pm_hi   = na
 var float   pm_lo   = na

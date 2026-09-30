@@ -1,26 +1,26 @@
 //@version=6
 indicator("Chart Label 1.2", shorttitle="Label", overlay=true)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — CONTENT
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - CONTENT
+// ===========================================================================
 string GC = "Content"
 string line3_mode = input.string("Live", "Line 3",
     options=["Live","Backtesting","Paper Trading"], group=GC)
 string line4_text = input.string("Trade Info Here", "Line 4", group=GC)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — POSITION & SIZE
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - POSITION & SIZE
+// ===========================================================================
 string GP = "Position & Size"
 string pos_in  = input.string("Lower Center", "Position",
     options=["Upper Left","Upper Center","Upper Right","Lower Left","Lower Center","Lower Right"], group=GP)
 string size_in = input.string("Medium", "Size",
     options=["Small","Medium","Large"], group=GP)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — COLORS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - COLORS
+// ===========================================================================
 string GCOL = "Colors"
 color bg_col    = input.color(color.white,  "Background",             group=GCOL)
 color line1_col = input.color(color.red,   "Line 1 (Ticker / TF)",   group=GCOL)
@@ -28,17 +28,17 @@ color line2_col = input.color(color.black,  "Line 2 (Day / Date)",    group=GCOL
 color line3_col = input.color(#3498DB,      "Line 3 (Mode)",          group=GCOL)
 color line4_col = input.color(color.black,  "Line 4",                 group=GCOL)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — BORDER
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - BORDER
+// ===========================================================================
 string GB = "Border"
 bool  show_border = input.bool(true,        "Show Border",       group=GB)
 color border_col  = input.color(color.black,"Border Color",      group=GB)
 int   border_w    = input.int(2,            "Border Thickness",  minval=1, maxval=5, group=GB)
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 tfString() =>
     m = timeframe.multiplier
     timeframe.isseconds ? str.tostring(m) + "s" :
@@ -75,9 +75,9 @@ sizeOf(string s) =>
         "Large"  => size.large
         => size.normal
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // RENDER
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 var table t = na
 
 if barstate.islast
