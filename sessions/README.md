@@ -6,7 +6,8 @@ lines that extend to the right until price takes them.
 ## Sessions
 
 Five sessions, each with its own on/off, color, start and end time (15-minute
-steps), box label, and high/low tags.
+steps), box label, and high/low tags. **Show Session Boxes** (General) turns
+the boxes off while keeping the level and midpoint lines.
 
 | Session | Default time (New York) | Color |
 |---|---|---|
@@ -36,6 +37,7 @@ session's tag (for example `NY AM High`), and optionally the price and date.
 | Timezone | America/New_York | Used for session times |
 | Show Previous Sessions | 20 | 0–20 prior sessions kept on the chart |
 | Box Border Style / Width | None, 1 | |
+| Show Session Boxes | on | Off hides box fills, borders and box labels; level and midpoint lines are unchanged |
 | H-Line Extension (bars) | 5 | How far untaken level lines reach past the current bar |
 | Show Session Midpoint | off | Line at (High + Low) / 2 inside each box; Dashed, 1 |
 | Show Box Labels | on | Top Left, black, small |
@@ -52,6 +54,7 @@ session's tag (for example `NY AM High`), and optionally the price and date.
 
 | Version | Change |
 |---|---|
+| 1.10.0 | Show Session Boxes option |
 | 1.9.0 | Taken levels: labels past line end sit mid-line, above highs and below lows |
 | 1.8.0 | Labels past line end option |
 | 1.7.1 | Level line labels default to Right |

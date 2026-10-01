@@ -1,5 +1,5 @@
 //@version=6
-indicator("Sessions 1.9.0", shorttitle="Sessions", overlay=true,
+indicator("Sessions 1.10.0", shorttitle="Sessions", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -180,6 +180,8 @@ string sl_sty_in     = input.string("Solid",  "Line Style", options=["Solid","Da
 int    sl_w          = input.int(1, "Thickness", minval=1, maxval=4, group=GLL)
 string sl_lbl_sz     = input.string("small", "Label Size", options=["tiny","small","normal","large"], group=GLL)
 bool   sl_lbl_past   = input.bool(false, "Labels past line end", group=GLL, tooltip="Place untaken H/L labels one bar past the right end of each line, at the line's price level. Once a level is taken its line stops at that candle, so its label moves to the middle of the line - above it for highs, below it for lows - to stay clear of later candles. Overrides the Left/Center/Right position when on.")
+// Declared last so existing inputs keep their in_N ids (saved settings map by id).
+bool   show_boxes  = input.bool(true, "Show Session Boxes", group=GEN, tooltip="Draw the colored box and box label over each session. Turn off to keep only the high/low and midpoint lines, which behave the same either way.")
 
 // ===========================================================================
 // HELPERS
@@ -392,11 +394,11 @@ if n_asia > 0
         box.set_left(b,          array.get(asia_lt,  i))
         box.set_right(b,         array.get(asia_rt,  i))
         bool day_ok_a = tday_num - array.get(asia_day_n, i) <= prev_days
-        box.set_bgcolor(b,       show_asia and tf_ok and day_ok_a ? asia_col : na)
-        box.set_border_color(b,  show_asia and tf_ok and day_ok_a and border_on ? color.new(asia_col, 0) : na)
-        box.set_border_width(b,  show_asia and tf_ok and day_ok_a and border_on ? bw_in : 0)
+        box.set_bgcolor(b,       show_boxes and show_asia and tf_ok and day_ok_a ? asia_col : na)
+        box.set_border_color(b,  show_boxes and show_asia and tf_ok and day_ok_a and border_on ? color.new(asia_col, 0) : na)
+        box.set_border_width(b,  show_boxes and show_asia and tf_ok and day_ok_a and border_on ? bw_in : 0)
         box.set_border_style(b,  ls(bsty_in))
-        box.set_text(b,          show_asia and show_box_lbl and day_ok_a ? asia_lbl : "")
+        box.set_text(b,          show_boxes and show_asia and show_box_lbl and day_ok_a ? asia_lbl : "")
         box.set_text_color(b,    box_lbl_col)
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
@@ -546,11 +548,11 @@ if n_lon > 0
         box.set_left(b,          array.get(lon_lt,  i))
         box.set_right(b,         array.get(lon_rt,  i))
         bool day_ok_l = tday_num - array.get(lon_day_n, i) <= prev_days
-        box.set_bgcolor(b,       show_lon and tf_ok and day_ok_l ? lon_col : na)
-        box.set_border_color(b,  show_lon and tf_ok and day_ok_l and border_on ? color.new(lon_col, 0) : na)
-        box.set_border_width(b,  show_lon and tf_ok and day_ok_l and border_on ? bw_in : 0)
+        box.set_bgcolor(b,       show_boxes and show_lon and tf_ok and day_ok_l ? lon_col : na)
+        box.set_border_color(b,  show_boxes and show_lon and tf_ok and day_ok_l and border_on ? color.new(lon_col, 0) : na)
+        box.set_border_width(b,  show_boxes and show_lon and tf_ok and day_ok_l and border_on ? bw_in : 0)
         box.set_border_style(b,  ls(bsty_in))
-        box.set_text(b,          show_lon and show_box_lbl and day_ok_l ? lon_lbl : "")
+        box.set_text(b,          show_boxes and show_lon and show_box_lbl and day_ok_l ? lon_lbl : "")
         box.set_text_color(b,    box_lbl_col)
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
@@ -700,11 +702,11 @@ if n_nyam > 0
         box.set_left(b,          array.get(nyam_lt,  i))
         box.set_right(b,         array.get(nyam_rt,  i))
         bool day_ok_n = tday_num - array.get(nyam_day_n, i) <= prev_days
-        box.set_bgcolor(b,       show_nyam and tf_ok and day_ok_n ? nyam_col : na)
-        box.set_border_color(b,  show_nyam and tf_ok and day_ok_n and border_on ? color.new(nyam_col, 0) : na)
-        box.set_border_width(b,  show_nyam and tf_ok and day_ok_n and border_on ? bw_in : 0)
+        box.set_bgcolor(b,       show_boxes and show_nyam and tf_ok and day_ok_n ? nyam_col : na)
+        box.set_border_color(b,  show_boxes and show_nyam and tf_ok and day_ok_n and border_on ? color.new(nyam_col, 0) : na)
+        box.set_border_width(b,  show_boxes and show_nyam and tf_ok and day_ok_n and border_on ? bw_in : 0)
         box.set_border_style(b,  ls(bsty_in))
-        box.set_text(b,          show_nyam and show_box_lbl and day_ok_n ? nyam_lbl : "")
+        box.set_text(b,          show_boxes and show_nyam and show_box_lbl and day_ok_n ? nyam_lbl : "")
         box.set_text_color(b,    box_lbl_col)
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
@@ -854,11 +856,11 @@ if n_lh > 0
         box.set_left(b,          array.get(lh_lt,  i))
         box.set_right(b,         array.get(lh_rt,  i))
         bool day_ok_lh = tday_num - array.get(lh_day_n, i) <= prev_days
-        box.set_bgcolor(b,       show_lunch and tf_ok and day_ok_lh ? lunch_col : na)
-        box.set_border_color(b,  show_lunch and tf_ok and day_ok_lh and border_on ? color.new(lunch_col, 0) : na)
-        box.set_border_width(b,  show_lunch and tf_ok and day_ok_lh and border_on ? bw_in : 0)
+        box.set_bgcolor(b,       show_boxes and show_lunch and tf_ok and day_ok_lh ? lunch_col : na)
+        box.set_border_color(b,  show_boxes and show_lunch and tf_ok and day_ok_lh and border_on ? color.new(lunch_col, 0) : na)
+        box.set_border_width(b,  show_boxes and show_lunch and tf_ok and day_ok_lh and border_on ? bw_in : 0)
         box.set_border_style(b,  ls(bsty_in))
-        box.set_text(b,          show_lunch and show_box_lbl and day_ok_lh ? lunch_lbl : "")
+        box.set_text(b,          show_boxes and show_lunch and show_box_lbl and day_ok_lh ? lunch_lbl : "")
         box.set_text_color(b,    box_lbl_col)
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))
@@ -1008,11 +1010,11 @@ if n_pm > 0
         box.set_left(b,          array.get(pm_lt,  i))
         box.set_right(b,         array.get(pm_rt,  i))
         bool day_ok_pm = tday_num - array.get(pm_day_n, i) <= prev_days
-        box.set_bgcolor(b,       show_nypm and tf_ok and day_ok_pm ? nypm_col : na)
-        box.set_border_color(b,  show_nypm and tf_ok and day_ok_pm and border_on ? color.new(nypm_col, 0) : na)
-        box.set_border_width(b,  show_nypm and tf_ok and day_ok_pm and border_on ? bw_in : 0)
+        box.set_bgcolor(b,       show_boxes and show_nypm and tf_ok and day_ok_pm ? nypm_col : na)
+        box.set_border_color(b,  show_boxes and show_nypm and tf_ok and day_ok_pm and border_on ? color.new(nypm_col, 0) : na)
+        box.set_border_width(b,  show_boxes and show_nypm and tf_ok and day_ok_pm and border_on ? bw_in : 0)
         box.set_border_style(b,  ls(bsty_in))
-        box.set_text(b,          show_nypm and show_box_lbl and day_ok_pm ? nypm_lbl : "")
+        box.set_text(b,          show_boxes and show_nypm and show_box_lbl and day_ok_pm ? nypm_lbl : "")
         box.set_text_color(b,    box_lbl_col)
         box.set_text_size(b,     lbl_sz(box_lbl_size))
         box.set_text_halign(b,   bx_halign(box_lbl_pos))

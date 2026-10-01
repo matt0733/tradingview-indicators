@@ -7,7 +7,7 @@ Pine Script v6 indicators for TradingView, built for intraday index futures
 |---|---|---|
 | [SMT Divergence](smt_divergence/) | 2.0.0 | Marks SMT divergence between the chart and one or two comparison markets (ES, YM by default) |
 | [Opening Gaps](opening_gaps/) | 1.1.0 | New Week, New Day and RTH opening gaps with mid and quarter levels |
-| [Sessions](sessions/) | 1.9.0 | Asia, London, NY AM, Lunch and NY PM session boxes with high/low level lines |
+| [Sessions](sessions/) | 1.10.0 | Asia, London, NY AM, Lunch and NY PM session boxes with high/low level lines |
 | [Macros](macros/) | 1.2.0 | Boxes over the hourly :50–:10 macro windows with a line at each macro's open |
 | [Chart Label](chart_label/) | 1.2 | A small table showing ticker, timeframe, date and trading mode, for screenshots |
 
