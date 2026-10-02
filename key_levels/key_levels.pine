@@ -1,0 +1,307 @@
+//@version=6
+indicator("Key Levels 1.0.0", shorttitle="Key Levels", overlay=true,
+          max_lines_count=500, max_labels_count=500)
+
+// ===========================================================================
+// INPUTS - GENERAL
+// ===========================================================================
+string GEN = "General"
+int    lbl_off  = input.int(30, "Label Offset (bars)", minval=0, maxval=500, group=GEN, display=display.none,
+    tooltip="How far past the current bar the labels sit. Untaken lines run to their label. To sit after Opening Gaps' labels, use its Extend Right plus about 15 (the width of its text at normal zoom).")
+string take_md  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GEN, display=display.none,
+    tooltip="What happens once price trades through a level (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
+bool   show_px  = input.bool(false, "Show Price in Label", group=GEN, display=display.none)
+float  lbl_gap  = input.float(2.0, "Label Spacing (% of view)", minval=0, maxval=20, step=0.5, group=GEN, display=display.none,
+    tooltip="Labels closer together than this share of the chart's visible price range are spread out: two sit above and below their lines, three sit above, level with and below. The visible range is re-measured as you zoom and scroll. Raise it if labels still touch, lower it if they spread out when they don't need to. 0 spreads only labels at exactly the same price.")
+
+// ===========================================================================
+// INPUTS - LEVELS
+// ===========================================================================
+string GM = "Monthly"
+bool   m_on   = input.bool(true, "Monthly", group=GM, display=display.none, inline="m0")
+int    m_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GM, display=display.none, inline="m0",
+    tooltip="Highs and lows of the last completed months, labelled by month name, e.g. 'September Monthly High'. Shown on every timeframe up to monthly.")
+color  m_lcol = input.color(#F23645, "Line", group=GM, display=display.none, inline="m1")
+string m_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m1")
+int    m_lw   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
+color  m_tcol = input.color(#F23645, "Text", group=GM, display=display.none, inline="m2")
+string m_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m2")
+
+string GW = "Weekly"
+bool   w_on   = input.bool(true, "Weekly", group=GW, display=display.none, inline="w0")
+int    w_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GW, display=display.none, inline="w0",
+    tooltip="Highs and lows of the last completed weeks, labelled with the date the week opened (Sunday evening for CME futures), e.g. '09/27 Prev Week High'. Shown on every timeframe up to weekly.")
+color  w_lcol = input.color(#4CAF50, "Line", group=GW, display=display.none, inline="w1")
+string w_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
+int    w_lw   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
+color  w_tcol = input.color(#4CAF50, "Text", group=GW, display=display.none, inline="w2")
+string w_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w2")
+
+string GD = "Daily"
+bool   d_on   = input.bool(true, "Daily", group=GD, display=display.none, inline="d0")
+int    d_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GD, display=display.none, inline="d0",
+    tooltip="Highs and lows of the last completed trading days, labelled with the trading date, e.g. 'Mon 09/28 Daily High'. For CME futures the session that opens Sunday 18:00 New York is Monday's. Shown on every timeframe up to daily.")
+color  d_lcol = input.color(#00BCD4, "Line", group=GD, display=display.none, inline="d1")
+string d_lsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d1")
+int    d_lw   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d1")
+color  d_tcol = input.color(#00BCD4, "Text", group=GD, display=display.none, inline="d2")
+string d_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d2")
+
+// ===========================================================================
+// TYPES
+// ===========================================================================
+type Cfg
+    int    kind     // 0 monthly, 1 weekly, 2 daily
+    string tf
+    bool   on
+    int    keep
+    color  lcol
+    string lsty
+    int    lw
+    color  tcol
+    string tsz
+
+type Level
+    int    kind
+    bool   is_hi
+    float  price
+    int    x1       // bar that set the price, or the period's open if that bar isn't loaded
+    int    end_t    // open of the following period; takes count from here
+    int    take_t   // first touch, na while untaken
+    string name
+
+// Running high/low of the period in progress, measured on chart bars
+type Tracker
+    int   cur_t
+    float hi
+    int   hi_t
+    float lo
+    int   lo_t
+
+// ===========================================================================
+// HELPERS
+// ===========================================================================
+const int MAX_KEEP = 12
+
+float tol   = syminfo.mintick / 2
+int   tf_ms = timeframe.in_seconds() * 1000
+
+ls(s) =>
+    switch s
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+        =>          line.style_solid
+
+lbl_sz(s) =>
+    switch s
+        "Tiny"   => size.tiny
+        "Normal" => size.normal
+        "Large"  => size.large
+        =>          size.small
+
+// A level is drawn when its period is at least as long as the chart's bars
+tf_vis(string tf) =>
+    timeframe.in_seconds() <= timeframe.in_seconds(tf)
+
+// Monthly and daily names come from the trading day (UTC midnight), weekly from the
+// week's open in exchange time, so the Sunday-evening futures open reads as Sunday.
+lvl_name(int kind, int t, int td, bool is_hi) =>
+    string hl = is_hi ? "High" : "Low"
+    switch kind
+        0 => str.format_time(td, "MMMM", "UTC") + " Monthly " + hl
+        1 => str.format_time(t, "MM/dd", syminfo.timezone) + " Prev Week " + hl
+        =>   str.format_time(td, "EEE MM/dd", "UTC") + " Daily " + hl
+
+// Evaluated on the higher timeframe: the last 12 completed periods (index 0 = most recent).
+htf_hist() =>
+    array<float> hs = array.new<float>()
+    array<float> lo = array.new<float>()
+    array<int>   ts = array.new<int>()
+    array<int>   ds = array.new<int>()
+    for i = 1 to MAX_KEEP
+        hs.push(high[i])
+        lo.push(low[i])
+        ts.push(time[i])
+        ds.push(time_tradingday[i])
+    [hs, lo, ts, ds]
+
+// Adds completed periods, tracks the period in progress and marks takes. cur_t is the
+// open of the period in progress; hp/lp/pt/pd describe the last completed period.
+process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int pt, int pd) =>
+    if c.on and tf_vis(c.tf) and not na(cur_t)
+        if na(tr.cur_t)
+            // First bar: rebuild completed periods from the higher timeframe. The bars
+            // that set these prices aren't loaded, so lines start at each period's open.
+            // Requested only here: returning the arrays on every bar is too slow.
+            [hs, lo, ts, ds] = request.security(syminfo.tickerid, c.tf, htf_hist(), lookahead=barmerge.lookahead_on)
+            for k = c.keep - 1 to 0
+                if not na(hs.get(k))
+                    int   t   = ts.get(k)
+                    int   td  = ds.get(k)
+                    int   e_t = k > 0 ? ts.get(k - 1) : cur_t
+                    Level h   = Level.new(c.kind, true,  hs.get(k), t, e_t, na, lvl_name(c.kind, t, td, true))
+                    Level l   = Level.new(c.kind, false, lo.get(k), t, e_t, na, lvl_name(c.kind, t, td, false))
+                    if k > 0
+                        for j = k - 1 to 0
+                            if na(h.take_t) and hs.get(j) >= h.price
+                                h.take_t := ts.get(j)
+                            if na(l.take_t) and lo.get(j) <= l.price
+                                l.take_t := ts.get(j)
+                    lv.unshift(l)
+                    lv.unshift(h)
+        else if cur_t != tr.cur_t and not na(hp)
+            // A period just closed. Anchor at the bar that set each price when that
+            // bar is loaded; otherwise fall back to the period's open.
+            bool seen = pt == tr.cur_t
+            int  hx   = seen and math.abs(tr.hi - hp) < tol ? tr.hi_t : pt
+            int  lx   = seen and math.abs(tr.lo - lp) < tol ? tr.lo_t : pt
+            lv.unshift(Level.new(c.kind, false, lp, lx, cur_t, na, lvl_name(c.kind, pt, pd, false)))
+            lv.unshift(Level.new(c.kind, true,  hp, hx, cur_t, na, lvl_name(c.kind, pt, pd, true)))
+            while lv.size() > c.keep * 2
+                lv.pop()
+            log.info("{0}: {1} / {2}", lv.get(0).name,
+                     str.tostring(hp, format.mintick), str.tostring(lp, format.mintick))
+        // na(tr.cur_t) is needed: any comparison with na is false in Pine
+        if na(tr.cur_t) or cur_t != tr.cur_t
+            tr.cur_t := cur_t
+            tr.hi    := high
+            tr.hi_t  := time
+            tr.lo    := low
+            tr.lo_t  := time
+        else
+            if high > tr.hi
+                tr.hi   := high
+                tr.hi_t := time
+            if low < tr.lo
+                tr.lo   := low
+                tr.lo_t := time
+        for x in lv
+            if na(x.take_t) and time >= x.end_t
+                if x.is_hi ? high >= x.price : low <= x.price
+                    x.take_t := time
+
+// ===========================================================================
+// STATE
+// ===========================================================================
+var Cfg m_cfg = Cfg.new(0, "M", m_on, m_keep, m_lcol, m_lsty, m_lw, m_tcol, m_tsz)
+var Cfg w_cfg = Cfg.new(1, "W", w_on, w_keep, w_lcol, w_lsty, w_lw, w_tcol, w_tsz)
+var Cfg d_cfg = Cfg.new(2, "D", d_on, d_keep, d_lcol, d_lsty, d_lw, d_tcol, d_tsz)
+
+var array<Level> m_lv = array.new<Level>()
+var array<Level> w_lv = array.new<Level>()
+var array<Level> d_lv = array.new<Level>()
+
+var Tracker m_tr = Tracker.new()
+var Tracker w_tr = Tracker.new()
+var Tracker d_tr = Tracker.new()
+
+var array<line>  lns = array.new<line>()
+var array<label> lbs = array.new<label>()
+
+// High and low of the bars in view; the script recalculates when the view changes
+var float vis_hi = na
+var float vis_lo = na
+if time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
+    vis_hi := na(vis_hi) ? high : math.max(vis_hi, high)
+    vis_lo := na(vis_lo) ? low  : math.min(vis_lo, low)
+
+collect(array<Level> dst, array<Level> src) =>
+    for x in src
+        if not (take_md == "Remove" and not na(x.take_t))
+            dst.push(x)
+
+cfg_of(int kind) =>
+    kind == 0 ? m_cfg : kind == 1 ? w_cfg : d_cfg
+
+// ===========================================================================
+// PROCESSING
+// ===========================================================================
+// Hidden types request the chart's own timeframe, since a lower one isn't allowed
+string m_req = tf_vis("M") ? "M" : timeframe.period
+string w_req = tf_vis("W") ? "W" : timeframe.period
+string d_req = tf_vis("D") ? "D" : timeframe.period
+
+// Open of the period in progress, and the last completed period
+htf_last() =>
+    [time, high[1], low[1], time[1], time_tradingday[1]]
+
+[m_t, m_h, m_l, m_pt, m_pd] = request.security(syminfo.tickerid, m_req, htf_last(), lookahead=barmerge.lookahead_on)
+[w_t, w_h, w_l, w_pt, w_pd] = request.security(syminfo.tickerid, w_req, htf_last(), lookahead=barmerge.lookahead_on)
+[d_t, d_h, d_l, d_pt, d_pd] = request.security(syminfo.tickerid, d_req, htf_last(), lookahead=barmerge.lookahead_on)
+[m_h0, m_l0, m_d0] = request.security(syminfo.tickerid, m_req, [high, low, time_tradingday], lookahead=barmerge.lookahead_on)
+
+process(m_cfg, m_lv, m_tr, m_t, m_h, m_l, m_pt, m_pd)
+process(w_cfg, w_lv, w_tr, w_t, w_h, w_l, w_pt, w_pd)
+process(d_cfg, d_lv, d_tr, d_t, d_h, d_l, d_pt, d_pd)
+
+// On a weekly chart the last bar can open in the month before (e.g. Sun 09/27), so
+// that month still counts as in progress after it has ended. Once the calendar has
+// moved on, add it as completed. Its take can't be told apart within the bar.
+month_idx(int t, string tz) =>
+    year(t, tz) * 12 + month(t, tz)
+
+bool m_rolled = barstate.islast and timeframe.isweekly and m_cfg.on and not na(m_h0) and
+     month_idx(timenow, syminfo.timezone) > month_idx(m_d0, "UTC")
+if m_rolled
+    m_lv.unshift(Level.new(0, false, m_l0, m_t, timenow, na, lvl_name(0, m_t, m_d0, false)))
+    m_lv.unshift(Level.new(0, true,  m_h0, m_t, timenow, na, lvl_name(0, m_t, m_d0, true)))
+    while m_lv.size() > m_cfg.keep * 2
+        m_lv.pop()
+
+// ===========================================================================
+// DRAWING
+// ===========================================================================
+// Redrawn from scratch on the last bar. Every level gets its own line and label,
+// even when several share a price.
+if barstate.islast
+    for l in lns
+        l.delete()
+    for lb in lbs
+        lb.delete()
+    lns.clear()
+    lbs.clear()
+
+    array<Level> all = array.new<Level>()
+    collect(all, m_lv)
+    collect(all, w_lv)
+    collect(all, d_lv)
+
+    int x_lbl = time + lbl_off * tf_ms
+    array<label> col   = array.new<label>()   // labels sitting at x_lbl
+    array<float> col_y = array.new<float>()
+    array<float> col_k = array.new<float>()
+    for a in all
+        string txt  = a.name + (show_px ? " " + str.tostring(a.price, format.mintick) : "")
+        Cfg    c    = cfg_of(a.kind)
+        bool   stop = take_md == "Stop at take" and not na(a.take_t)
+        int    x2   = stop ? a.take_t : x_lbl
+        int    lx   = stop ? int((a.x1 + x2) / 2) : x_lbl
+        string sty  = stop ? (a.is_hi ? label.style_label_down : label.style_label_up) : label.style_label_left
+        lns.push(line.new(a.x1, a.price, x2, a.price, xloc=xloc.bar_time,
+                          color=c.lcol, style=ls(c.lsty), width=c.lw))
+        label lb = label.new(lx, a.price, txt, xloc=xloc.bar_time, style=sty,
+                             color=color.new(color.white, 100), textcolor=c.tcol,
+                             size=lbl_sz(c.tsz), textalign=text.align_left)
+        lbs.push(lb)
+        if not stop
+            col.push(lb)
+            col_y.push(a.price)
+            col_k.push(a.price - a.kind * tol / 4)   // ties: longer period on top
+
+    // Spread out labels that would overlap. Walking down from the highest price,
+    // labels closer than the threshold to the one above form a cluster: a pair
+    // sits above / below its lines, three sit above / level / below. A fourth
+    // or more stays level and can still overlap.
+    float thr = math.max(nz(vis_hi - vis_lo) * lbl_gap / 100, tol)
+    int   n   = col.size()
+    if n > 1
+        array<int> ord = col_k.sort_indices(order.descending)
+        int i = 0
+        while i < n
+            int j = i
+            while j + 1 < n and col_y.get(ord.get(j)) - col_y.get(ord.get(j + 1)) < thr
+                j += 1
+            if j > i
+                col.get(ord.get(i)).set_style(label.style_label_lower_left)
+                col.get(ord.get(j - i >= 2 ? i + 2 : j)).set_style(label.style_label_upper_left)
+            i := j + 1

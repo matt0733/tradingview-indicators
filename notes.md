@@ -20,7 +20,21 @@ _(none)_
 
 ## Released
 
-### SMT Divergence 2.0.0 — `smt_divergence/` (2026-09-30)
+### Key Levels 1.0.0 - `key_levels/` (2026-10-02)
+
+Previous monthly/weekly/daily highs and lows. See `key_levels/README.md`.
+
+Design decisions (from the interview):
+- Lines start at the candle that set the price; untaken lines stop at their label, which sits Label Offset bars past the current bar (default 30, to clear Opening Gaps at Extend Right 10).
+- When Taken is a setting: Keep / Stop at take (Sessions-style mid-line label) / Remove.
+- Equal prices are NOT merged: user asked for every level to keep its own line and label (merging was built, then removed).
+- Overlapping labels are spread above / level / below instead (user's choice over side-by-side). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
+- Completed periods only. A type shows when its period >= chart timeframe (M chart: monthly only; W: monthly + weekly; D and below: all).
+- Week label = Sunday-open date; daily label = trading date.
+
+Gotcha hit while building: `x != na` is false in Pine, so a tracker initialised to na never updated and the history rebuild ran every bar (RE10110 timeout / loop too long).
+
+ — `smt_divergence/` (2026-09-30)
 
 Rewrite of the LLM-written v1. See `smt_divergence/README.md` for measured results and settings.
 
