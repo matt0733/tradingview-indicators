@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.0.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.0.1", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -77,6 +77,7 @@ type Tracker
     int   hi_t
     float lo
     int   lo_t
+    bool  full     // tracked from the period's first bar
 
 // ===========================================================================
 // HELPERS
@@ -150,11 +151,14 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
                     lv.unshift(l)
                     lv.unshift(h)
         else if cur_t != tr.cur_t and not na(hp)
-            // A period just closed. Anchor at the bar that set each price when that
-            // bar is loaded; otherwise fall back to the period's open.
+            // A period just closed. Anchor at the bar that set each price. If the whole
+            // period is loaded, that is the chart's own high/low bar even when the
+            // higher-timeframe candle differs by a tick (TradingView's FX daily and
+            // intraday feeds can). If only part is loaded, use the bar only when its
+            // price matches; otherwise fall back to the period's open.
             bool seen = pt == tr.cur_t
-            int  hx   = seen and math.abs(tr.hi - hp) < tol ? tr.hi_t : pt
-            int  lx   = seen and math.abs(tr.lo - lp) < tol ? tr.lo_t : pt
+            int  hx   = seen and (tr.full or math.abs(tr.hi - hp) < tol) ? tr.hi_t : pt
+            int  lx   = seen and (tr.full or math.abs(tr.lo - lp) < tol) ? tr.lo_t : pt
             lv.unshift(Level.new(c.kind, false, lp, lx, cur_t, na, lvl_name(c.kind, pt, pd, false)))
             lv.unshift(Level.new(c.kind, true,  hp, hx, cur_t, na, lvl_name(c.kind, pt, pd, true)))
             while lv.size() > c.keep * 2
@@ -163,6 +167,7 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
                      str.tostring(hp, format.mintick), str.tostring(lp, format.mintick))
         // na(tr.cur_t) is needed: any comparison with na is false in Pine
         if na(tr.cur_t) or cur_t != tr.cur_t
+            tr.full  := not na(tr.cur_t)
             tr.cur_t := cur_t
             tr.hi    := high
             tr.hi_t  := time

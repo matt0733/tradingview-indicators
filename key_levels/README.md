@@ -24,6 +24,10 @@ is the Sunday open and the monthly name comes from the trading days in the month
 - Each line starts at the candle that set the price. If that candle is older than
   the chart's loaded history (for example a monthly high on a 1m chart), the line
   starts at the period's open instead, which is off the left edge of the chart.
+- The price always comes from the monthly, weekly or daily candle. TradingView's
+  intraday bars can differ from it by a tick (seen on FX:EURUSD: daily low
+  1.12149, lowest 1h bar 1.12150). When the whole period is loaded, the line
+  still starts at the chart's own high or low candle.
 - Untaken lines run to their label, **Label Offset** bars past the current bar.
 - A level is **taken** when a wick touches it. **When Taken** sets what happens:
 
@@ -88,6 +92,11 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - **Takes**: with Stop at take, take times matched the first 1m bar after the
   period that touched each level; Remove left only the untaken levels.
 - **Timeframes**: checked on 1m, 1h, D, W and M against the table above.
+- **Other markets** (1.0.1, 2026-10-02): MESZ2026, MYMZ2026, NASDAQ:AAPL,
+  COINBASE:BTCUSD and FX:EURUSD. Every level matched that symbol's own M, W and D
+  candles, and with history loaded back to June on 1h, every line started on the
+  candle that set its price (22 lines each). Stocks and crypto weeks start Monday;
+  crypto days run midnight to midnight UTC and include weekends.
 
 ## Known limits
 
@@ -109,4 +118,5 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.0.1 | Lines start at the chart's own high/low candle when the higher-timeframe candle differs from intraday bars by a tick (FX) |
 | 1.0.0 | First release |
