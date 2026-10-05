@@ -20,15 +20,16 @@ _(none)_
 
 ## Released
 
-### Key Levels 1.0.0 - `key_levels/` (2026-10-02)
+### Key Levels 1.1.0 - `key_levels/` (1.0.0 on 2026-10-02, 1.1.0 on 2026-10-04)
 
 Previous monthly/weekly/daily highs and lows. See `key_levels/README.md`.
 
 Design decisions (from the interview):
-- Lines start at the candle that set the price; untaken lines stop at their label, which sits Label Offset bars past the current bar (default 30, to clear Opening Gaps at Extend Right 10).
+- Lines start at the candle that set the price; untaken lines stop at their label, which sits Label Offset bars past the current bar (default 30 in 1.0.x; 10 from 1.1.0, user's chart setting).
 - When Taken is a setting: Keep / Stop at take (Sessions-style mid-line label) / Remove.
 - Equal prices are NOT merged: user asked for every level to keep its own line and label (merging was built, then removed).
-- Overlapping labels are spread above / level / below instead (user's choice over side-by-side). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
+- Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
+- 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
 - Completed periods only. A type shows when its period >= chart timeframe (M chart: monthly only; W: monthly + weekly; D and below: all).
 - Week label = Sunday-open date; daily label = trading date.
 

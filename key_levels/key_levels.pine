@@ -1,50 +1,50 @@
 //@version=6
-indicator("Key Levels 1.0.1", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.1.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
 // INPUTS - GENERAL
 // ===========================================================================
 string GEN = "General"
-int    lbl_off  = input.int(30, "Label Offset (bars)", minval=0, maxval=500, group=GEN, display=display.none,
+int    lbl_off  = input.int(10, "Label Offset (bars)", minval=0, maxval=500, group=GEN, display=display.none,
     tooltip="How far past the current bar the labels sit. Untaken lines run to their label. To sit after Opening Gaps' labels, use its Extend Right plus about 15 (the width of its text at normal zoom).")
 string take_md  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GEN, display=display.none,
     tooltip="What happens once price trades through a level (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
-bool   show_px  = input.bool(false, "Show Price in Label", group=GEN, display=display.none)
+bool   show_px  = input.bool(true, "Show Price in Label", group=GEN, display=display.none)
 float  lbl_gap  = input.float(2.0, "Label Spacing (% of view)", minval=0, maxval=20, step=0.5, group=GEN, display=display.none,
-    tooltip="Labels closer together than this share of the chart's visible price range are spread out: two sit above and below their lines, three sit above, level with and below. The visible range is re-measured as you zoom and scroll. Raise it if labels still touch, lower it if they spread out when they don't need to. 0 spreads only labels at exactly the same price.")
+    tooltip="Roughly the height of one label, as a share of the chart's visible price range. Labels closer together than this are spaced out evenly around their prices, each joined to its own line by a short leader. The visible range is re-measured as you zoom and scroll. Raise it if labels still touch, lower it if they spread out when they don't need to.")
 
 // ===========================================================================
 // INPUTS - LEVELS
 // ===========================================================================
 string GM = "Monthly"
 bool   m_on   = input.bool(true, "Monthly", group=GM, display=display.none, inline="m0")
-int    m_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GM, display=display.none, inline="m0",
+int    m_keep = input.int(3, "Show Last:", minval=1, maxval=12, group=GM, display=display.none, inline="m0",
     tooltip="Highs and lows of the last completed months, labelled by month name, e.g. 'September Monthly High'. Shown on every timeframe up to monthly.")
-color  m_lcol = input.color(#F23645, "Line", group=GM, display=display.none, inline="m1")
+color  m_lcol = input.color(#000000, "Line", group=GM, display=display.none, inline="m1")
 string m_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m1")
 int    m_lw   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
-color  m_tcol = input.color(#F23645, "Text", group=GM, display=display.none, inline="m2")
+color  m_tcol = input.color(#000000, "Text", group=GM, display=display.none, inline="m2")
 string m_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m2")
 
 string GW = "Weekly"
 bool   w_on   = input.bool(true, "Weekly", group=GW, display=display.none, inline="w0")
 int    w_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GW, display=display.none, inline="w0",
     tooltip="Highs and lows of the last completed weeks, labelled with the date the week opened (Sunday evening for CME futures), e.g. '09/27 Prev Week High'. Shown on every timeframe up to weekly.")
-color  w_lcol = input.color(#4CAF50, "Line", group=GW, display=display.none, inline="w1")
-string w_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
+color  w_lcol = input.color(#000000, "Line", group=GW, display=display.none, inline="w1")
+string w_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
 int    w_lw   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
-color  w_tcol = input.color(#4CAF50, "Text", group=GW, display=display.none, inline="w2")
+color  w_tcol = input.color(#000000, "Text", group=GW, display=display.none, inline="w2")
 string w_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w2")
 
 string GD = "Daily"
 bool   d_on   = input.bool(true, "Daily", group=GD, display=display.none, inline="d0")
-int    d_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GD, display=display.none, inline="d0",
+int    d_keep = input.int(3, "Show Last:", minval=1, maxval=12, group=GD, display=display.none, inline="d0",
     tooltip="Highs and lows of the last completed trading days, labelled with the trading date, e.g. 'Mon 09/28 Daily High'. For CME futures the session that opens Sunday 18:00 New York is Monday's. Shown on every timeframe up to daily.")
-color  d_lcol = input.color(#00BCD4, "Line", group=GD, display=display.none, inline="d1")
-string d_lsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d1")
-int    d_lw   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d1")
-color  d_tcol = input.color(#00BCD4, "Text", group=GD, display=display.none, inline="d2")
+color  d_lcol = input.color(#000000, "Line", group=GD, display=display.none, inline="d1")
+string d_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d1")
+int    d_lw   = input.int(2, "", minval=1, maxval=10, group=GD, display=display.none, inline="d1")
+color  d_tcol = input.color(#000000, "Text", group=GD, display=display.none, inline="d2")
 string d_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d2")
 
 // ===========================================================================
@@ -83,6 +83,7 @@ type Tracker
 // HELPERS
 // ===========================================================================
 const int MAX_KEEP = 12
+const int LEAD_BARS = 3   // length of a leader to a moved label
 
 float tol   = syminfo.mintick / 2
 int   tf_ms = timeframe.in_seconds() * 1000
@@ -272,9 +273,12 @@ if barstate.islast
     collect(all, d_lv)
 
     int x_lbl = time + lbl_off * tf_ms
-    array<label> col   = array.new<label>()   // labels sitting at x_lbl
-    array<float> col_y = array.new<float>()
-    array<float> col_k = array.new<float>()
+    int x_ldr = time + math.max(lbl_off - LEAD_BARS, 0) * tf_ms   // where a leader starts
+    array<label> col    = array.new<label>()   // labels sitting at x_lbl
+    array<line>  col_ln = array.new<line>()
+    array<float> col_y  = array.new<float>()
+    array<float> col_k  = array.new<float>()
+    array<color> col_c  = array.new<color>()
     for a in all
         string txt  = a.name + (show_px ? " " + str.tostring(a.price, format.mintick) : "")
         Cfg    c    = cfg_of(a.kind)
@@ -282,31 +286,62 @@ if barstate.islast
         int    x2   = stop ? a.take_t : x_lbl
         int    lx   = stop ? int((a.x1 + x2) / 2) : x_lbl
         string sty  = stop ? (a.is_hi ? label.style_label_down : label.style_label_up) : label.style_label_left
-        lns.push(line.new(a.x1, a.price, x2, a.price, xloc=xloc.bar_time,
-                          color=c.lcol, style=ls(c.lsty), width=c.lw))
-        label lb = label.new(lx, a.price, txt, xloc=xloc.bar_time, style=sty,
-                             color=color.new(color.white, 100), textcolor=c.tcol,
-                             size=lbl_sz(c.tsz), textalign=text.align_left)
+        line   ln   = line.new(a.x1, a.price, x2, a.price, xloc=xloc.bar_time,
+                               color=c.lcol, style=ls(c.lsty), width=c.lw)
+        label  lb   = label.new(lx, a.price, txt, xloc=xloc.bar_time, style=sty,
+                                color=color.new(color.white, 100), textcolor=c.tcol,
+                                size=lbl_sz(c.tsz), textalign=text.align_left)
+        lns.push(ln)
         lbs.push(lb)
         if not stop
             col.push(lb)
+            col_ln.push(ln)
             col_y.push(a.price)
             col_k.push(a.price - a.kind * tol / 4)   // ties: longer period on top
+            col_c.push(c.lcol)
 
-    // Spread out labels that would overlap. Walking down from the highest price,
-    // labels closer than the threshold to the one above form a cluster: a pair
-    // sits above / below its lines, three sit above / level / below. A fourth
-    // or more stays level and can still overlap.
+    // Labels closer than one label height (thr) are spaced out evenly around their
+    // prices, highest at the top. Each moved label gets a short leader from the end
+    // of its line, which then stops LEAD_BARS short of the label. Labels with room
+    // stay on their line. Works top-down in blocks: a label that overlaps the block
+    // above joins it, and the block is re-centred on its members' prices (which can
+    // make it overlap the next block up, so merging repeats).
     float thr = math.max(nz(vis_hi - vis_lo) * lbl_gap / 100, tol)
     int   n   = col.size()
     if n > 1
-        array<int> ord = col_k.sort_indices(order.descending)
-        int i = 0
-        while i < n
-            int j = i
-            while j + 1 < n and col_y.get(ord.get(j)) - col_y.get(ord.get(j + 1)) < thr
-                j += 1
-            if j > i
-                col.get(ord.get(i)).set_style(label.style_label_lower_left)
-                col.get(ord.get(j - i >= 2 ? i + 2 : j)).set_style(label.style_label_upper_left)
-            i := j + 1
+        array<int>   ord   = col_k.sort_indices(order.descending)
+        array<float> b_top = array.new<float>()   // y of each block's first label
+        array<float> b_sum = array.new<float>()   // sum of its members' prices
+        array<int>   b_len = array.new<int>()
+        for i = 0 to n - 1
+            float p = col_y.get(ord.get(i))
+            b_top.push(p)
+            b_sum.push(p)
+            b_len.push(1)
+            while b_top.size() > 1
+                int   m      = b_top.size()
+                float above  = b_top.get(m - 2) - (b_len.get(m - 2) - 1) * thr   // lowest y of block above
+                if b_top.get(m - 1) > above - thr
+                    float sum = b_sum.get(m - 2) + b_sum.get(m - 1)
+                    int   len = b_len.get(m - 2) + b_len.get(m - 1)
+                    b_top.pop()
+                    b_sum.pop()
+                    b_len.pop()
+                    b_top.set(m - 2, sum / len + (len - 1) * thr / 2)
+                    b_sum.set(m - 2, sum)
+                    b_len.set(m - 2, len)
+                else
+                    break
+        int k = 0
+        for b = 0 to b_top.size() - 1
+            for r = 0 to b_len.get(b) - 1
+                int   idx = ord.get(k)
+                float y   = b_top.get(b) - r * thr
+                float p   = col_y.get(idx)
+                if math.abs(y - p) > tol
+                    line ln = col_ln.get(idx)
+                    ln.set_x2(x_ldr)
+                    col.get(idx).set_y(y)
+                    lns.push(line.new(x_ldr, p, x_lbl, y, xloc=xloc.bar_time,
+                                      color=col_c.get(idx), style=line.style_solid, width=1))
+                k += 1

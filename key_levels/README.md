@@ -38,11 +38,13 @@ is the Sunday open and the monthly name comes from the trading days in the month
 | Remove | The line and label are deleted |
 
 - **Close or shared prices**: every level keeps its own line and label. Labels
-  closer together than **Label Spacing** (a share of the visible price range) are
-  spread out: two sit above and below their lines, three sit above, level with
-  and below. At equal prices the longer period goes on top. The visible range is
-  re-measured whenever you zoom or scroll, so the spacing holds on any timeframe.
-  A fourth label in the same cluster stays level and can still overlap.
+  closer together than **Label Spacing** (about one label's height, as a share
+  of the visible price range) are spaced out evenly around their prices, highest
+  price on top; at equal prices the longer period goes on top. Each moved label's
+  line stops 3 bars short and a thin leader in the line's color runs from the
+  line's end to its label, so every label stays tied to its own ray. Labels with
+  room stay level with their line. The visible range is re-measured whenever you
+  zoom or scroll, so the spacing holds on any timeframe.
 
 ## Timeframes
 
@@ -59,7 +61,8 @@ A level is drawn when its period is at least as long as the chart's bars.
 
 Opening Gaps puts its labels **Extend Right** bars past the current bar. Set
 Label Offset to that plus about 15 so Key Levels' labels start after Gaps' text.
-With Extend Right at 10, the default offset of 30 clears it at normal zoom on 1m.
+With Extend Right at 10, an offset of 25-30 clears it at normal zoom on 1m. The
+default of 10 suits a chart without Opening Gaps.
 
 Both offsets are counted in bars, not pixels, so the two sets of labels stay
 together as you scroll. Text has a fixed pixel width though, so zooming far out
@@ -69,13 +72,13 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 
 | Setting | Default | Notes |
 |---|---|---|
-| Label Offset (bars) | 30 | 0–500 bars past the current bar |
+| Label Offset (bars) | 10 | 0–500 bars past the current bar |
 | When Taken | Keep | Keep, Stop at take, Remove |
-| Show Price in Label | off | Appends the price, e.g. `July Monthly High 30861.25` |
-| Label Spacing (% of view) | 2 | Labels closer than this share of the visible price range are spread out; 0 = only identical prices |
-| *Type* on/off, Show Last | on, 1 | One per type; Show Last 1–12 |
-| Line | Monthly `#F23645` Solid 2 · Weekly `#4CAF50` Dashed 2 · Daily `#00BCD4` Dotted 1 | Color, style, width |
-| Text | Same colors as the lines, Small | Color, size (Tiny–Large) |
+| Show Price in Label | on | Appends the price, e.g. `July Monthly High 30861.25` |
+| Label Spacing (% of view) | 2 | About one label's height; labels closer than this are spaced out with leaders |
+| *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12 |
+| Line | Black, Solid, 2 for every type | Color, style, width |
+| Text | Black, Small for every type | Color, size (Tiny–Large) |
 
 Inputs are hidden from the chart status line.
 
@@ -118,5 +121,6 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.1.0 | Crowded labels are spaced out with leader lines to their own ray (replaces above/below); new defaults: offset 10, prices shown, Monthly 3 / Weekly 1 / Daily 3, black Solid 2 lines |
 | 1.0.1 | Lines start at the chart's own high/low candle when the higher-timeframe candle differs from intraday bars by a tick (FX) |
 | 1.0.0 | First release |
