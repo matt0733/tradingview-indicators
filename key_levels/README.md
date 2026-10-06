@@ -29,7 +29,9 @@ is the Sunday open and the monthly name comes from the trading days in the month
   1.12149, lowest 1h bar 1.12150). When the whole period is loaded, the line
   still starts at the chart's own high or low candle.
 - Untaken lines run to their label, **Label Offset** bars past the current bar.
-- A level is **taken** when a wick touches it. **When Taken** sets what happens:
+- A level is **taken** when a wick touches it. Each type has its own **When
+  Taken** setting, so for example daily levels can stop at their take while
+  monthly and weekly levels keep running:
 
 | When Taken | Result |
 |---|---|
@@ -73,12 +75,12 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Setting | Default | Notes |
 |---|---|---|
 | Label Offset (bars) | 10 | 0–500 bars past the current bar |
-| When Taken | Keep | Keep, Stop at take, Remove |
 | Show Price in Label | on | Appends the price, e.g. `July Monthly High 30861.25` |
 | Label Spacing (% of view) | 2 | About one label's height; labels closer than this are spaced out with leaders |
 | *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12 |
-| Line | Black, Solid, 2 for every type | Color, style, width |
+| Line | Black, Solid, 1 for every type | Color, style, width |
 | Text | Black, Small for every type | Color, size (Tiny–Large) |
+| When Taken | Keep for every type | Per type: Keep, Stop at take, Remove |
 
 Inputs are hidden from the chart status line.
 
@@ -95,6 +97,11 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - **Takes**: with Stop at take, take times matched the first 1m bar after the
   period that touched each level; Remove left only the untaken levels.
 - **Timeframes**: checked on 1m, 1h, D, W and M against the table above.
+- **Per-type When Taken** (1.2.0, 2026-10-06, COMEX:GCZ2026 1h): with Daily on
+  Stop at take and Monthly/Weekly on Keep, taken daily lines ended on the first
+  1h bar that touched them (5 checked) and untaken ones ran to their labels,
+  while taken monthly and weekly lines kept running. Weekly on Remove dropped the
+  taken weekly low and kept the untaken high.
 - **Other markets** (1.0.1, 2026-10-02): MESZ2026, MYMZ2026, NASDAQ:AAPL,
   COINBASE:BTCUSD and FX:EURUSD. Every level matched that symbol's own M, W and D
   candles, and with history loaded back to June on 1h, every line started on the
@@ -121,6 +128,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.2.0 | When Taken is set per type (Monthly, Weekly, Daily) instead of once for all; default line width 1 |
 | 1.1.0 | Crowded labels are spaced out with leader lines to their own ray (replaces above/below); new defaults: offset 10, prices shown, Monthly 3 / Weekly 1 / Daily 3, black Solid 2 lines |
 | 1.0.1 | Lines start at the chart's own high/low candle when the higher-timeframe candle differs from intraday bars by a tick (FX) |
 | 1.0.0 | First release |
