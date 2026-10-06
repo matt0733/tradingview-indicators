@@ -75,7 +75,7 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Setting | Default | Notes |
 |---|---|---|
 | Label Offset (bars) | 10 | 0–500 bars past the current bar |
-| Show Price in Label | on | Appends the price, e.g. `July Monthly High 30861.25` |
+| Show Price in Label | on | Appends the price in parentheses, as in Sessions, e.g. `July Monthly High (30861.25)` |
 | Label Spacing (% of view) | 2 | About one label's height; labels closer than this are spaced out with leaders |
 | *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12 |
 | Line | Black, Solid, 1 for every type | Color, style, width |
@@ -128,6 +128,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.2.1 | Price in labels is shown in parentheses, e.g. `July Monthly High (30861.25)` |
 | 1.2.0 | When Taken is set per type (Monthly, Weekly, Daily) instead of once for all; default line width 1 |
 | 1.1.0 | Crowded labels are spaced out with leader lines to their own ray (replaces above/below); new defaults: offset 10, prices shown, Monthly 3 / Weekly 1 / Daily 3, black Solid 2 lines |
 | 1.0.1 | Lines start at the chart's own high/low candle when the higher-timeframe candle differs from intraday bars by a tick (FX) |

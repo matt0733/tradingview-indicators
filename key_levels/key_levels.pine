@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.2.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.2.1", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -285,7 +285,7 @@ if barstate.islast
     array<float> col_k  = array.new<float>()
     array<color> col_c  = array.new<color>()
     for a in all
-        string txt  = a.name + (show_px ? " " + str.tostring(a.price, format.mintick) : "")
+        string txt  = a.name + (show_px ? " (" + str.tostring(a.price, format.mintick) + ")" : "")
         Cfg    c    = cfg_of(a.kind)
         bool   stop = c.take == "Stop at take" and not na(a.take_t)
         int    x2   = stop ? a.take_t : x_lbl
