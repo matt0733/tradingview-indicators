@@ -1,7 +1,8 @@
 # Key Levels
 
-Marks the highs and lows of previous months, weeks and days as horizontal lines,
-each labelled with the period it came from. Labels sit past the current bar so
+Marks the highs and lows of previous months, weeks and days, and the current
+monthly and weekly opens, as horizontal lines, each labelled with the period it
+came from. Labels sit past the current bar so
 they can be lined up after Opening Gaps' labels.
 
 ## Levels
@@ -18,6 +19,22 @@ periods are drawn, so Show Last 1 is the last full month, week or day.
 Periods follow TradingView's own bars for the symbol, which is why the weekly date
 is the Sunday open and the monthly name comes from the trading days in the month
 (a monthly bar opening Aug 31 18:00 is still September).
+
+## Opens
+
+| Type | Label | Shown on |
+|---|---|---|
+| Monthly Open | `Oct Monthly Open` | Every timeframe |
+| Weekly Open | `10/04 Weekly Open` | Weekly and lower (hidden on monthly) |
+
+Each is the opening price of the month or week in progress, with its own on/off
+and a **Previous** count that adds earlier opens (0-5 monthly, 0-3 weekly;
+default 0, so only the current open shows). Months and weeks follow the same
+trading periods as the highs and lows: for CME futures October opens with the
+Sep 30 18:00 session and the week opens Sunday 18:00. Each open's line starts at
+its period's first candle and always runs to its label, even after price trades
+through it. Opens share the label column, Show Price and Label Spacing with the
+highs and lows.
 
 ## How the levels are drawn
 
@@ -81,6 +98,9 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Line | Black, Solid, 1 for every type | Color, style, width |
 | Text | Black, Small for every type | Color, size (Tiny–Large) |
 | When Taken | Keep for every type | Per type: Keep, Stop at take, Remove |
+| Monthly Open / Weekly Open on/off, Previous | on, 0 | Previous 0-5 monthly, 0-3 weekly |
+| Open Line | Black, Dashed, 1 | Color, style, width |
+| Open Text | Black, Small | Color, size (Tiny-Large) |
 
 Inputs are hidden from the chart status line.
 
@@ -102,6 +122,12 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   1h bar that touched them (5 checked) and untaken ones ran to their labels,
   while taken monthly and weekly lines kept running. Weekly on Remove dropped the
   taken weekly low and kept the untaken high.
+- **Opens** (1.3.0, 2026-10-06, MNQZ2026): the current Oct monthly open
+  (30707.00, Sep 30 18:00 session) and 10/04 weekly open (31060.75) started on
+  the first daily candle of their period and matched its open. With Previous at
+  5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
+  all four weekly opens matched its W candles; weekly opens were hidden on the
+  monthly chart.
 - **Other markets** (1.0.1, 2026-10-02): MESZ2026, MYMZ2026, NASDAQ:AAPL,
   COINBASE:BTCUSD and FX:EURUSD. Every level matched that symbol's own M, W and D
   candles, and with history loaded back to June on 1h, every line started on the
@@ -128,6 +154,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.3.0 | Opens section: current monthly and weekly opens, each with up to 5 / 3 previous opens and its own line and text settings |
 | 1.2.1 | Price in labels is shown in parentheses, e.g. `July Monthly High (30861.25)` |
 | 1.2.0 | When Taken is set per type (Monthly, Weekly, Daily) instead of once for all; default line width 1 |
 | 1.1.0 | Crowded labels are spaced out with leader lines to their own ray (replaces above/below); new defaults: offset 10, prices shown, Monthly 3 / Weekly 1 / Daily 3, black Solid 2 lines |

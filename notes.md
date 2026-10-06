@@ -30,6 +30,7 @@ Design decisions (from the interview):
 - Equal prices are NOT merged: user asked for every level to keep its own line and label (merging was built, then removed).
 - Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
 - 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
+- 1.3.0: Opens section. Count = current + Previous (user chose; max 5 previous monthly / 3 weekly, default 0). Opens never stop at a take. Default Dashed to stand apart from solid highs/lows.
 - 1.2.0: When Taken is per type (user wants e.g. daily stopped at the take while monthly/weekly keep running); default line width 1.
 - Completed periods only. A type shows when its period >= chart timeframe (M chart: monthly only; W: monthly + weekly; D and below: all).
 - Week label = Sunday-open date; daily label = trading date.
