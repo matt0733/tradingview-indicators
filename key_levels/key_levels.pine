@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.3.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.4.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -73,11 +73,20 @@ int    wo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display
 color  wo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="wo2")
 string wo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="wo2")
 
+bool   mc_on   = input.bool(true, "Monthly Close", group=GO, display=display.none, inline="mc0")
+int    mc_prev = input.int(0, "Previous:", minval=0, maxval=5, group=GO, display=display.none, inline="mc0",
+    tooltip="The last completed month's closing price, plus up to 5 earlier months, labelled by abbreviated month, e.g. 'Sep Monthly Close'. The line starts on the month's last candle. Shown on every timeframe. Closes always run to their label, even after price trades through them.")
+color  mc_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="mc1")
+string mc_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="mc1")
+int    mc_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="mc1")
+color  mc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="mc2")
+string mc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="mc2")
+
 // ===========================================================================
 // TYPES
 // ===========================================================================
 type Cfg
-    int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open
+    int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open, 5 monthly close
     string tf
     bool   on
     int    keep
@@ -142,6 +151,7 @@ lvl_name(int kind, int t, int td, bool is_hi) =>
         1 => str.format_time(t, "MM/dd", syminfo.timezone) + " Prev Week " + hl
         2 => str.format_time(td, "EEE MM/dd", "UTC") + " Daily " + hl
         3 => str.format_time(td, "MMM", "UTC") + " Monthly Open"
+        5 => str.format_time(td, "MMM", "UTC") + " Monthly Close"
         =>   str.format_time(t, "MM/dd", syminfo.timezone) + " Weekly Open"
 
 // Evaluated on the higher timeframe: the last 12 completed periods (index 0 = most recent).
@@ -186,6 +196,38 @@ process_open(Cfg c, array<Level> lv, int cur_t, float cur_o, int cur_d) =>
             while lv.size() > c.keep - 1
                 lv.pop()
             lv.unshift(Level.new(c.kind, true, cur_o, cur_t, na, na, lvl_name(c.kind, cur_t, cur_d, true)))
+
+// Evaluated on the higher timeframe: closes of completed periods (index 0 = most recent).
+htf_closes() =>
+    array<float> cs = array.new<float>()
+    array<int>   ds = array.new<int>()
+    array<int>   es = array.new<int>()
+    for i = 1 to MAX_OPENS + 1
+        cs.push(close[i])
+        ds.push(time_tradingday[i])
+        es.push(time_close[i])
+    [cs, ds, es]
+
+// Keeps the last completed period's close plus c.keep - 1 earlier ones, newest first.
+// Lines start on the period's last chart bar (the bar before the new period opened);
+// closes rebuilt on the first bar start at the period's last bar by time instead,
+// which is usually off the left edge. end_t holds the open of the period that
+// followed, to spot the next rollover. Closes have no takes.
+process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd) =>
+    var bool init = false
+    int prev_t = time[1]
+    if c.on and tf_vis(c.tf) and not na(cur_t)
+        if not init
+            init := true
+            [cs, ds, es] = request.security(syminfo.tickerid, c.tf, htf_closes(), lookahead=barmerge.lookahead_on)
+            for k = c.keep - 1 to 0
+                if not na(cs.get(k))
+                    int key = k > 0 ? es.get(k - 1) : cur_t
+                    lv.unshift(Level.new(c.kind, true, cs.get(k), es.get(k) - tf_ms, key, na, lvl_name(c.kind, na, ds.get(k), true)))
+        else if (lv.size() == 0 or cur_t != lv.first().end_t) and not na(pc)
+            while lv.size() > c.keep - 1
+                lv.pop()
+            lv.unshift(Level.new(c.kind, true, pc, prev_t, cur_t, na, lvl_name(c.kind, na, pd, true)))
 
 // Adds completed periods, tracks the period in progress and marks takes. cur_t is the
 // open of the period in progress; hp/lp/pt/pd describe the last completed period.
@@ -254,12 +296,14 @@ var Cfg w_cfg = Cfg.new(1, "W", w_on, w_keep, w_lcol, w_lsty, w_lw, w_tcol, w_ts
 var Cfg d_cfg = Cfg.new(2, "D", d_on, d_keep, d_lcol, d_lsty, d_lw, d_tcol, d_tsz, d_take)
 var Cfg mo_cfg = Cfg.new(3, "M", mo_on, mo_prev + 1, mo_lcol, mo_lsty, mo_lw, mo_tcol, mo_tsz, "Keep")
 var Cfg wo_cfg = Cfg.new(4, "W", wo_on, wo_prev + 1, wo_lcol, wo_lsty, wo_lw, wo_tcol, wo_tsz, "Keep")
+var Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, mc_lcol, mc_lsty, mc_lw, mc_tcol, mc_tsz, "Keep")
 
 var array<Level> m_lv = array.new<Level>()
 var array<Level> w_lv = array.new<Level>()
 var array<Level> d_lv = array.new<Level>()
 var array<Level> mo_lv = array.new<Level>()
 var array<Level> wo_lv = array.new<Level>()
+var array<Level> mc_lv = array.new<Level>()
 
 var Tracker m_tr = Tracker.new()
 var Tracker w_tr = Tracker.new()
@@ -281,7 +325,8 @@ cfg_of(int kind) =>
         1 => w_cfg
         2 => d_cfg
         3 => mo_cfg
-        =>   wo_cfg
+        4 => wo_cfg
+        =>   mc_cfg
 
 collect(array<Level> dst, array<Level> src) =>
     for x in src
@@ -303,7 +348,7 @@ htf_last() =>
 [m_t, m_h, m_l, m_pt, m_pd] = request.security(syminfo.tickerid, m_req, htf_last(), lookahead=barmerge.lookahead_on)
 [w_t, w_h, w_l, w_pt, w_pd] = request.security(syminfo.tickerid, w_req, htf_last(), lookahead=barmerge.lookahead_on)
 [d_t, d_h, d_l, d_pt, d_pd] = request.security(syminfo.tickerid, d_req, htf_last(), lookahead=barmerge.lookahead_on)
-[m_h0, m_l0, m_d0, m_o0] = request.security(syminfo.tickerid, m_req, [high, low, time_tradingday, open], lookahead=barmerge.lookahead_on)
+[m_h0, m_l0, m_d0, m_o0, m_c1] = request.security(syminfo.tickerid, m_req, [high, low, time_tradingday, open, close[1]], lookahead=barmerge.lookahead_on)
 [w_o0, w_d0] = request.security(syminfo.tickerid, w_req, [open, time_tradingday], lookahead=barmerge.lookahead_on)
 
 process(m_cfg, m_lv, m_tr, m_t, m_h, m_l, m_pt, m_pd)
@@ -311,6 +356,7 @@ process(w_cfg, w_lv, w_tr, w_t, w_h, w_l, w_pt, w_pd)
 process(d_cfg, d_lv, d_tr, d_t, d_h, d_l, d_pt, d_pd)
 process_open(mo_cfg, mo_lv, m_t, m_o0, m_d0)
 process_open(wo_cfg, wo_lv, w_t, w_o0, w_d0)
+process_close(mc_cfg, mc_lv, m_t, m_c1, m_pd)
 
 // On a weekly chart the last bar can open in the month before (e.g. Sun 09/27), so
 // that month still counts as in progress after it has ended. Once the calendar has
@@ -345,6 +391,7 @@ if barstate.islast
     collect(all, d_lv)
     collect(all, mo_lv)
     collect(all, wo_lv)
+    collect(all, mc_lv)
 
     int x_lbl = time + lbl_off * tf_ms
     int x_ldr = time + math.max(lbl_off - LEAD_BARS, 0) * tf_ms   // where a leader starts

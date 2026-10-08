@@ -1,7 +1,7 @@
 # Key Levels
 
-Marks the highs and lows of previous months, weeks and days, and the current
-monthly and weekly opens, as horizontal lines, each labelled with the period it
+Marks the highs and lows of previous months, weeks and days, the current
+monthly and weekly opens, and the last monthly close, as horizontal lines, each labelled with the period it
 came from. Labels sit past the current bar so
 they can be lined up after Opening Gaps' labels.
 
@@ -26,6 +26,7 @@ is the Sunday open and the monthly name comes from the trading days in the month
 |---|---|---|
 | Monthly Open | `Oct Monthly Open` | Every timeframe |
 | Weekly Open | `10/04 Weekly Open` | Weekly and lower (hidden on monthly) |
+| Monthly Close | `Sep Monthly Close` | Every timeframe |
 
 Each is the opening price of the month or week in progress, with its own on/off
 and a **Previous** count that adds earlier opens (0-5 monthly, 0-3 weekly;
@@ -35,6 +36,14 @@ Sep 30 18:00 session and the week opens Sunday 18:00. Each open's line starts at
 its period's first candle and always runs to its label, even after price trades
 through it. Opens share the label column, Show Price and Label Spacing with the
 highs and lows.
+
+**Monthly Close** works the same way, but since the month in progress has no
+close yet, it shows the last completed month's close (Previous 0-5 adds earlier
+months). The price is TradingView's monthly candle close, and the line starts on
+the month's last candle. For CME futures TradingView closes daily and monthly
+candles at the settlement price, so it can differ from the last intraday candle's
+close: September 2026 on MNQZ2026 closed at 30698.75, while the last 1m candle
+(16:59 Sep 30) closed at 30726.25.
 
 ## How the levels are drawn
 
@@ -101,6 +110,7 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Monthly Open / Weekly Open on/off, Previous | on, 0 | Previous 0-5 monthly, 0-3 weekly |
 | Open Line | Black, Dashed, 1 | Color, style, width |
 | Open Text | Black, Small | Color, size (Tiny-Large) |
+| Monthly Close on/off, Previous | on, 0 | Previous 0-5; line Black Dashed 1, text Black Small |
 
 Inputs are hidden from the chart status line.
 
@@ -128,6 +138,10 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Monthly Close** (1.4.0, 2026-10-08, MNQZ2026): with Previous at 5, all six
+  closes (Apr-Sep) matched TradingView's M candles and started on each month's
+  last daily candle, whose close equalled the level. On 30m and 1m the September
+  line started on the last candle of Sep 30 (16:30 and 16:59).
 - **Other markets** (1.0.1, 2026-10-02): MESZ2026, MYMZ2026, NASDAQ:AAPL,
   COINBASE:BTCUSD and FX:EURUSD. Every level matched that symbol's own M, W and D
   candles, and with history loaded back to June on 1h, every line started on the
@@ -148,12 +162,16 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - Label Spacing only sees Key Levels' own labels. It can't move them away from
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
+- On a weekly chart, a Monthly Close appears one week late when the current
+  weekly bar opened in the previous month (e.g. September's close is missing
+  while the week of Sunday 9/27 is the current bar).
 - Tested on MNQ only.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.4.0 | Monthly Close in the Opens section: last completed month's close plus up to 5 earlier, with its own line and text settings |
 | 1.3.0 | Opens section: current monthly and weekly opens, each with up to 5 / 3 previous opens and its own line and text settings |
 | 1.2.1 | Price in labels is shown in parentheses, e.g. `July Monthly High (30861.25)` |
 | 1.2.0 | When Taken is set per type (Monthly, Weekly, Daily) instead of once for all; default line width 1 |
