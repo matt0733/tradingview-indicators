@@ -105,12 +105,12 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Label Spacing (% of view) | 2 | About one label's height; labels closer than this are spaced out with leaders |
 | *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12 |
 | High Line / Low Line | Black, Solid, 1 for every type | Color, style, width; set separately for highs and lows of each type |
-| High Text / Low Text | Black, Small for every type | Color, size (Tiny–Large); set separately for highs and lows of each type |
+| High Text / Low Text | Black, Small, not bold for every type | Color, size (Tiny–Large), Bold; set separately for highs and lows of each type |
 | When Taken | Keep for every type | Per type: Keep, Stop at take, Remove |
 | Monthly Open / Weekly Open on/off, Previous | on, 0 | Previous 0-5 monthly, 0-3 weekly |
 | Open Line | Black, Dashed, 1 | Color, style, width |
-| Open Text | Black, Small | Color, size (Tiny-Large) |
-| Monthly Close on/off, Previous | on, 0 | Previous 0-5; line Black Dashed 1, text Black Small |
+| Open Text | Black, Small, not bold | Color, size (Tiny-Large), Bold |
+| Monthly Close on/off, Previous | on, 0 | Previous 0-5; line Black Dashed 1, text Black Small, Bold off |
 
 Inputs are hidden from the chart status line.
 
@@ -138,6 +138,9 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Bold** (1.6.0, 2026-10-08, MNQZ2026 1h): with Bold on for Monthly High,
+  Weekly Low, Daily High and Monthly Open only, exactly those labels were drawn
+  bold and all others regular.
 - **High/low styles** (1.5.0, 2026-10-08, MNQZ2026 1h): with different
   colors, styles, widths and text sizes for the highs and lows of each type, every
   line and label (and leader) was drawn with its own settings, read back from
@@ -175,6 +178,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.6.0 | Bold option on every text row (high and low text of each type, Monthly Open, Weekly Open, Monthly Close) |
 | 1.5.0 | Separate line and text settings for highs and lows of each type; fixed changed colors not being drawn (settings are no longer captured once on the first bar) |
 | 1.4.0 | Monthly Close in the Opens section: last completed month's close plus up to 5 earlier, with its own line and text settings |
 | 1.3.0 | Opens section: current monthly and weekly opens, each with up to 5 / 3 previous opens and its own line and text settings |

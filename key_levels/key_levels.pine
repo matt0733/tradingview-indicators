@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.5.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.6.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -24,11 +24,13 @@ string m_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], g
 int    m_lw   = input.int(1, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
 color  m_tcol = input.color(#000000, "High Text", group=GM, display=display.none, inline="m2")
 string m_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m2")
+bool   m_tb   = input.bool(false, "Bold", group=GM, display=display.none, inline="m2")
 color  m_lcol2 = input.color(#000000, "Low Line", group=GM, display=display.none, inline="m3")
 string m_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m3")
 int    m_lw2   = input.int(1, "", minval=1, maxval=10, group=GM, display=display.none, inline="m3")
 color  m_tcol2 = input.color(#000000, "Low Text", group=GM, display=display.none, inline="m4")
 string m_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m4")
+bool   m_tb2   = input.bool(false, "Bold", group=GM, display=display.none, inline="m4")
 string m_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GM, display=display.none,
     tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
 
@@ -41,11 +43,13 @@ string w_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], g
 int    w_lw   = input.int(1, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
 color  w_tcol = input.color(#000000, "High Text", group=GW, display=display.none, inline="w2")
 string w_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w2")
+bool   w_tb   = input.bool(false, "Bold", group=GW, display=display.none, inline="w2")
 color  w_lcol2 = input.color(#000000, "Low Line", group=GW, display=display.none, inline="w3")
 string w_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w3")
 int    w_lw2   = input.int(1, "", minval=1, maxval=10, group=GW, display=display.none, inline="w3")
 color  w_tcol2 = input.color(#000000, "Low Text", group=GW, display=display.none, inline="w4")
 string w_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w4")
+bool   w_tb2   = input.bool(false, "Bold", group=GW, display=display.none, inline="w4")
 string w_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GW, display=display.none,
     tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
 
@@ -58,11 +62,13 @@ string d_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], g
 int    d_lw   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d1")
 color  d_tcol = input.color(#000000, "High Text", group=GD, display=display.none, inline="d2")
 string d_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d2")
+bool   d_tb   = input.bool(false, "Bold", group=GD, display=display.none, inline="d2")
 color  d_lcol2 = input.color(#000000, "Low Line", group=GD, display=display.none, inline="d3")
 string d_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d3")
 int    d_lw2   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d3")
 color  d_tcol2 = input.color(#000000, "Low Text", group=GD, display=display.none, inline="d4")
 string d_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d4")
+bool   d_tb2   = input.bool(false, "Bold", group=GD, display=display.none, inline="d4")
 string d_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GD, display=display.none,
     tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
 
@@ -78,6 +84,7 @@ string mo_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"],
 int    mo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="mo1")
 color  mo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="mo2")
 string mo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="mo2")
+bool   mo_tb   = input.bool(false, "Bold", group=GO, display=display.none, inline="mo2")
 
 bool   wo_on   = input.bool(true, "Weekly Open", group=GO, display=display.none, inline="wo0")
 int    wo_prev = input.int(0, "Previous:", minval=0, maxval=3, group=GO, display=display.none, inline="wo0",
@@ -87,6 +94,7 @@ string wo_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"],
 int    wo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="wo1")
 color  wo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="wo2")
 string wo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="wo2")
+bool   wo_tb   = input.bool(false, "Bold", group=GO, display=display.none, inline="wo2")
 
 bool   mc_on   = input.bool(true, "Monthly Close", group=GO, display=display.none, inline="mc0")
 int    mc_prev = input.int(0, "Previous:", minval=0, maxval=5, group=GO, display=display.none, inline="mc0",
@@ -96,6 +104,7 @@ string mc_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"],
 int    mc_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="mc1")
 color  mc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="mc2")
 string mc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="mc2")
+bool   mc_tb   = input.bool(false, "Bold", group=GO, display=display.none, inline="mc2")
 
 // ===========================================================================
 // TYPES
@@ -116,6 +125,8 @@ type Cfg
     int    lw2
     color  tcol2
     string tsz2
+    bool   bold     // bold text: highs (and opens/close), then lows
+    bool   bold2
 
 type Level
     int    kind
@@ -312,12 +323,12 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
 // STATE
 // ===========================================================================
 // Built every bar (not var) so a changed input always reaches the drawing code
-Cfg m_cfg  = Cfg.new(0, "M", m_on, m_keep, m_lcol, m_lsty, m_lw, m_tcol, m_tsz, m_take, m_lcol2, m_lsty2, m_lw2, m_tcol2, m_tsz2)
-Cfg w_cfg  = Cfg.new(1, "W", w_on, w_keep, w_lcol, w_lsty, w_lw, w_tcol, w_tsz, w_take, w_lcol2, w_lsty2, w_lw2, w_tcol2, w_tsz2)
-Cfg d_cfg  = Cfg.new(2, "D", d_on, d_keep, d_lcol, d_lsty, d_lw, d_tcol, d_tsz, d_take, d_lcol2, d_lsty2, d_lw2, d_tcol2, d_tsz2)
-Cfg mo_cfg = Cfg.new(3, "M", mo_on, mo_prev + 1, mo_lcol, mo_lsty, mo_lw, mo_tcol, mo_tsz, "Keep")
-Cfg wo_cfg = Cfg.new(4, "W", wo_on, wo_prev + 1, wo_lcol, wo_lsty, wo_lw, wo_tcol, wo_tsz, "Keep")
-Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, mc_lcol, mc_lsty, mc_lw, mc_tcol, mc_tsz, "Keep")
+Cfg m_cfg  = Cfg.new(0, "M", m_on, m_keep, m_lcol, m_lsty, m_lw, m_tcol, m_tsz, m_take, m_lcol2, m_lsty2, m_lw2, m_tcol2, m_tsz2, m_tb, m_tb2)
+Cfg w_cfg  = Cfg.new(1, "W", w_on, w_keep, w_lcol, w_lsty, w_lw, w_tcol, w_tsz, w_take, w_lcol2, w_lsty2, w_lw2, w_tcol2, w_tsz2, w_tb, w_tb2)
+Cfg d_cfg  = Cfg.new(2, "D", d_on, d_keep, d_lcol, d_lsty, d_lw, d_tcol, d_tsz, d_take, d_lcol2, d_lsty2, d_lw2, d_tcol2, d_tsz2, d_tb, d_tb2)
+Cfg mo_cfg = Cfg.new(3, "M", mo_on, mo_prev + 1, mo_lcol, mo_lsty, mo_lw, mo_tcol, mo_tsz, "Keep", na, na, na, na, na, mo_tb)
+Cfg wo_cfg = Cfg.new(4, "W", wo_on, wo_prev + 1, wo_lcol, wo_lsty, wo_lw, wo_tcol, wo_tsz, "Keep", na, na, na, na, na, wo_tb)
+Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, mc_lcol, mc_lsty, mc_lw, mc_tcol, mc_tsz, "Keep", na, na, na, na, na, mc_tb)
 
 var array<Level> m_lv = array.new<Level>()
 var array<Level> w_lv = array.new<Level>()
@@ -435,7 +446,8 @@ if barstate.islast
                                color=lcol, style=ls(lo ? c.lsty2 : c.lsty), width=lo ? c.lw2 : c.lw)
         label  lb   = label.new(lx, a.price, txt, xloc=xloc.bar_time, style=sty,
                                 color=color.new(color.white, 100), textcolor=tcol,
-                                size=lbl_sz(lo ? c.tsz2 : c.tsz), textalign=text.align_left)
+                                size=lbl_sz(lo ? c.tsz2 : c.tsz), textalign=text.align_left,
+                                text_formatting=(lo ? c.bold2 : c.bold) ? text.format_bold : text.format_none)
         lns.push(ln)
         lbs.push(lb)
         if not stop
