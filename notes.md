@@ -30,6 +30,7 @@ Design decisions (from the interview):
 - Equal prices are NOT merged: user asked for every level to keep its own line and label (merging was built, then removed).
 - Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
 - 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
+- 1.5.0: separate High/Low line and text settings per type (on/off, Show Last, When Taken stay shared; user agreed). Bug found while testing: settings held in `var Cfg` built on bar 0 meant changed colors never reached the drawings (styles/widths did). Cfg objects are now built every bar.
 - 1.4.0: Monthly Close under Opens, mirroring Monthly Open; shows the last completed month (current month has no close). Uses TradingView's M candle close (settlement for CME futures), not the last intraday trade.
 - 1.3.0: Opens section. Count = current + Previous (user chose; max 5 previous monthly / 3 weekly, default 0). Opens never stop at a take. Default Dashed to stand apart from solid highs/lows.
 - 1.2.0: When Taken is per type (user wants e.g. daily stopped at the take while monthly/weekly keep running); default line width 1.
