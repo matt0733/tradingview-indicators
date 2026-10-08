@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.7.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.8.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -37,7 +37,7 @@ string m_take = input.string("Keep", "When Taken", options=["Keep","Stop at take
 string GW = "Weekly"
 bool   w_on   = input.bool(true, "Weekly", group=GW, display=display.none, inline="w0")
 int    w_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GW, display=display.none, inline="w0",
-    tooltip="Highs and lows of the last completed weeks, labelled with the date the week opened (Sunday evening for CME futures), e.g. '09/27 Prev Week High'. Shown on every timeframe up to weekly.")
+    tooltip="Highs and lows of the last completed weeks, labelled 'Previous Weekly High' / 'Previous Weekly Low' for the last completed week; older weeks add the date the week opened (Sunday evening for CME futures), e.g. '09/27 Previous Weekly High'. Shown on every timeframe up to weekly.")
 color  w_lcol = input.color(#000000, "High Line", group=GW, display=display.none, inline="w1")
 string w_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
 int    w_lw   = input.int(1, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
@@ -181,7 +181,7 @@ lvl_name(int kind, int t, int td, bool is_hi) =>
     string hl = is_hi ? "High" : "Low"
     switch kind
         0 => str.format_time(td, "MMMM", "UTC") + " Monthly " + hl
-        1 => str.format_time(t, "MM/dd", syminfo.timezone) + " Prev Week " + hl
+        1 => str.format_time(t, "MM/dd", syminfo.timezone) + " Previous Weekly " + hl
         2 => str.format_time(td, "EEE MM/dd", "UTC") + " Daily " + hl
         3 => str.format_time(td, "MMM", "UTC") + " Monthly Open"
         5 => str.format_time(td, "MMM", "UTC") + " Monthly Close"
@@ -477,6 +477,9 @@ if barstate.islast
     lbs.clear()
 
     array<Level> all = array.new<Level>()
+    // The last completed week is labelled without its date; older weeks keep it.
+    // Its high and low share end_t (the open of the week after).
+    int wk_last = w_lv.size() > 0 ? w_lv.first().end_t : na
     collect(all, m_lv)
     collect(all, w_lv)
     collect(all, d_lv)
@@ -492,7 +495,8 @@ if barstate.islast
     array<float> col_k  = array.new<float>()
     array<color> col_c  = array.new<color>()
     for a in all
-        string txt  = a.name + (show_px ? " (" + str.tostring(a.price, format.mintick) + ")" : "")
+        string nm   = a.kind == 1 and a.end_t == wk_last ? "Previous Weekly " + (a.is_hi ? "High" : "Low") : a.name
+        string txt  = nm + (show_px ? " (" + str.tostring(a.price, format.mintick) + ")" : "")
         Cfg    c    = cfg_of(a.kind)
         bool   lo   = not a.is_hi and a.kind <= 2   // lows of highs/lows types use the low style
         color  lcol = lo ? c.lcol2 : c.lcol

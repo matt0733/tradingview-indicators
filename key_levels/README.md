@@ -10,7 +10,7 @@ they can be lined up after Opening Gaps' labels.
 | Type | Label | Period |
 |---|---|---|
 | Monthly | `September Monthly High` | Calendar month |
-| Weekly | `09/20 Prev Week High` | Week, dated by its open (Sunday 18:00 New York for CME futures) |
+| Weekly | `Previous Weekly High`, older weeks `09/20 Previous Weekly High` | Week; older weeks are dated by their open (Sunday 18:00 New York for CME futures) |
 | Daily | `Thu 10/01 Daily High` | Trading day; the session opening Wednesday 18:00 is Thursday's |
 
 Each type has its own on/off and **Show Last** count (1–12). Only completed
@@ -130,7 +130,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 - **Values**: every monthly, weekly and daily high and low matched TradingView's
   own M, W and D bars, with Show Last 1 and 12 (72 levels).
-- **Names**: September for a monthly bar opening Aug 31 18:00; `09/20 Prev Week`
+- **Names** (1.0.0 wording): September for a monthly bar opening Aug 31 18:00; `09/20 Prev Week`
   for the week opening Sunday 9/20 18:00; `Thu 10/01 Daily` for the session
   opening Wednesday 18:00.
 - **Anchors**: lines started on the exact daily and 1m bars that set each price.
@@ -148,6 +148,9 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Weekly names** (1.8.0, 2026-10-08, MNQZ2026): with Show Last 1 the weekly
+  levels read `Previous Weekly High/Low`; with 4, the latest week stayed undated
+  and 09/20, 09/13 and 09/06 were dated, on daily and with Show on Monthly Chart.
 - **Weekly on monthly** (1.7.0, 2026-10-08, MNQZ2026): with Show on Monthly
   Chart on, all 12 previous weeks (07/12-09/27) matched TradingView's weekly
   candles; with Stop at take the 5 levels taken by later weeks ended on the right
@@ -182,7 +185,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   placed at the open of the period that took them, not the exact candle. These
   are off the left edge of the chart.
 - Holiday weeks use TradingView's weekly bar open: the July 4th 2026 week opened
-  Thursday 7/2 18:00, so it is labelled `07/02 Prev Week`.
+  Thursday 7/2 18:00, so (when not the latest week) it is labelled `07/02 Previous Weekly`.
 - Label Spacing only sees Key Levels' own labels. It can't move them away from
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
@@ -198,6 +201,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.8.0 | Weekly labels: the latest week reads `Previous Weekly High/Low` with no date; older weeks read `09/27 Previous Weekly High/Low` |
 | 1.7.0 | Show on Monthly Chart option for weekly highs/lows; lines start on the candle containing their time on higher-timeframe charts (were a candle late); monthly levels on a weekly chart no longer anchor to a week straddling two months |
 | 1.6.0 | Bold option on every text row (high and low text of each type, Monthly Open, Weekly Open, Monthly Close) |
 | 1.5.0 | Separate line and text settings for highs and lows of each type; fixed changed colors not being drawn (settings are no longer captured once on the first bar) |
