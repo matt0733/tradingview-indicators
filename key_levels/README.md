@@ -83,7 +83,17 @@ A level is drawn when its period is at least as long as the chart's bars.
 | Intraday | yes | yes | yes |
 | Daily | yes | yes | yes |
 | Weekly | yes | yes | hidden |
-| Monthly | yes | hidden | hidden |
+| Monthly | yes | optional | hidden |
+
+**Show on Monthly Chart** (Weekly section, off by default) draws the previous
+weekly highs and lows on a monthly chart too. A monthly candle spans several
+weeks, so the levels and their takes come from the weekly candles: with Stop at
+take a line ends at the monthly candle containing the week that took it.
+
+On charts whose candles are longer than a level's period start (or take) time,
+lines start on the candle that contains that time, e.g. a weekly level on a
+monthly chart starts on the month containing that week, and a monthly open on a
+weekly chart starts on the week containing the month's first session.
 
 ## Lining up with Opening Gaps
 
@@ -138,6 +148,13 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Weekly on monthly** (1.7.0, 2026-10-08, MNQZ2026): with Show on Monthly
+  Chart on, all 12 previous weeks (07/12-09/27) matched TradingView's weekly
+  candles; with Stop at take the 5 levels taken by later weeks ended on the right
+  month and the 3 untaken ran to their labels. Line starts snapped to the
+  containing candle on the monthly and weekly charts; EURUSD 1h daily levels
+  (up to 3 ticks off the daily candle) still started on each day's own
+  high/low candle.
 - **Bold** (1.6.0, 2026-10-08, MNQZ2026 1h): with Bold on for Monthly High,
   Weekly Low, Daily High and Monthly Open only, exactly those labels were drawn
   bold and all others regular.
@@ -172,12 +189,16 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - On a weekly chart, a Monthly Close appears one week late when the current
   weekly bar opened in the previous month (e.g. September's close is missing
   while the week of Sunday 9/27 is the current bar).
-- Tested on MNQ only.
+- On a weekly chart a monthly high or low set in a week that straddles two
+  months (e.g. the week of 9/27, which includes Oct 1-2) can't be pinned to that
+  week, so its line starts at the week containing the month's first session.
+- Tested on MNQ, MES, MYM, AAPL, BTCUSD and EURUSD.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.7.0 | Show on Monthly Chart option for weekly highs/lows; lines start on the candle containing their time on higher-timeframe charts (were a candle late); monthly levels on a weekly chart no longer anchor to a week straddling two months |
 | 1.6.0 | Bold option on every text row (high and low text of each type, Monthly Open, Weekly Open, Monthly Close) |
 | 1.5.0 | Separate line and text settings for highs and lows of each type; fixed changed colors not being drawn (settings are no longer captured once on the first bar) |
 | 1.4.0 | Monthly Close in the Opens section: last completed month's close plus up to 5 earlier, with its own line and text settings |

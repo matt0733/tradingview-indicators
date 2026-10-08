@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.6.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.7.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -52,6 +52,8 @@ string w_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Lar
 bool   w_tb2   = input.bool(false, "Bold", group=GW, display=display.none, inline="w4")
 string w_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GW, display=display.none,
     tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
+bool   w_on_m = input.bool(false, "Show on Monthly Chart", group=GW, display=display.none,
+    tooltip="Also draw the previous weekly highs and lows on a monthly chart. Levels and takes come from the weekly candles, so with Stop at take a line ends at the monthly candle containing the week that took it.")
 
 string GD = "Daily"
 bool   d_on   = input.bool(true, "Daily", group=GD, display=display.none, inline="d0")
@@ -260,6 +262,34 @@ process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd) =>
                 lv.pop()
             lv.unshift(Level.new(c.kind, true, pc, prev_t, cur_t, na, lvl_name(c.kind, na, pd, true)))
 
+// Weekly levels on a monthly chart: a monthly bar spans several weeks, so the levels
+// are rebuilt on the last bar from the weekly candles, takes included. The weekly
+// timeframe is lower than the chart's here, and only lookahead_off returns the latest
+// week inside the monthly bar (lookahead_on returns its first week).
+process_on_monthly(Cfg c, array<Level> lv, bool show) =>
+    if c.on and show and barstate.islast
+        lv.clear()
+        [cur_t, ch, cl]  = request.security(syminfo.tickerid, c.tf, [time, high, low], lookahead=barmerge.lookahead_off)
+        [hs, lo, ts, ds] = request.security(syminfo.tickerid, c.tf, htf_hist(), lookahead=barmerge.lookahead_off)
+        for k = c.keep - 1 to 0
+            if not na(hs.get(k))
+                int   t = ts.get(k)
+                int   e = k > 0 ? ts.get(k - 1) : cur_t
+                Level h = Level.new(c.kind, true,  hs.get(k), t, e, na, lvl_name(c.kind, t, ds.get(k), true))
+                Level l = Level.new(c.kind, false, lo.get(k), t, e, na, lvl_name(c.kind, t, ds.get(k), false))
+                if k > 0
+                    for j = k - 1 to 0
+                        if na(h.take_t) and hs.get(j) >= h.price
+                            h.take_t := ts.get(j)
+                        if na(l.take_t) and lo.get(j) <= l.price
+                            l.take_t := ts.get(j)
+                if na(h.take_t) and ch >= h.price
+                    h.take_t := cur_t
+                if na(l.take_t) and cl <= l.price
+                    l.take_t := cur_t
+                lv.unshift(l)
+                lv.unshift(h)
+
 // Adds completed periods, tracks the period in progress and marks takes. cur_t is the
 // open of the period in progress; hp/lp/pt/pd describe the last completed period.
 process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int pt, int pd) =>
@@ -286,13 +316,15 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
                     lv.unshift(h)
         else if cur_t != tr.cur_t and not na(hp)
             // A period just closed. Anchor at the bar that set each price. If the whole
-            // period is loaded, that is the chart's own high/low bar even when the
-            // higher-timeframe candle differs by a tick (TradingView's FX daily and
-            // intraday feeds can). If only part is loaded, use the bar only when its
-            // price matches; otherwise fall back to the period's open.
+            // period is loaded and the chart's bars fit inside it, that is the chart's
+            // own high/low bar even when the higher-timeframe candle differs by a few
+            // ticks (TradingView's FX daily and intraday feeds can). Weekly bars can
+            // straddle two months, so there a monthly level needs a matching price.
+            // Otherwise fall back to the period's open.
             bool seen = pt == tr.cur_t
-            int  hx   = seen and (tr.full or math.abs(tr.hi - hp) < tol) ? tr.hi_t : pt
-            int  lx   = seen and (tr.full or math.abs(tr.lo - lp) < tol) ? tr.lo_t : pt
+            bool nest = tr.full and not (timeframe.isweekly and c.kind == 0)
+            int  hx   = seen and (nest or math.abs(tr.hi - hp) < tol) ? tr.hi_t : pt
+            int  lx   = seen and (nest or math.abs(tr.lo - lp) < tol) ? tr.lo_t : pt
             lv.unshift(Level.new(c.kind, false, lp, lx, cur_t, na, lvl_name(c.kind, pt, pd, false)))
             lv.unshift(Level.new(c.kind, true,  hp, hx, cur_t, na, lvl_name(c.kind, pt, pd, true)))
             while lv.size() > c.keep * 2
@@ -344,6 +376,31 @@ var Tracker d_tr = Tracker.new()
 var array<line>  lns = array.new<line>()
 var array<label> lbs = array.new<label>()
 
+// Open time of every chart bar, to snap higher-timeframe times onto the bar that
+// contains them. With xloc.bar_time TradingView puts a time that falls inside a bar
+// on the NEXT bar, e.g. a week inside a monthly candle would start a month late.
+var array<int> bar_ts = array.new<int>()
+bar_ts.push(time)
+if bar_ts.size() > 90000
+    bar_ts.shift()
+
+snap(int t) =>
+    int n = bar_ts.size()
+    int r = t
+    if not na(t) and n > 0 and t >= bar_ts.first() and t < bar_ts.last()
+        int lo = 0
+        int hi = n - 1
+        while lo < hi
+            int mid = int(math.ceil((lo + hi) / 2.0))
+            if bar_ts.get(mid) <= t
+                lo := mid
+            else
+                hi := mid - 1
+        r := bar_ts.get(lo)
+    else if not na(t) and n > 0 and t >= bar_ts.last()
+        r := bar_ts.last()
+    r
+
 // High and low of the bars in view; the script recalculates when the view changes
 var float vis_hi = na
 var float vis_lo = na
@@ -370,6 +427,7 @@ collect(array<Level> dst, array<Level> src) =>
 // ===========================================================================
 // Hidden types request the chart's own timeframe, since a lower one isn't allowed
 string m_req = tf_vis("M") ? "M" : timeframe.period
+bool   w_monthly = w_on_m and timeframe.ismonthly   // weekly levels drawn on a monthly chart
 string w_req = tf_vis("W") ? "W" : timeframe.period
 string d_req = tf_vis("D") ? "D" : timeframe.period
 
@@ -385,6 +443,7 @@ htf_last() =>
 
 process(m_cfg, m_lv, m_tr, m_t, m_h, m_l, m_pt, m_pd)
 process(w_cfg, w_lv, w_tr, w_t, w_h, w_l, w_pt, w_pd)
+process_on_monthly(w_cfg, w_lv, w_monthly)
 process(d_cfg, d_lv, d_tr, d_t, d_h, d_l, d_pt, d_pd)
 process_open(mo_cfg, mo_lv, m_t, m_o0, m_d0)
 process_open(wo_cfg, wo_lv, w_t, w_o0, w_d0)
@@ -439,10 +498,11 @@ if barstate.islast
         color  lcol = lo ? c.lcol2 : c.lcol
         color  tcol = lo ? c.tcol2 : c.tcol
         bool   stop = c.take == "Stop at take" and not na(a.take_t)
-        int    x2   = stop ? a.take_t : x_lbl
-        int    lx   = stop ? int((a.x1 + x2) / 2) : x_lbl
+        int    x1   = snap(a.x1)
+        int    x2   = stop ? snap(a.take_t) : x_lbl
+        int    lx   = stop ? int((x1 + x2) / 2) : x_lbl
         string sty  = stop ? (a.is_hi ? label.style_label_down : label.style_label_up) : label.style_label_left
-        line   ln   = line.new(a.x1, a.price, x2, a.price, xloc=xloc.bar_time,
+        line   ln   = line.new(x1, a.price, x2, a.price, xloc=xloc.bar_time,
                                color=lcol, style=ls(lo ? c.lsty2 : c.lsty), width=lo ? c.lw2 : c.lw)
         label  lb   = label.new(lx, a.price, txt, xloc=xloc.bar_time, style=sty,
                                 color=color.new(color.white, 100), textcolor=tcol,
