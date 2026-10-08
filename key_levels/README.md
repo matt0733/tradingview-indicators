@@ -69,7 +69,7 @@ close: September 2026 on MNQZ2026 closed at 30698.75, while the last 1m candle
   closer together than **Label Spacing** (about one label's height, as a share
   of the visible price range) are spaced out evenly around their prices, highest
   price on top; at equal prices the longer period goes on top. Each moved label's
-  line stops 3 bars short and a thin leader in the line's color runs from the
+  line stops 3 bars short and a leader in the line's color, style and width runs from the
   line's end to its label, so every label stays tied to its own ray. Labels with
   room stay level with their line. The visible range is re-measured whenever you
   zoom or scroll, so the spacing holds on any timeframe.
@@ -148,6 +148,9 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Leaders** (1.9.0, 2026-10-08, MNQZ2026 D): dashed opens/close had dashed
+  leaders, solid levels solid ones, and a Weekly High set to Dotted 2 got a
+  Dotted 2 leader.
 - **Weekly names** (1.8.0, 2026-10-08, MNQZ2026): with Show Last 1 the weekly
   levels read `Previous Weekly High/Low`; with 4, the latest week stayed undated
   and 09/20, 09/13 and 09/06 were dated, on daily and with Show on Monthly Chart.
@@ -201,6 +204,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.9.0 | Leaders use their line's style and width (were always solid, width 1) |
 | 1.8.0 | Weekly labels: the latest week reads `Previous Weekly High/Low` with no date; older weeks read `09/27 Previous Weekly High/Low` |
 | 1.7.0 | Show on Monthly Chart option for weekly highs/lows; lines start on the candle containing their time on higher-timeframe charts (were a candle late); monthly levels on a weekly chart no longer anchor to a week straddling two months |
 | 1.6.0 | Bold option on every text row (high and low text of each type, Monthly Open, Weekly Open, Monthly Close) |

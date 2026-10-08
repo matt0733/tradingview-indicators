@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.8.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.9.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -494,6 +494,8 @@ if barstate.islast
     array<float> col_y  = array.new<float>()
     array<float> col_k  = array.new<float>()
     array<color> col_c  = array.new<color>()
+    array<string> col_s = array.new<string>()   // line style and width, reused by leaders
+    array<int>   col_w  = array.new<int>()
     for a in all
         string nm   = a.kind == 1 and a.end_t == wk_last ? "Previous Weekly " + (a.is_hi ? "High" : "Low") : a.name
         string txt  = nm + (show_px ? " (" + str.tostring(a.price, format.mintick) + ")" : "")
@@ -501,13 +503,15 @@ if barstate.islast
         bool   lo   = not a.is_hi and a.kind <= 2   // lows of highs/lows types use the low style
         color  lcol = lo ? c.lcol2 : c.lcol
         color  tcol = lo ? c.tcol2 : c.tcol
+        string lsty = lo ? c.lsty2 : c.lsty
+        int    lw   = lo ? c.lw2 : c.lw
         bool   stop = c.take == "Stop at take" and not na(a.take_t)
         int    x1   = snap(a.x1)
         int    x2   = stop ? snap(a.take_t) : x_lbl
         int    lx   = stop ? int((x1 + x2) / 2) : x_lbl
         string sty  = stop ? (a.is_hi ? label.style_label_down : label.style_label_up) : label.style_label_left
         line   ln   = line.new(x1, a.price, x2, a.price, xloc=xloc.bar_time,
-                               color=lcol, style=ls(lo ? c.lsty2 : c.lsty), width=lo ? c.lw2 : c.lw)
+                               color=lcol, style=ls(lsty), width=lw)
         label  lb   = label.new(lx, a.price, txt, xloc=xloc.bar_time, style=sty,
                                 color=color.new(color.white, 100), textcolor=tcol,
                                 size=lbl_sz(lo ? c.tsz2 : c.tsz), textalign=text.align_left,
@@ -520,6 +524,8 @@ if barstate.islast
             col_y.push(a.price)
             col_k.push(a.price - a.kind * tol / 4)   // ties: longer period on top
             col_c.push(lcol)
+            col_s.push(lsty)
+            col_w.push(lw)
 
     // Labels closer than one label height (thr) are spaced out evenly around their
     // prices, highest at the top. Each moved label gets a short leader from the end
@@ -564,5 +570,5 @@ if barstate.islast
                     ln.set_x2(x_ldr)
                     col.get(idx).set_y(y)
                     lns.push(line.new(x_ldr, p, x_lbl, y, xloc=xloc.bar_time,
-                                      color=col_c.get(idx), style=line.style_solid, width=1))
+                                      color=col_c.get(idx), style=ls(col_s.get(idx)), width=col_w.get(idx)))
                 k += 1
