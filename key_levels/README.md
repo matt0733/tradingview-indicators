@@ -46,9 +46,20 @@ candles at the settlement price, so it can differ from the last intraday candle'
 close: September 2026 on MNQZ2026 closed at 30698.75, while the last 1m candle
 (16:59 Sep 30) closed at 30726.25.
 
-**Previous Day Close** is the last completed trading day's daily candle close
-(settlement for CME futures), one level only, with its own line and text
-settings. Its line starts on that day's last candle.
+**Previous Day Close** is the last completed trading day's close, one level
+only, with its own line and text settings.
+
+**Close Price** (end of the Opens section) picks the price both closes use:
+
+| Close Price | Price | Line starts on |
+|---|---|---|
+| Settlement (default) | The daily/monthly candle close; for CME futures the settlement, set around 16:00 New York | The last candle of the period that traded through that price (searching up to 3000 bars back), or the closest one if none did |
+| Last Trade | The close of the period's last candle | That candle |
+
+The settlement often isn't the last traded price (CME trades on to 17:00), so
+anchoring it to the day's last candle left the line floating beside that
+candle. On daily and higher charts, and for closes older than the loaded
+history, both options use the candle close. For FX the two are the same price.
 
 ## How the levels are drawn
 
@@ -127,6 +138,7 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Open Text | Black, Small, bold | Color, size (Tiny-Large), Bold |
 | Monthly Close on/off, Previous | on, 3 | Previous 0-5; line Black Dashed 2, text Black Small bold |
 | Previous Day Close on/off | on | Line Black Dashed 2, text Black Small bold |
+| Close Price | Settlement | Settlement or Last Trade, for Monthly Close and Previous Day Close |
 
 Inputs are hidden from the chart status line.
 
@@ -154,6 +166,11 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Close Price** (1.12.0, 2026-10-09): on MNQZ2026, MESZ2026 and FX:EURUSD,
+  1m, 5m, 10m, 1h, 4h and daily, with both Settlement and Last Trade (36 runs),
+  every Previous Day Close and Closing Price line whose candle was loaded
+  started on a candle whose range contained its price. Settlement on MNQ: 30969.50
+  anchored to 15:59 (1m) / 15:00 (1h); Last Trade: 31021.50 at 16:59 (1m).
 - **Previous Day Close and names** (1.11.0, 2026-10-09, MNQZ2026): 30969.50
   matched the Oct 8 daily candle close; its line started on that day's last
   candle on 1m (16:59), 5m (16:55), 10m (16:50), 1h (16:00), 4h (14:00) and
@@ -215,6 +232,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.12.0 | Close Price setting (Settlement / Last Trade) for Monthly Close and Previous Day Close; settlement closes start on a candle that traded at that price instead of floating beside the day's last candle |
 | 1.11.0 | Previous Day Close in the Opens section; defaults taken from the user's chart (blue highs, red lows, width 2, bold, Weekly dotted and on the monthly chart, Monthly Open/Close Previous 3) |
 | 1.10.0 | Month labels include the year: `September 2026 Monthly High`, `October 2026 Opening Price`, `September 2026 Closing Price` |
 | 1.9.0 | Leaders use their line's style and width (were always solid, width 1) |

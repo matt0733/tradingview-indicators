@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.11.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.12.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -116,6 +116,8 @@ int    pc_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display
 color  pc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="pc2")
 string pc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="pc2")
 bool   pc_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="pc2")
+string cl_md   = input.string("Settlement", "Close Price", options=["Settlement","Last Trade"], group=GO, display=display.none,
+    tooltip="Which price Monthly Close and Previous Day Close use. Settlement: the daily/monthly candle's close (for CME futures the settlement price, set around 16:00 New York); the line starts on the last candle of the period that traded through it, or the closest one if none did. Last Trade: the close of the period's last candle, where the line starts. On daily and higher charts, and for closes older than the loaded history, both use the candle close.")
 
 // ===========================================================================
 // TYPES
@@ -162,6 +164,7 @@ type Tracker
 // ===========================================================================
 const int MAX_KEEP = 12
 const int MAX_OPENS = 5   // previous monthly opens; weekly allows 3
+const int SEARCH_BARS = 3000   // how far back a settlement close looks for a candle that traded there
 const int LEAD_BARS = 3   // length of a leader to a moved label
 
 float tol   = syminfo.mintick / 2
@@ -256,9 +259,35 @@ htf_closes() =>
 // closes rebuilt on the first bar start at the period's last bar by time instead,
 // which is usually off the left edge. end_t holds the open of the period that
 // followed, to spot the next rollover. Closes have no takes.
-process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd) =>
+max_bars_back(time, SEARCH_BARS + 1)
+max_bars_back(high, SEARCH_BARS + 1)
+max_bars_back(low, SEARCH_BARS + 1)
+
+// Latest bar of the period starting at pt (searching back from the previous bar, at
+// most SEARCH_BARS) whose range contains price p; if none does, the one that came
+// closest. Lets a settlement close start on a candle that actually traded there.
+touch_bar(float p, int pt) =>
+    int   best_t = time[1]
+    float best_d = na
+    int   hit_t  = na
+    for i = 1 to SEARCH_BARS
+        if na(time[i]) or time[i] < pt
+            break
+        if low[i] <= p and p <= high[i]
+            hit_t := time[i]
+            break
+        float d = p > high[i] ? p - high[i] : low[i] - p
+        if na(best_d) or d < best_d
+            best_d := d
+            best_t := time[i]
+    na(hit_t) ? best_t : hit_t
+
+// Close of the period that just ended, per the Close Price setting: the candle close
+// anchored on a bar that touched it, or the last bar's close (intraday charts only).
+process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd, int pt) =>
     var bool init = false
-    int prev_t = time[1]
+    int  prev_t = time[1]
+    bool last   = cl_md == "Last Trade" and timeframe.in_seconds() < 86400
     if c.on and tf_vis(c.tf) and not na(cur_t)
         if not init
             init := true
@@ -270,7 +299,9 @@ process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd) =>
         else if (lv.size() == 0 or cur_t != lv.first().end_t) and not na(pc)
             while lv.size() > c.keep - 1
                 lv.pop()
-            lv.unshift(Level.new(c.kind, true, pc, prev_t, cur_t, na, lvl_name(c.kind, na, pd, true)))
+            float px = last ? close[1] : pc
+            int   x  = last ? prev_t : touch_bar(pc, pt)
+            lv.unshift(Level.new(c.kind, true, px, x, cur_t, na, lvl_name(c.kind, na, pd, true)))
 
 // Weekly levels on a monthly chart: a monthly bar spans several weeks, so the levels
 // are rebuilt on the last bar from the weekly candles, takes included. The weekly
@@ -461,8 +492,8 @@ process_on_monthly(w_cfg, w_lv, w_monthly)
 process(d_cfg, d_lv, d_tr, d_t, d_h, d_l, d_pt, d_pd)
 process_open(mo_cfg, mo_lv, m_t, m_o0, m_d0)
 process_open(wo_cfg, wo_lv, w_t, w_o0, w_d0)
-process_close(mc_cfg, mc_lv, m_t, m_c1, m_pd)
-process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd)
+process_close(mc_cfg, mc_lv, m_t, m_c1, m_pd, m_pt)
+process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd, d_pt)
 
 // On a weekly chart the last bar can open in the month before (e.g. Sun 09/27), so
 // that month still counts as in progress after it has ended. Once the calendar has
