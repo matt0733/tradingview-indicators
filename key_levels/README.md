@@ -171,6 +171,9 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   every Previous Day Close and Closing Price line whose candle was loaded
   started on a candle whose range contained its price. Settlement on MNQ: 30969.50
   anchored to 15:59 (1m) / 15:00 (1h); Last Trade: 31021.50 at 16:59 (1m).
+  With 1m history loaded back past Sep 30, the September closing price also
+  touched on 1m: MNQ Settlement 30698.75 at 16:15, Last Trade 30726.25 at 16:59;
+  MES Settlement 7715.50 at 16:09, Last Trade 7721.50 at 16:59.
 - **Previous Day Close and names** (1.11.0, 2026-10-09, MNQZ2026): 30969.50
   matched the Oct 8 daily candle close; its line started on that day's last
   candle on 1m (16:59), 5m (16:55), 10m (16:50), 1h (16:00), 4h (14:00) and
