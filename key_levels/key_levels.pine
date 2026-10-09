@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.9.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.11.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -18,19 +18,19 @@ float  lbl_gap  = input.float(2.0, "Label Spacing (% of view)", minval=0, maxval
 string GM = "Monthly"
 bool   m_on   = input.bool(true, "Monthly", group=GM, display=display.none, inline="m0")
 int    m_keep = input.int(3, "Show Last:", minval=1, maxval=12, group=GM, display=display.none, inline="m0",
-    tooltip="Highs and lows of the last completed months, labelled by month name, e.g. 'September Monthly High'. Shown on every timeframe up to monthly.")
-color  m_lcol = input.color(#000000, "High Line", group=GM, display=display.none, inline="m1")
+    tooltip="Highs and lows of the last completed months, labelled by month and year, e.g. 'September 2026 Monthly High'. Shown on every timeframe up to monthly.")
+color  m_lcol = input.color(#2962FF, "High Line", group=GM, display=display.none, inline="m1")
 string m_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m1")
-int    m_lw   = input.int(1, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
-color  m_tcol = input.color(#000000, "High Text", group=GM, display=display.none, inline="m2")
+int    m_lw   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
+color  m_tcol = input.color(#2962FF, "High Text", group=GM, display=display.none, inline="m2")
 string m_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m2")
-bool   m_tb   = input.bool(false, "Bold", group=GM, display=display.none, inline="m2")
-color  m_lcol2 = input.color(#000000, "Low Line", group=GM, display=display.none, inline="m3")
+bool   m_tb   = input.bool(true, "Bold", group=GM, display=display.none, inline="m2")
+color  m_lcol2 = input.color(#B22833, "Low Line", group=GM, display=display.none, inline="m3")
 string m_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m3")
-int    m_lw2   = input.int(1, "", minval=1, maxval=10, group=GM, display=display.none, inline="m3")
-color  m_tcol2 = input.color(#000000, "Low Text", group=GM, display=display.none, inline="m4")
+int    m_lw2   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m3")
+color  m_tcol2 = input.color(#B22833, "Low Text", group=GM, display=display.none, inline="m4")
 string m_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m4")
-bool   m_tb2   = input.bool(false, "Bold", group=GM, display=display.none, inline="m4")
+bool   m_tb2   = input.bool(true, "Bold", group=GM, display=display.none, inline="m4")
 string m_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GM, display=display.none,
     tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
 
@@ -38,39 +38,39 @@ string GW = "Weekly"
 bool   w_on   = input.bool(true, "Weekly", group=GW, display=display.none, inline="w0")
 int    w_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GW, display=display.none, inline="w0",
     tooltip="Highs and lows of the last completed weeks, labelled 'Previous Weekly High' / 'Previous Weekly Low' for the last completed week; older weeks add the date the week opened (Sunday evening for CME futures), e.g. '09/27 Previous Weekly High'. Shown on every timeframe up to weekly.")
-color  w_lcol = input.color(#000000, "High Line", group=GW, display=display.none, inline="w1")
-string w_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
-int    w_lw   = input.int(1, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
-color  w_tcol = input.color(#000000, "High Text", group=GW, display=display.none, inline="w2")
+color  w_lcol = input.color(#2962FF, "High Line", group=GW, display=display.none, inline="w1")
+string w_lsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
+int    w_lw   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
+color  w_tcol = input.color(#2962FF, "High Text", group=GW, display=display.none, inline="w2")
 string w_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w2")
-bool   w_tb   = input.bool(false, "Bold", group=GW, display=display.none, inline="w2")
-color  w_lcol2 = input.color(#000000, "Low Line", group=GW, display=display.none, inline="w3")
-string w_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w3")
-int    w_lw2   = input.int(1, "", minval=1, maxval=10, group=GW, display=display.none, inline="w3")
-color  w_tcol2 = input.color(#000000, "Low Text", group=GW, display=display.none, inline="w4")
+bool   w_tb   = input.bool(true, "Bold", group=GW, display=display.none, inline="w2")
+color  w_lcol2 = input.color(#B22833, "Low Line", group=GW, display=display.none, inline="w3")
+string w_lsty2 = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w3")
+int    w_lw2   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w3")
+color  w_tcol2 = input.color(#B22833, "Low Text", group=GW, display=display.none, inline="w4")
 string w_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w4")
-bool   w_tb2   = input.bool(false, "Bold", group=GW, display=display.none, inline="w4")
+bool   w_tb2   = input.bool(true, "Bold", group=GW, display=display.none, inline="w4")
 string w_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GW, display=display.none,
     tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
-bool   w_on_m = input.bool(false, "Show on Monthly Chart", group=GW, display=display.none,
+bool   w_on_m = input.bool(true, "Show on Monthly Chart", group=GW, display=display.none,
     tooltip="Also draw the previous weekly highs and lows on a monthly chart. Levels and takes come from the weekly candles, so with Stop at take a line ends at the monthly candle containing the week that took it.")
 
 string GD = "Daily"
 bool   d_on   = input.bool(true, "Daily", group=GD, display=display.none, inline="d0")
 int    d_keep = input.int(3, "Show Last:", minval=1, maxval=12, group=GD, display=display.none, inline="d0",
     tooltip="Highs and lows of the last completed trading days, labelled with the trading date, e.g. 'Mon 09/28 Daily High'. For CME futures the session that opens Sunday 18:00 New York is Monday's. Shown on every timeframe up to daily.")
-color  d_lcol = input.color(#000000, "High Line", group=GD, display=display.none, inline="d1")
+color  d_lcol = input.color(#2962FF, "High Line", group=GD, display=display.none, inline="d1")
 string d_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d1")
-int    d_lw   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d1")
-color  d_tcol = input.color(#000000, "High Text", group=GD, display=display.none, inline="d2")
+int    d_lw   = input.int(2, "", minval=1, maxval=10, group=GD, display=display.none, inline="d1")
+color  d_tcol = input.color(#2962FF, "High Text", group=GD, display=display.none, inline="d2")
 string d_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d2")
-bool   d_tb   = input.bool(false, "Bold", group=GD, display=display.none, inline="d2")
-color  d_lcol2 = input.color(#000000, "Low Line", group=GD, display=display.none, inline="d3")
+bool   d_tb   = input.bool(true, "Bold", group=GD, display=display.none, inline="d2")
+color  d_lcol2 = input.color(#801922, "Low Line", group=GD, display=display.none, inline="d3")
 string d_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d3")
-int    d_lw2   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d3")
-color  d_tcol2 = input.color(#000000, "Low Text", group=GD, display=display.none, inline="d4")
+int    d_lw2   = input.int(2, "", minval=1, maxval=10, group=GD, display=display.none, inline="d3")
+color  d_tcol2 = input.color(#801922, "Low Text", group=GD, display=display.none, inline="d4")
 string d_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d4")
-bool   d_tb2   = input.bool(false, "Bold", group=GD, display=display.none, inline="d4")
+bool   d_tb2   = input.bool(true, "Bold", group=GD, display=display.none, inline="d4")
 string d_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GD, display=display.none,
     tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
 
@@ -79,40 +79,49 @@ string d_take = input.string("Keep", "When Taken", options=["Keep","Stop at take
 // ===========================================================================
 string GO = "Opens"
 bool   mo_on   = input.bool(true, "Monthly Open", group=GO, display=display.none, inline="mo0")
-int    mo_prev = input.int(0, "Previous:", minval=0, maxval=5, group=GO, display=display.none, inline="mo0",
-    tooltip="The current month's opening price, plus up to 5 previous months, labelled by abbreviated month, e.g. 'Oct Monthly Open'. A futures month starts at its first session, so October opens Sep 30 18:00 New York. Shown on every timeframe. Opens always run to their label, even after price trades through them.")
+int    mo_prev = input.int(3, "Previous:", minval=0, maxval=5, group=GO, display=display.none, inline="mo0",
+    tooltip="The current month's opening price, plus up to 5 previous months, labelled by month and year, e.g. 'October 2026 Opening Price'. A futures month starts at its first session, so October opens Sep 30 18:00 New York. Shown on every timeframe. Opens always run to their label, even after price trades through them.")
 color  mo_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="mo1")
 string mo_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="mo1")
-int    mo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="mo1")
+int    mo_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display.none, inline="mo1")
 color  mo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="mo2")
 string mo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="mo2")
-bool   mo_tb   = input.bool(false, "Bold", group=GO, display=display.none, inline="mo2")
+bool   mo_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="mo2")
 
 bool   wo_on   = input.bool(true, "Weekly Open", group=GO, display=display.none, inline="wo0")
 int    wo_prev = input.int(0, "Previous:", minval=0, maxval=3, group=GO, display=display.none, inline="wo0",
     tooltip="The current week's opening price, plus up to 3 previous weeks, labelled with the date the week opened, e.g. '10/04 Weekly Open' (Sunday evening for CME futures). Shown on weekly and lower timeframes. Opens always run to their label, even after price trades through them.")
 color  wo_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="wo1")
 string wo_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="wo1")
-int    wo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="wo1")
+int    wo_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display.none, inline="wo1")
 color  wo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="wo2")
 string wo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="wo2")
-bool   wo_tb   = input.bool(false, "Bold", group=GO, display=display.none, inline="wo2")
+bool   wo_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="wo2")
 
 bool   mc_on   = input.bool(true, "Monthly Close", group=GO, display=display.none, inline="mc0")
-int    mc_prev = input.int(0, "Previous:", minval=0, maxval=5, group=GO, display=display.none, inline="mc0",
-    tooltip="The last completed month's closing price, plus up to 5 earlier months, labelled by abbreviated month, e.g. 'Sep Monthly Close'. The line starts on the month's last candle. Shown on every timeframe. Closes always run to their label, even after price trades through them.")
+int    mc_prev = input.int(3, "Previous:", minval=0, maxval=5, group=GO, display=display.none, inline="mc0",
+    tooltip="The last completed month's closing price, plus up to 5 earlier months, labelled by month and year, e.g. 'September 2026 Closing Price'. The line starts on the month's last candle. Shown on every timeframe. Closes always run to their label, even after price trades through them.")
 color  mc_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="mc1")
 string mc_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="mc1")
-int    mc_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="mc1")
+int    mc_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display.none, inline="mc1")
 color  mc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="mc2")
 string mc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="mc2")
-bool   mc_tb   = input.bool(false, "Bold", group=GO, display=display.none, inline="mc2")
+bool   mc_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="mc2")
+
+bool   pc_on   = input.bool(true, "Previous Day Close", group=GO, display=display.none,
+    tooltip="The last completed trading day's closing price (the daily candle's close; for CME futures that is the settlement price). The line starts on that day's last candle. Shown on daily and lower timeframes. Always runs to its label, even after price trades through it.")
+color  pc_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="pc1")
+string pc_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="pc1")
+int    pc_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display.none, inline="pc1")
+color  pc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="pc2")
+string pc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="pc2")
+bool   pc_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="pc2")
 
 // ===========================================================================
 // TYPES
 // ===========================================================================
 type Cfg
-    int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open, 5 monthly close
+    int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open, 5 monthly close, 6 previous day close
     string tf
     bool   on
     int    keep
@@ -180,11 +189,12 @@ tf_vis(string tf) =>
 lvl_name(int kind, int t, int td, bool is_hi) =>
     string hl = is_hi ? "High" : "Low"
     switch kind
-        0 => str.format_time(td, "MMMM", "UTC") + " Monthly " + hl
+        0 => str.format_time(td, "MMMM yyyy", "UTC") + " Monthly " + hl
         1 => str.format_time(t, "MM/dd", syminfo.timezone) + " Previous Weekly " + hl
         2 => str.format_time(td, "EEE MM/dd", "UTC") + " Daily " + hl
-        3 => str.format_time(td, "MMM", "UTC") + " Monthly Open"
-        5 => str.format_time(td, "MMM", "UTC") + " Monthly Close"
+        3 => str.format_time(td, "MMMM yyyy", "UTC") + " Opening Price"
+        5 => str.format_time(td, "MMMM yyyy", "UTC") + " Closing Price"
+        6 => "Previous Day Close"
         =>   str.format_time(t, "MM/dd", syminfo.timezone) + " Weekly Open"
 
 // Evaluated on the higher timeframe: the last 12 completed periods (index 0 = most recent).
@@ -361,6 +371,7 @@ Cfg d_cfg  = Cfg.new(2, "D", d_on, d_keep, d_lcol, d_lsty, d_lw, d_tcol, d_tsz, 
 Cfg mo_cfg = Cfg.new(3, "M", mo_on, mo_prev + 1, mo_lcol, mo_lsty, mo_lw, mo_tcol, mo_tsz, "Keep", na, na, na, na, na, mo_tb)
 Cfg wo_cfg = Cfg.new(4, "W", wo_on, wo_prev + 1, wo_lcol, wo_lsty, wo_lw, wo_tcol, wo_tsz, "Keep", na, na, na, na, na, wo_tb)
 Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, mc_lcol, mc_lsty, mc_lw, mc_tcol, mc_tsz, "Keep", na, na, na, na, na, mc_tb)
+Cfg pc_cfg = Cfg.new(6, "D", pc_on, 1, pc_lcol, pc_lsty, pc_lw, pc_tcol, pc_tsz, "Keep", na, na, na, na, na, pc_tb)
 
 var array<Level> m_lv = array.new<Level>()
 var array<Level> w_lv = array.new<Level>()
@@ -368,6 +379,7 @@ var array<Level> d_lv = array.new<Level>()
 var array<Level> mo_lv = array.new<Level>()
 var array<Level> wo_lv = array.new<Level>()
 var array<Level> mc_lv = array.new<Level>()
+var array<Level> pc_lv = array.new<Level>()
 
 var Tracker m_tr = Tracker.new()
 var Tracker w_tr = Tracker.new()
@@ -415,7 +427,8 @@ cfg_of(int kind) =>
         2 => d_cfg
         3 => mo_cfg
         4 => wo_cfg
-        =>   mc_cfg
+        5 => mc_cfg
+        =>   pc_cfg
 
 collect(array<Level> dst, array<Level> src) =>
     for x in src
@@ -438,6 +451,7 @@ htf_last() =>
 [m_t, m_h, m_l, m_pt, m_pd] = request.security(syminfo.tickerid, m_req, htf_last(), lookahead=barmerge.lookahead_on)
 [w_t, w_h, w_l, w_pt, w_pd] = request.security(syminfo.tickerid, w_req, htf_last(), lookahead=barmerge.lookahead_on)
 [d_t, d_h, d_l, d_pt, d_pd] = request.security(syminfo.tickerid, d_req, htf_last(), lookahead=barmerge.lookahead_on)
+d_c1 = request.security(syminfo.tickerid, d_req, close[1], lookahead=barmerge.lookahead_on)
 [m_h0, m_l0, m_d0, m_o0, m_c1] = request.security(syminfo.tickerid, m_req, [high, low, time_tradingday, open, close[1]], lookahead=barmerge.lookahead_on)
 [w_o0, w_d0] = request.security(syminfo.tickerid, w_req, [open, time_tradingday], lookahead=barmerge.lookahead_on)
 
@@ -448,6 +462,7 @@ process(d_cfg, d_lv, d_tr, d_t, d_h, d_l, d_pt, d_pd)
 process_open(mo_cfg, mo_lv, m_t, m_o0, m_d0)
 process_open(wo_cfg, wo_lv, w_t, w_o0, w_d0)
 process_close(mc_cfg, mc_lv, m_t, m_c1, m_pd)
+process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd)
 
 // On a weekly chart the last bar can open in the month before (e.g. Sun 09/27), so
 // that month still counts as in progress after it has ended. Once the calendar has
@@ -486,6 +501,7 @@ if barstate.islast
     collect(all, mo_lv)
     collect(all, wo_lv)
     collect(all, mc_lv)
+    collect(all, pc_lv)
 
     int x_lbl = time + lbl_off * tf_ms
     int x_ldr = time + math.max(lbl_off - LEAD_BARS, 0) * tf_ms   // where a leader starts

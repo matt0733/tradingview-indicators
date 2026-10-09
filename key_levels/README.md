@@ -9,7 +9,7 @@ they can be lined up after Opening Gaps' labels.
 
 | Type | Label | Period |
 |---|---|---|
-| Monthly | `September Monthly High` | Calendar month |
+| Monthly | `September 2026 Monthly High` | Calendar month |
 | Weekly | `Previous Weekly High`, older weeks `09/20 Previous Weekly High` | Week; older weeks are dated by their open (Sunday 18:00 New York for CME futures) |
 | Daily | `Thu 10/01 Daily High` | Trading day; the session opening Wednesday 18:00 is Thursday's |
 
@@ -24,9 +24,10 @@ is the Sunday open and the monthly name comes from the trading days in the month
 
 | Type | Label | Shown on |
 |---|---|---|
-| Monthly Open | `Oct Monthly Open` | Every timeframe |
+| Monthly Open | `October 2026 Opening Price` | Every timeframe |
 | Weekly Open | `10/04 Weekly Open` | Weekly and lower (hidden on monthly) |
-| Monthly Close | `Sep Monthly Close` | Every timeframe |
+| Monthly Close | `September 2026 Closing Price` | Every timeframe |
+| Previous Day Close | `Previous Day Close` | Daily and lower |
 
 Each is the opening price of the month or week in progress, with its own on/off
 and a **Previous** count that adds earlier opens (0-5 monthly, 0-3 weekly;
@@ -44,6 +45,10 @@ the month's last candle. For CME futures TradingView closes daily and monthly
 candles at the settlement price, so it can differ from the last intraday candle's
 close: September 2026 on MNQZ2026 closed at 30698.75, while the last 1m candle
 (16:59 Sep 30) closed at 30726.25.
+
+**Previous Day Close** is the last completed trading day's daily candle close
+(settlement for CME futures), one level only, with its own line and text
+settings. Its line starts on that day's last candle.
 
 ## How the levels are drawn
 
@@ -113,14 +118,15 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Label Offset (bars) | 10 | 0–500 bars past the current bar |
 | Show Price in Label | on | Appends the price in parentheses, as in Sessions, e.g. `July Monthly High (30861.25)` |
 | Label Spacing (% of view) | 2 | About one label's height; labels closer than this are spaced out with leaders |
-| *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12 |
-| High Line / Low Line | Black, Solid, 1 for every type | Color, style, width; set separately for highs and lows of each type |
-| High Text / Low Text | Black, Small, not bold for every type | Color, size (Tiny–Large), Bold; set separately for highs and lows of each type |
+| *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12. Weekly also has Show on Monthly Chart (on) |
+| High Line / Low Line | Highs blue `#2962FF`; lows red `#B22833` (Daily lows `#801922`); width 2; Solid (Weekly Dotted) | Color, style, width; set separately for highs and lows of each type |
+| High Text / Low Text | Same colors as the lines, Small, bold | Color, size (Tiny–Large), Bold; set separately for highs and lows of each type |
 | When Taken | Keep for every type | Per type: Keep, Stop at take, Remove |
-| Monthly Open / Weekly Open on/off, Previous | on, 0 | Previous 0-5 monthly, 0-3 weekly |
-| Open Line | Black, Dashed, 1 | Color, style, width |
-| Open Text | Black, Small, not bold | Color, size (Tiny-Large), Bold |
-| Monthly Close on/off, Previous | on, 0 | Previous 0-5; line Black Dashed 1, text Black Small, Bold off |
+| Monthly Open / Weekly Open on/off, Previous | on; Monthly 3, Weekly 0 | Previous 0-5 monthly, 0-3 weekly |
+| Open Line | Black, Dashed, 2 | Color, style, width |
+| Open Text | Black, Small, bold | Color, size (Tiny-Large), Bold |
+| Monthly Close on/off, Previous | on, 3 | Previous 0-5; line Black Dashed 2, text Black Small bold |
+| Previous Day Close on/off | on | Line Black Dashed 2, text Black Small bold |
 
 Inputs are hidden from the chart status line.
 
@@ -148,6 +154,11 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Previous Day Close and names** (1.11.0, 2026-10-09, MNQZ2026): 30969.50
+  matched the Oct 8 daily candle close; its line started on that day's last
+  candle on 1m (16:59), 5m (16:55), 10m (16:50), 1h (16:00), 4h (14:00) and
+  daily, and it was hidden on weekly. Month labels read e.g. `September 2026
+  Monthly High`, `October 2026 Opening Price`, `September 2026 Closing Price`.
 - **Leaders** (1.9.0, 2026-10-08, MNQZ2026 D): dashed opens/close had dashed
   leaders, solid levels solid ones, and a Weekly High set to Dotted 2 got a
   Dotted 2 leader.
@@ -204,6 +215,8 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.11.0 | Previous Day Close in the Opens section; defaults taken from the user's chart (blue highs, red lows, width 2, bold, Weekly dotted and on the monthly chart, Monthly Open/Close Previous 3) |
+| 1.10.0 | Month labels include the year: `September 2026 Monthly High`, `October 2026 Opening Price`, `September 2026 Closing Price` |
 | 1.9.0 | Leaders use their line's style and width (were always solid, width 1) |
 | 1.8.0 | Weekly labels: the latest week reads `Previous Weekly High/Low` with no date; older weeks read `09/27 Previous Weekly High/Low` |
 | 1.7.0 | Show on Monthly Chart option for weekly highs/lows; lines start on the candle containing their time on higher-timeframe charts (were a candle late); monthly levels on a weekly chart no longer anchor to a week straddling two months |

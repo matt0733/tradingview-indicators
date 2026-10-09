@@ -30,6 +30,8 @@ Design decisions (from the interview):
 - Equal prices are NOT merged: user asked for every level to keep its own line and label (merging was built, then removed).
 - Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
 - 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
+- 1.11.0: Previous Day Close (single level, daily candle close) under Opens; defaults copied from the user's chart.
+- 1.10.0: month labels include the year; opens/closes renamed 'Opening Price' / 'Closing Price'.
 - 1.9.0: leaders take their line's style and width (user request).
 - 1.8.0: latest week labelled 'Previous Weekly High/Low' (no date), older weeks dated 'MM/DD Previous Weekly High/Low' (user request; replaces 'MM/DD Prev Week').
 - 1.7.0: weekly highs/lows optionally on the monthly chart (rebuilt on the last bar from weekly candles; lower-TF request needs lookahead_off to get the latest week, lookahead_on returns the first). Found with it: xloc.bar_time puts a time inside a bar on the NEXT bar, so line x1/take x2 are snapped to the containing chart bar.
