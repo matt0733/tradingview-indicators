@@ -16,6 +16,13 @@ they can be lined up after Opening Gaps' labels.
 Each type has its own on/off and **Show Last** count (1–12). Only completed
 periods are drawn, so Show Last 1 is the last full month, week or day.
 
+A period counts as completed as soon as its session closes, even if the next
+one hasn't opened yet: over a weekend Friday is the previous day (and Previous
+Day Close is Friday's close) and the week just ended is the Previous Week, while
+the Weekly Open stays on that week until the next one opens. The same applies in
+the daily break and on holidays. 24/7 markets such as crypto are unaffected:
+their periods only close when the next one starts.
+
 Periods follow TradingView's own bars for the symbol, which is why the weekly date
 is the Sunday open and the monthly name comes from the trading days in the month
 (a monthly bar opening Aug 31 18:00 is still September).
@@ -170,6 +177,13 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Roll at close** (1.14.0, 2026-10-10, Saturday): on MNQZ2026, EURUSD and AAPL
+  (closed) the newest daily levels were Fri 10/09, Previous Day Close was
+  Friday's daily close and Previous Weekly High/Low the week just ended, on 1m,
+  1h and daily (weekly levels also on weekly and monthly); Weekly Open stayed
+  on that week. On BTCUSD (open) nothing moved: Friday was the newest completed
+  day and the previous week was 09/28. 20 runs, all values matched the D/W
+  candles (AAPL's 332.815 weekly open shows as 332.82 in the label).
 - **Full regression** (1.13.2, 2026-10-10, a Saturday): MNQZ2026, EURUSD and
   BTCUSD on 1m, 5m, 10m, 1h, 4h, daily, weekly and monthly at Label Offset 10
   and 31 (59 runs): every label sat exactly offset bars past the last bar,
@@ -230,10 +244,6 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 ## Known limits
 
-- On a weekly chart the current bar can open in the previous month (e.g. Sunday
-  9/27 while it is now October). That month is added as completed once the
-  calendar moves on, but it can't tell whether price took it within the current
-  weekly bar, so it shows as untaken until the next bar.
 - Takes of older levels that happened before the chart's loaded history are
   placed at the open of the period that took them, not the exact candle. These
   are off the left edge of the chart.
@@ -242,9 +252,6 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - Label Spacing only sees Key Levels' own labels. It can't move them away from
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
-- On a weekly chart, a Monthly Close appears one week late when the current
-  weekly bar opened in the previous month (e.g. September's close is missing
-  while the week of Sunday 9/27 is the current bar).
 - On a weekly chart a monthly high or low set in a week that straddles two
   months (e.g. the week of 9/27, which includes Oct 1-2) can't be pinned to that
   week, so its line starts at the week containing the month's first session.
@@ -254,6 +261,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.14.0 | Periods count as completed once their session closes (weekends, the daily break, holidays), not when the next one opens; replaces the weekly-chart month rollover workaround. 24/7 markets unchanged |
 | 1.13.2 | Label Offset counted in bars past the current bar; with a time offset, labels collapsed to the next session open whenever the offset landed in a weekend or the daily break |
 | 1.13.1 | A time that falls in a gap between bars (weekend, or a minute with no trades) snaps to the next bar, not the one before the gap (daily and lower charts) |
 | 1.13.0 | Weekly Open is the current week only, labelled `Weekly Open`, with Show Weekly Open on Monthly Chart; defaults from the user's chart: all line widths 1, Weekly lows `#801922` |

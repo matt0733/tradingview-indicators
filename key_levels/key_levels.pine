@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.13.2", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.14.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -264,14 +264,14 @@ max_bars_back(time, SEARCH_BARS + 1)
 max_bars_back(high, SEARCH_BARS + 1)
 max_bars_back(low, SEARCH_BARS + 1)
 
-// Latest bar of the period starting at pt (searching back from the previous bar, at
+// Latest bar of the period starting at pt (searching back from `start` bars ago, at
 // most SEARCH_BARS) whose range contains price p; if none does, the one that came
 // closest. Lets a settlement close start on a candle that actually traded there.
-touch_bar(float p, int pt) =>
-    int   best_t = time[1]
+touch_bar(float p, int pt, int start) =>
+    int   best_t = time[start]
     float best_d = na
     int   hit_t  = na
-    for i = 1 to SEARCH_BARS
+    for i = start to SEARCH_BARS
         if na(time[i]) or time[i] < pt
             break
         if low[i] <= p and p <= high[i]
@@ -301,7 +301,7 @@ process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd, int pt) =>
             while lv.size() > c.keep - 1
                 lv.pop()
             float px = last ? close[1] : pc
-            int   x  = last ? prev_t : touch_bar(pc, pt)
+            int   x  = last ? prev_t : touch_bar(pc, pt, 1)
             lv.unshift(Level.new(c.kind, true, px, x, cur_t, na, lvl_name(c.kind, na, pd, true)))
 
 // Weekly levels on a monthly chart: a monthly bar spans several weeks, so the levels
@@ -311,7 +311,7 @@ process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd, int pt) =>
 process_on_monthly(Cfg c, array<Level> lv, bool show) =>
     if c.on and show and barstate.islast
         lv.clear()
-        [cur_t, ch, cl]  = request.security(syminfo.tickerid, c.tf, [time, high, low], lookahead=barmerge.lookahead_off)
+        [cur_t, ch, cl, ce, cd] = request.security(syminfo.tickerid, c.tf, [time, high, low, time_close, time_tradingday], lookahead=barmerge.lookahead_off)
         [hs, lo, ts, ds] = request.security(syminfo.tickerid, c.tf, htf_hist(), lookahead=barmerge.lookahead_off)
         for k = c.keep - 1 to 0
             if not na(hs.get(k))
@@ -331,6 +331,12 @@ process_on_monthly(Cfg c, array<Level> lv, bool show) =>
                     l.take_t := cur_t
                 lv.unshift(l)
                 lv.unshift(h)
+        // A week whose session has closed (e.g. over the weekend) counts as completed
+        if not na(ce) and timenow >= ce and not na(ch)
+            lv.unshift(Level.new(c.kind, false, cl, cur_t, ce, na, lvl_name(c.kind, cur_t, cd, false)))
+            lv.unshift(Level.new(c.kind, true,  ch, cur_t, ce, na, lvl_name(c.kind, cur_t, cd, true)))
+            while lv.size() > c.keep * 2
+                lv.pop()
 
 // Weekly Open on a monthly chart: the weekly timeframe is lower than the chart's, so
 // it is read on the last bar with lookahead_off, which returns the latest week.
@@ -340,6 +346,43 @@ process_open_on_monthly(Cfg c, array<Level> lv, bool show) =>
         [t, o] = request.security(syminfo.tickerid, c.tf, [time, open], lookahead=barmerge.lookahead_off)
         if not na(o)
             lv.push(Level.new(c.kind, true, o, t, na, na, lvl_name(c.kind, t, na, true)))
+
+// TradingView keeps a day/week/month "in progress" until the next one opens. Once
+// its session has closed (weekends, the daily break, holidays) it is treated as
+// completed: these build its levels on the last bar for display only, so nothing is
+// stored twice when the next period opens. 24/7 markets never get here: their
+// period closes the moment the next one starts.
+period_closed(int tclose) =>
+    barstate.islast and not na(tclose) and timenow >= tclose
+
+rolled_hl(Cfg c, Tracker tr, int cur_t, float h0, float l0, int td0, int tclose) =>
+    array<Level> out = array.new<Level>()
+    if c.on and tf_vis(c.tf) and not na(cur_t) and not na(h0) and period_closed(tclose)
+        bool seen = tr.cur_t == cur_t
+        bool nest = tr.full and not (timeframe.isweekly and c.kind == 0)
+        int  hx   = seen and (nest or math.abs(tr.hi - h0) < tol) ? tr.hi_t : cur_t
+        int  lx   = seen and (nest or math.abs(tr.lo - l0) < tol) ? tr.lo_t : cur_t
+        out.push(Level.new(c.kind, true,  h0, hx, tclose, na, lvl_name(c.kind, cur_t, td0, true)))
+        out.push(Level.new(c.kind, false, l0, lx, tclose, na, lvl_name(c.kind, cur_t, td0, false)))
+    out
+
+rolled_close(Cfg c, int cur_t, float c0, int td0, int tclose) =>
+    array<Level> out = array.new<Level>()
+    if c.on and tf_vis(c.tf) and not na(cur_t) and not na(c0) and period_closed(tclose)
+        bool last = cl_md == "Last Trade" and timeframe.in_seconds() < 86400
+        out.push(Level.new(c.kind, true, last ? close : c0, last ? time : touch_bar(c0, cur_t, 0), tclose, na,
+                           lvl_name(c.kind, na, td0, true)))
+    out
+
+// Levels to draw for one type: a just-closed period first, then the stored ones,
+// up to n in all.
+with_rolled(array<Level> rolled, array<Level> lv, int n) =>
+    array<Level> out = array.copy(rolled)
+    for x in lv
+        if out.size() >= n
+            break
+        out.push(x)
+    out
 
 // Adds completed periods, tracks the period in progress and marks takes. cur_t is the
 // open of the period in progress; hp/lp/pt/pd describe the last completed period.
@@ -498,6 +541,10 @@ htf_last() =>
 d_c1 = request.security(syminfo.tickerid, d_req, close[1], lookahead=barmerge.lookahead_on)
 [m_h0, m_l0, m_d0, m_o0, m_c1] = request.security(syminfo.tickerid, m_req, [high, low, time_tradingday, open, close[1]], lookahead=barmerge.lookahead_on)
 [w_o0, w_d0] = request.security(syminfo.tickerid, w_req, [open, time_tradingday], lookahead=barmerge.lookahead_on)
+// The period in progress as it stands (final once its session has closed)
+[m_c0, m_tc] = request.security(syminfo.tickerid, m_req, [close, time_close], lookahead=barmerge.lookahead_on)
+[w_h0, w_l0, w_tc] = request.security(syminfo.tickerid, w_req, [high, low, time_close], lookahead=barmerge.lookahead_on)
+[d_h0, d_l0, d_c0, d_tc, d_d0] = request.security(syminfo.tickerid, d_req, [high, low, close, time_close, time_tradingday], lookahead=barmerge.lookahead_on)
 
 process(m_cfg, m_lv, m_tr, m_t, m_h, m_l, m_pt, m_pd)
 process(w_cfg, w_lv, w_tr, w_t, w_h, w_l, w_pt, w_pd)
@@ -508,20 +555,6 @@ process_open(wo_cfg, wo_lv, w_t, w_o0, w_d0)
 process_open_on_monthly(wo_cfg, wo_lv, wo_on_m and timeframe.ismonthly)
 process_close(mc_cfg, mc_lv, m_t, m_c1, m_pd, m_pt)
 process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd, d_pt)
-
-// On a weekly chart the last bar can open in the month before (e.g. Sun 09/27), so
-// that month still counts as in progress after it has ended. Once the calendar has
-// moved on, add it as completed. Its take can't be told apart within the bar.
-month_idx(int t, string tz) =>
-    year(t, tz) * 12 + month(t, tz)
-
-bool m_rolled = barstate.islast and timeframe.isweekly and m_cfg.on and not na(m_h0) and
-     month_idx(timenow, syminfo.timezone) > month_idx(m_d0, "UTC")
-if m_rolled
-    m_lv.unshift(Level.new(0, false, m_l0, m_t, timenow, na, lvl_name(0, m_t, m_d0, false)))
-    m_lv.unshift(Level.new(0, true,  m_h0, m_t, timenow, na, lvl_name(0, m_t, m_d0, true)))
-    while m_lv.size() > m_cfg.keep * 2
-        m_lv.pop()
 
 // ===========================================================================
 // DRAWING
@@ -536,17 +569,23 @@ if barstate.islast
     lns.clear()
     lbs.clear()
 
+    array<Level> m_show  = with_rolled(rolled_hl(m_cfg, m_tr, m_t, m_h0, m_l0, m_d0, m_tc), m_lv, m_cfg.keep * 2)
+    array<Level> w_show  = w_monthly ? w_lv : with_rolled(rolled_hl(w_cfg, w_tr, w_t, w_h0, w_l0, w_d0, w_tc), w_lv, w_cfg.keep * 2)
+    array<Level> d_show  = with_rolled(rolled_hl(d_cfg, d_tr, d_t, d_h0, d_l0, d_d0, d_tc), d_lv, d_cfg.keep * 2)
+    array<Level> mc_show = with_rolled(rolled_close(mc_cfg, m_t, m_c0, m_d0, m_tc), mc_lv, mc_cfg.keep)
+    array<Level> pc_show = with_rolled(rolled_close(pc_cfg, d_t, d_c0, d_d0, d_tc), pc_lv, pc_cfg.keep)
+
     array<Level> all = array.new<Level>()
     // The last completed week is labelled without its date; older weeks keep it.
     // Its high and low share end_t (the open of the week after).
-    int wk_last = w_lv.size() > 0 ? w_lv.first().end_t : na
-    collect(all, m_lv)
-    collect(all, w_lv)
-    collect(all, d_lv)
+    int wk_last = w_show.size() > 0 ? w_show.first().end_t : na
+    collect(all, m_show)
+    collect(all, w_show)
+    collect(all, d_show)
     collect(all, mo_lv)
     collect(all, wo_lv)
-    collect(all, mc_lv)
-    collect(all, pc_lv)
+    collect(all, mc_show)
+    collect(all, pc_show)
 
     // Past the current bar, positions are counted in bars (xloc.bar_index): a time
     // offset would collapse into the next session open whenever it lands in a market
