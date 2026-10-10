@@ -172,8 +172,9 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   at 1m, 10m, 1h, 4h, daily, weekly and monthly, `Weekly Open` matched the current
   weekly candle's open and started on its first candle (on monthly, the month
   containing the week); turning Weekly Open or the monthly option off hid it.
-  EURUSD matched on every timeframe except 1m, where the line started on Friday's
-  last candle because no 1m bar exists at the Sunday 17:00 open (known limit).
+  EURUSD matched everywhere after 1.13.1: on 1m, where no bar exists at the
+  Sunday 17:00 open, the line now starts on the first bar after it (17:03)
+  instead of Friday's last bar. MNQ 1m and daily lines were unchanged.
 - **Close Price** (1.12.0, 2026-10-09): on MNQZ2026, MESZ2026 and FX:EURUSD,
   1m, 5m, 10m, 1h, 4h and daily, with both Settlement and Last Trade (36 runs),
   every Previous Day Close and Closing Price line whose candle was loaded
@@ -237,14 +238,13 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - On a weekly chart a monthly high or low set in a week that straddles two
   months (e.g. the week of 9/27, which includes Oct 1-2) can't be pinned to that
   week, so its line starts at the week containing the month's first session.
-- On a 1m chart, a period that opens in a minute with no bar (EURUSD's Sunday
-  17:00 weekly open) starts its line on the bar before the gap.
 - Tested on MNQ, MES, MYM, AAPL, BTCUSD, ETHUSD and EURUSD.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.13.1 | A time that falls in a gap between bars (weekend, or a minute with no trades) snaps to the next bar, not the one before the gap (daily and lower charts) |
 | 1.13.0 | Weekly Open is the current week only, labelled `Weekly Open`, with Show Weekly Open on Monthly Chart; defaults from the user's chart: all line widths 1, Weekly lows `#801922` |
 | 1.12.0 | Close Price setting (Settlement / Last Trade) for Monthly Close and Previous Day Close; settlement closes start on a candle that traded at that price instead of floating beside the day's last candle |
 | 1.11.0 | Previous Day Close in the Opens section; defaults taken from the user's chart (blue highs, red lows, width 2, bold, Weekly dotted and on the monthly chart, Monthly Open/Close Previous 3) |

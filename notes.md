@@ -30,7 +30,7 @@ Design decisions (from the interview):
 - Equal prices are NOT merged: user asked for every level to keep its own line and label (merging was built, then removed).
 - Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
 - 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
-- 1.13.0: Weekly Open = current week only, label 'Weekly Open', optional on monthly chart; defaults from the user's chart (widths 1, weekly lows #801922). Known: EURUSD 1m weekly open line starts before the weekend gap (fix pending test).
+- 1.13.0: Weekly Open = current week only, label 'Weekly Open', optional on monthly chart; defaults from the user's chart (widths 1, weekly lows #801922). EURUSD 1m weekly open started before the weekend gap; fixed in 1.13.1 (gap times snap to the next bar).
 - 1.12.0: Close Price setting (user chose 'offer both'). Settlement closes anchor to the last candle of the period that traded through the price (CME settlement != last trade, so the line floated). Last Trade uses the last candle's close.
 - 1.11.0: Previous Day Close (single level, daily candle close) under Opens; defaults copied from the user's chart.
 - 1.10.0: month labels include the year; opens/closes renamed 'Opening Price' / 'Closing Price'.

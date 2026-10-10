@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.13.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.13.1", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -449,7 +449,10 @@ snap(int t) =>
                 lo := mid
             else
                 hi := mid - 1
-        r := bar_ts.get(lo)
+        // A time in a gap between bars (e.g. a weekend, or a minute with no trades)
+        // belongs to the next bar, not the one before the gap
+        // (daily and lower; weekly/monthly bars vary in length and have no such gaps)
+        r := tf_ms <= 86400000 and t >= bar_ts.get(lo) + tf_ms and lo < n - 1 ? bar_ts.get(lo + 1) : bar_ts.get(lo)
     else if not na(t) and n > 0 and t >= bar_ts.last()
         r := bar_ts.last()
     r
