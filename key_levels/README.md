@@ -72,6 +72,8 @@ history, both options use the candle close. For FX the two are the same price.
   1.12149, lowest 1h bar 1.12150). When the whole period is loaded, the line
   still starts at the chart's own high or low candle.
 - Untaken lines run to their label, **Label Offset** bars past the current bar.
+  The offset is counted in bars, so it holds over weekends and session breaks;
+  each such line is drawn in two parts that meet at the current bar.
 - A level is **taken** when a wick touches it. Each type has its own **When
   Taken** setting, so for example daily levels can stop at their take while
   monthly and weekly levels keep running:
@@ -168,6 +170,14 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Full regression** (1.13.2, 2026-10-10, a Saturday): MNQZ2026, EURUSD and
+  BTCUSD on 1m, 5m, 10m, 1h, 4h, daily, weekly and monthly at Label Offset 10
+  and 31 (59 runs): every label sat exactly offset bars past the last bar,
+  every untaken line's two parts met at the last bar, every moved label had its
+  leader, and each type showed or hid as per the timeframe table. On MNQ 1h and
+  daily, Stop at take, Remove (24 - 6 taken = 18 labels), Show Price off and
+  Last Trade behaved as documented; on MNQ monthly, turning off weekly
+  highs/lows, Weekly Open on monthly and Weekly Open hid only those levels.
 - **Weekly Open** (1.13.0, 2026-10-09): on MNQZ2026, MESZ2026, BTCUSD and AAPL
   at 1m, 10m, 1h, 4h, daily, weekly and monthly, `Weekly Open` matched the current
   weekly candle's open and started on its first candle (on monthly, the month
@@ -244,6 +254,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.13.2 | Label Offset counted in bars past the current bar; with a time offset, labels collapsed to the next session open whenever the offset landed in a weekend or the daily break |
 | 1.13.1 | A time that falls in a gap between bars (weekend, or a minute with no trades) snaps to the next bar, not the one before the gap (daily and lower charts) |
 | 1.13.0 | Weekly Open is the current week only, labelled `Weekly Open`, with Show Weekly Open on Monthly Chart; defaults from the user's chart: all line widths 1, Weekly lows `#801922` |
 | 1.12.0 | Close Price setting (Settlement / Last Trade) for Monthly Close and Previous Day Close; settlement closes start on a candle that traded at that price instead of floating beside the day's last candle |

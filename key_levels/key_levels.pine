@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.13.1", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.13.2", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -548,8 +548,13 @@ if barstate.islast
     collect(all, mc_lv)
     collect(all, pc_lv)
 
-    int x_lbl = time + lbl_off * tf_ms
-    int x_ldr = time + math.max(lbl_off - LEAD_BARS, 0) * tf_ms   // where a leader starts
+    // Past the current bar, positions are counted in bars (xloc.bar_index): a time
+    // offset would collapse into the next session open whenever it lands in a market
+    // break (weekends, the daily halt). Up to the current bar lines stay time-based,
+    // so a level can start any distance back. An untaken line is therefore drawn in
+    // two parts that meet at the current bar.
+    int x_lbl = bar_index + lbl_off
+    int x_ldr = bar_index + math.max(lbl_off - LEAD_BARS, 0)   // where a leader starts
     array<label> col    = array.new<label>()   // labels sitting at x_lbl
     array<line>  col_ln = array.new<line>()
     array<float> col_y  = array.new<float>()
@@ -568,20 +573,26 @@ if barstate.islast
         int    lw   = lo ? c.lw2 : c.lw
         bool   stop = c.take == "Stop at take" and not na(a.take_t)
         int    x1   = snap(a.x1)
-        int    x2   = stop ? snap(a.take_t) : x_lbl
-        int    lx   = stop ? int((x1 + x2) / 2) : x_lbl
+        int    x2   = stop ? snap(a.take_t) : time
         string sty  = stop ? (a.is_hi ? label.style_label_down : label.style_label_up) : label.style_label_left
         line   ln   = line.new(x1, a.price, x2, a.price, xloc=xloc.bar_time,
                                color=lcol, style=ls(lsty), width=lw)
-        label  lb   = label.new(lx, a.price, txt, xloc=xloc.bar_time, style=sty,
+        line   fut  = stop ? na : line.new(bar_index, a.price, x_lbl, a.price, xloc=xloc.bar_index,
+                                           color=lcol, style=ls(lsty), width=lw)
+        label  lb   = stop ? label.new(int((x1 + x2) / 2), a.price, txt, xloc=xloc.bar_time, style=sty,
+                                       color=color.new(color.white, 100), textcolor=tcol,
+                                       size=lbl_sz(lo ? c.tsz2 : c.tsz), textalign=text.align_left,
+                                       text_formatting=(lo ? c.bold2 : c.bold) ? text.format_bold : text.format_none)
+                       : label.new(x_lbl, a.price, txt, xloc=xloc.bar_index, style=sty,
                                 color=color.new(color.white, 100), textcolor=tcol,
                                 size=lbl_sz(lo ? c.tsz2 : c.tsz), textalign=text.align_left,
                                 text_formatting=(lo ? c.bold2 : c.bold) ? text.format_bold : text.format_none)
         lns.push(ln)
         lbs.push(lb)
         if not stop
+            lns.push(fut)
             col.push(lb)
-            col_ln.push(ln)
+            col_ln.push(fut)
             col_y.push(a.price)
             col_k.push(a.price - a.kind * tol / 4)   // ties: longer period on top
             col_c.push(lcol)
@@ -630,6 +641,6 @@ if barstate.islast
                     line ln = col_ln.get(idx)
                     ln.set_x2(x_ldr)
                     col.get(idx).set_y(y)
-                    lns.push(line.new(x_ldr, p, x_lbl, y, xloc=xloc.bar_time,
+                    lns.push(line.new(x_ldr, p, x_lbl, y, xloc=xloc.bar_index,
                                       color=col_c.get(idx), style=ls(col_s.get(idx)), width=col_w.get(idx)))
                 k += 1
