@@ -25,13 +25,14 @@ is the Sunday open and the monthly name comes from the trading days in the month
 | Type | Label | Shown on |
 |---|---|---|
 | Monthly Open | `October 2026 Opening Price` | Every timeframe |
-| Weekly Open | `10/04 Weekly Open` | Weekly and lower (hidden on monthly) |
+| Weekly Open | `Weekly Open` | Weekly and lower; monthly too with Show Weekly Open on Monthly Chart (on by default) |
 | Monthly Close | `September 2026 Closing Price` | Every timeframe |
 | Previous Day Close | `Previous Day Close` | Daily and lower |
 
-Each is the opening price of the month or week in progress, with its own on/off
-and a **Previous** count that adds earlier opens (0-5 monthly, 0-3 weekly;
-default 0, so only the current open shows). Months and weeks follow the same
+Each is the opening price of the month or week in progress, with its own on/off.
+Monthly Open has a **Previous** count that adds earlier months (0-5, default 3);
+Weekly Open is always just the current week. On a monthly chart the Weekly Open
+starts on the month containing the week. Months and weeks follow the same
 trading periods as the highs and lows: for CME futures October opens with the
 Sep 30 18:00 session and the week opens Sunday 18:00. Each open's line starts at
 its period's first candle and always runs to its label, even after price trades
@@ -130,14 +131,15 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Show Price in Label | on | Appends the price in parentheses, as in Sessions, e.g. `July Monthly High (30861.25)` |
 | Label Spacing (% of view) | 2 | About one label's height; labels closer than this are spaced out with leaders |
 | *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12. Weekly also has Show on Monthly Chart (on) |
-| High Line / Low Line | Highs blue `#2962FF`; lows red `#B22833` (Daily lows `#801922`); width 2; Solid (Weekly Dotted) | Color, style, width; set separately for highs and lows of each type |
+| High Line / Low Line | Highs blue `#2962FF`; lows red `#B22833` (Weekly and Daily lows `#801922`); width 1; Solid (Weekly Dotted) | Color, style, width; set separately for highs and lows of each type |
 | High Text / Low Text | Same colors as the lines, Small, bold | Color, size (Tiny–Large), Bold; set separately for highs and lows of each type |
 | When Taken | Keep for every type | Per type: Keep, Stop at take, Remove |
-| Monthly Open / Weekly Open on/off, Previous | on; Monthly 3, Weekly 0 | Previous 0-5 monthly, 0-3 weekly |
-| Open Line | Black, Dashed, 2 | Color, style, width |
+| Monthly Open on/off, Previous | on, 3 | Previous 0-5 |
+| Weekly Open on/off, Show Weekly Open on Monthly Chart | on, on | Current week only |
+| Open Line | Black, Dashed, 1 | Color, style, width |
 | Open Text | Black, Small, bold | Color, size (Tiny-Large), Bold |
-| Monthly Close on/off, Previous | on, 3 | Previous 0-5; line Black Dashed 2, text Black Small bold |
-| Previous Day Close on/off | on | Line Black Dashed 2, text Black Small bold |
+| Monthly Close on/off, Previous | on, 3 | Previous 0-5; line Black Dashed 1, text Black Small bold |
+| Previous Day Close on/off | on | Line Black Dashed 1, text Black Small bold |
 | Close Price | Settlement | Settlement or Last Trade, for Monthly Close and Previous Day Close |
 
 Inputs are hidden from the chart status line.
@@ -166,6 +168,12 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Weekly Open** (1.13.0, 2026-10-09): on MNQZ2026, MESZ2026, BTCUSD and AAPL
+  at 1m, 10m, 1h, 4h, daily, weekly and monthly, `Weekly Open` matched the current
+  weekly candle's open and started on its first candle (on monthly, the month
+  containing the week); turning Weekly Open or the monthly option off hid it.
+  EURUSD matched on every timeframe except 1m, where the line started on Friday's
+  last candle because no 1m bar exists at the Sunday 17:00 open (known limit).
 - **Close Price** (1.12.0, 2026-10-09): on MNQZ2026, MESZ2026 and FX:EURUSD,
   1m, 5m, 10m, 1h, 4h and daily, with both Settlement and Last Trade (36 runs),
   every Previous Day Close and Closing Price line whose candle was loaded
@@ -229,12 +237,15 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - On a weekly chart a monthly high or low set in a week that straddles two
   months (e.g. the week of 9/27, which includes Oct 1-2) can't be pinned to that
   week, so its line starts at the week containing the month's first session.
-- Tested on MNQ, MES, MYM, AAPL, BTCUSD and EURUSD.
+- On a 1m chart, a period that opens in a minute with no bar (EURUSD's Sunday
+  17:00 weekly open) starts its line on the bar before the gap.
+- Tested on MNQ, MES, MYM, AAPL, BTCUSD, ETHUSD and EURUSD.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.13.0 | Weekly Open is the current week only, labelled `Weekly Open`, with Show Weekly Open on Monthly Chart; defaults from the user's chart: all line widths 1, Weekly lows `#801922` |
 | 1.12.0 | Close Price setting (Settlement / Last Trade) for Monthly Close and Previous Day Close; settlement closes start on a candle that traded at that price instead of floating beside the day's last candle |
 | 1.11.0 | Previous Day Close in the Opens section; defaults taken from the user's chart (blue highs, red lows, width 2, bold, Weekly dotted and on the monthly chart, Monthly Open/Close Previous 3) |
 | 1.10.0 | Month labels include the year: `September 2026 Monthly High`, `October 2026 Opening Price`, `September 2026 Closing Price` |
