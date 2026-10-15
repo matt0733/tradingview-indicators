@@ -49,7 +49,7 @@ Design decisions (from the interview):
 
 Gotcha hit while building: `x != na` is false in Pine, so a tracker initialised to na never updated and the history rebuild ran every bar (RE10110 timeout / loop too long).
 
- — `smt_divergence/` (2026-09-30)
+### SMT Divergence 2.0.0 — `smt_divergence/` (2026-09-30)
 
 Rewrite of the LLM-written v1. See `smt_divergence/README.md` for measured results and settings.
 
@@ -66,23 +66,34 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.1.0 — `opening_gaps/` (2026-09-16)
+### Opening Gaps 1.4.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.4.0 on 2026-10-15)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
-1.1.0: every label names its gap and carries the open's date. (1.0.0 released 2026-09-15.)
-
 Design decisions:
-- Gaps are lines, not boxes. Settings layout copies the reference graphic: per-gap checkbox + Show Last (1–10), then Line / Text / Mid Line / Quarters rows.
-- Percent levels run from the open toward the prior close (25% = a quarter filled). Inferred from the reference screenshots, where 25% sat next to the open in both a gap up and a gap down.
+- 1.4.0: Gaps older than the chart's history are backfilled from a `request.security` context: NWOG and NDOG from 60m, RTH from 15m. Those are the same trades the chart uses: the 60m bar that ends at the 17:00 halt closes on the 16:59 trade, the 18:00 bar opens on the 18:00 trade, and 15m bars close at 16:15 and open at 09:30. Backfill merges once, on the last historical bar, matched on open time. The current gap still comes from the chart's own bars, so it isn't late. Measured on 2026-10-15:
+  - A live 1m chart loads ~25.8k bars, back only to Sun 09/20, which gave 3 of 6 NWOGs.
+  - A 60m security context reached back to Jan 2026 and a 15m context to 08/31.
+  - After the change, all 11 timeframes from 15s to 1h show 6/6/6, and all 18 gaps match the raw 1m bars.
+- 1.3.0 (shipped in the 1.4.0 commit): each gap type has a Current block (newest gap) and a Previous block (up to 5 before it). Interview answers:
+  - One shared style for all previous gaps.
+  - Independent switches; each one turns off everything under it.
+  - Current = 1 gap, Previous = 1–5 more.
+  - Settings grouped by gap type.
+  - One Date checkbox per block, 6 in total.
+  - Previous defaults to off, in the same colors at 50% transparency. The user may pick grey shades later and ask for new defaults.
+- 1.2.0: RTH draws on every intraday timeframe. It used to be hidden on 2m/10m/30m/1h, and the user ran into that. Off-grid timeframes read RTH from the largest boundary-safe timeframe at or below the chart's own (1/3/5/15m). The user's idea: that source's bars have already closed, so there's no delay.
+- 1.1.0: labels name the gap and carry the open's date (`NWOG 75% 10/11`). The user couldn't tell the gap types apart by color alone.
+- Gaps are lines, not boxes. The settings layout copies the reference graphic (『 』 headers, ▸ rows); keep those characters.
+- Percent levels run from the open toward the prior close (25% = a quarter filled). This was inferred from the reference screenshots, where 25% sat next to the open in both a gap up and a gap down.
 - High/Low lines start at the bar that set each price; mid and quarters start at the open.
-- RTH gap only on timeframes that divide 15 minutes; other bar sizes straddle 16:15.
-- Futures holidays (Globex halts at 13:00, no RTH session): the day's RTH gap is dropped at the reopen and the next day measures from the last real 16:14 close. Early-close days run to 13:15 and still count.
-- Zero-size gaps are skipped.
+- Futures holidays (Globex halts at 13:00, no RTH session): the day's RTH gap is dropped at the reopen, and the next day measures from the last real 16:14 close. Early-close days run to 13:15 and still count.
+- Zero-size gaps are skipped (e.g. Mon 2026-10-12: 16:59 close = 18:00 open = 30877.5).
 
 Possible follow-ups (not requested yet):
 - Stop extending lines, or fade them, once a gap is filled.
 - Stagger labels when all five levels of a small gap overlap.
+- Grey shades for the Previous defaults (user to pick).
 
 ### Macros 1.2.0 — `macros/` (2026-08-28)
 
