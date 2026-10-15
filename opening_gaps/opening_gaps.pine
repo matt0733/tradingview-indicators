@@ -1,5 +1,5 @@
 //@version=6
-indicator("Opening Gaps 1.8.0", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.8.1", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -211,7 +211,8 @@ type Gap
     int           pc_t
     float         op     // open
     int           op_t
-    array<line>   lines
+    array<line>   lines  // up to the current bar, placed by time
+    array<line>   futs   // past the current bar, placed by bar count
     array<label>  labels
     array<color>  cols   // per level, so a leader can match its line
     array<string> stys
@@ -252,12 +253,18 @@ f_mmdd(t) =>
     d = dayofmonth(t, TZ)
     (m < 10 ? "0" : "") + str.tostring(m) + "/" + (d < 10 ? "0" : "") + str.tostring(d)
 
-draw_level(Gap g, GapCfg c, int x1, int x2, float y, string sty, int w, string txt, bool bold) =>
-    g.lines.push(line.new(x1, y, x2, y, xloc=xloc.bar_time, color=c.lcol, style=ls(sty), width=w))
+// Past the current bar, positions are counted in bars (xloc.bar_index): a time
+// would collapse into the next session open whenever it lands in a market break
+// (the 17:00 halt, weekends), squashing Extend Right and turning leaders vertical.
+// Up to the current bar lines stay time-based, so a level can start any distance
+// back. Each level is therefore drawn in two parts that meet at the current bar.
+draw_level(Gap g, GapCfg c, int x1, float y, string sty, int w, string txt, bool bold) =>
+    g.lines.push(line.new(x1, y, time, y, xloc=xloc.bar_time, color=c.lcol, style=ls(sty), width=w))
+    g.futs.push(line.new(bar_index, y, bar_index + ext_bars, y, xloc=xloc.bar_index, color=c.lcol, style=ls(sty), width=w))
     g.cols.push(c.lcol)
     g.stys.push(sty)
     g.wids.push(w)
-    g.labels.push(label.new(x2, y, txt, xloc=xloc.bar_time, style=lbl_sty(c.tpos),
+    g.labels.push(label.new(bar_index + ext_bars, y, txt, xloc=xloc.bar_index, style=lbl_sty(c.tpos),
                             color=color.new(color.white, 100), textcolor=c.tcol,
                             size=lbl_sz(c.tsz), textalign=text.align_left,
                             text_formatting=bold ? text.format_bold : text.format_none))
@@ -265,24 +272,27 @@ draw_level(Gap g, GapCfg c, int x1, int x2, float y, string sty, int w, string t
 // Draws one gap in the given styling: High/Low from where each price was set,
 // mid/quarters from the open. Percent levels run from the open toward the prior
 // close (25% = a quarter filled). Labels carry the open's date when asked for.
-draw_gap(Gap g, GapCfg c, int x2) =>
+draw_gap(Gap g, GapCfg c) =>
     string dt = c.date ? " " + f_mmdd(g.op_t) : ""
     bool gap_dn = g.pc >= g.op
-    draw_level(g, c, gap_dn ? g.pc_t : g.op_t, x2, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt, c.bold)
-    draw_level(g, c, gap_dn ? g.op_t : g.pc_t, x2, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt, c.bold)
+    draw_level(g, c, gap_dn ? g.pc_t : g.op_t, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt, c.bold)
+    draw_level(g, c, gap_dn ? g.op_t : g.pc_t, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt, c.bold)
     float span = g.pc - g.op
     if c.qtr
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.25, c.qsty, c.qw, c.qlbl ? c.name + " 25%" + dt : "", c.qbold)
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.75, c.qsty, c.qw, c.qlbl ? c.name + " 75%" + dt : "", c.qbold)
+        draw_level(g, c, g.op_t, g.op + span * 0.25, c.qsty, c.qw, c.qlbl ? c.name + " 25%" + dt : "", c.qbold)
+        draw_level(g, c, g.op_t, g.op + span * 0.75, c.qsty, c.qw, c.qlbl ? c.name + " 75%" + dt : "", c.qbold)
     if c.mid
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.5, c.msty, c.mw, c.mlbl ? c.name + " 50%" + dt : "", c.mbold)
+        draw_level(g, c, g.op_t, g.op + span * 0.5, c.msty, c.mw, c.mlbl ? c.name + " 50%" + dt : "", c.mbold)
 
 clear_gap(Gap g) =>
     for l in g.lines
         l.delete()
+    for l in g.futs
+        l.delete()
     for lb in g.labels
         lb.delete()
     g.lines.clear()
+    g.futs.clear()
     g.labels.clear()
     g.cols.clear()
     g.stys.clear()
@@ -291,7 +301,7 @@ clear_gap(Gap g) =>
 // Redraws a whole store: the newest gap in the Current styling, the ones behind
 // it in the Previous styling, and trims records past what Previous asks for.
 // Each switch stands alone, so Previous on with Current off hides only the newest.
-redraw(array<Gap> store, GapCfg cur, GapCfg prv, int x2) =>
+redraw(array<Gap> store, GapCfg cur, GapCfg prv) =>
     int keep_n = (prv.on ? prv.keep : 0) + 1
     while store.size() > keep_n
         clear_gap(store.shift())
@@ -303,36 +313,39 @@ redraw(array<Gap> store, GapCfg cur, GapCfg prv, int x2) =>
             int age = n - 1 - i        // 0 = current, 1+ = previous
             if age == 0
                 if cur.on
-                    draw_gap(g, cur, x2)
+                    draw_gap(g, cur)
             else if prv.on
-                draw_gap(g, prv, x2)
+                draw_gap(g, prv)
 
-add_gap(array<Gap> store, GapCfg cur, GapCfg prv, float pc, int pc_t, float op, int op_t, int x2) =>
-    store.push(Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
-    redraw(store, cur, prv, x2)
+add_gap(array<Gap> store, GapCfg cur, GapCfg prv, float pc, int pc_t, float op, int op_t) =>
+    store.push(Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
+    redraw(store, cur, prv)
     log.info("{0}: close {1} -> open {2} ({3} pts)", cur.name,
              str.tostring(pc, format.mintick), str.tostring(op, format.mintick),
              str.tostring(op - pc, format.mintick))
 
 // Removes the newest gap. Used when a day turns out to be a holiday with no
 // regular session, which promotes the one behind it back to current.
-drop_newest(array<Gap> store, GapCfg cur, GapCfg prv, int x2) =>
+drop_newest(array<Gap> store, GapCfg cur, GapCfg prv) =>
     if store.size() > 0
         Gap g = store.pop()
         clear_gap(g)
-        redraw(store, cur, prv, x2)
+        redraw(store, cur, prv)
         log.info("{0}: dropped holiday gap {1} -> {2}", cur.name,
                  str.tostring(g.pc, format.mintick), str.tostring(g.op, format.mintick))
 
-extend_all(array<Gap> store, int x2) =>
+extend_all(array<Gap> store) =>
     for g in store
         int n = g.lines.size()
         if n > 0
             for i = 0 to n - 1
                 line  l  = g.lines.get(i)
+                line  f  = g.futs.get(i)
                 label lb = g.labels.get(i)
-                l.set_x2(x2)
-                lb.set_x(x2)
+                l.set_x2(time)
+                f.set_x1(bar_index)
+                f.set_x2(bar_index + ext_bars)
+                lb.set_x(bar_index + ext_bars)
                 lb.set_y(l.get_y1())
 
 // Gathers every drawn level from a store into the parallel arrays used by the spread
@@ -345,7 +358,7 @@ collect_levels(array<Gap> store, array<label> lbs, array<line> lns, array<float>
                 if g.labels.get(i).get_text() == ""
                     continue
                 lbs.push(g.labels.get(i))
-                lns.push(g.lines.get(i))
+                lns.push(g.futs.get(i))
                 ys.push(g.lines.get(i).get_y1())
                 cs.push(g.cols.get(i))
                 ss.push(g.stys.get(i))
@@ -455,7 +468,7 @@ rth_scan() =>
 
 // Adds backfilled gaps the chart's own bars could not reach, skipping any it
 // already found (matched on open time), and keeps the store in time order.
-merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf, int x2) =>
+merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf) =>
     int n = na(bf) ? 0 : bf.size() / 4
     int added = 0
     if n > 0
@@ -473,9 +486,9 @@ merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf, int x2
                         pos := j + 1
             if not dup
                 store.insert(pos, Gap.new(bf.get(i * 4 + 2), int(bf.get(i * 4 + 3)), bf.get(i * 4 + 1), opt,
-                                          array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
+                                          array.new<line>(), array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
                 added += 1
-        redraw(store, cur, prv, x2)
+        redraw(store, cur, prv)
     log.info("{0}: backfilled {1} of {2}", cur.name, added, n)
 
 // ===========================================================================
@@ -530,7 +543,6 @@ array<float> rt_bf = request.security(syminfo.tickerid, "15", rth_scan(),      l
 
 int  sod   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
 int  dow   = dayofweek(time, TZ)
-int  x_end = time + ext_bars * tf_sec * 1000
 
 // True only on the bar whose span contains the given second of the day
 contains(int s) =>
@@ -540,9 +552,9 @@ if tf_ok
     // 18:00 reopen - Sunday is NWOG, Monday-Thursday is NDOG
     if contains(S_REOPEN) and not na(eve_close) and eve_close != open
         if dow == dayofweek.sunday
-            add_gap(nw_gaps, nwc, nwp, eve_close, eve_close_t, open, time, x_end)
+            add_gap(nw_gaps, nwc, nwp, eve_close, eve_close_t, open, time)
         else if dow >= dayofweek.monday and dow <= dayofweek.thursday
-            add_gap(nd_gaps, ndc, ndp, eve_close, eve_close_t, open, time, x_end)
+            add_gap(nd_gaps, ndc, ndp, eve_close, eve_close_t, open, time)
     if sod < S_HALT
         eve_close   := close
         eve_close_t := time
@@ -555,7 +567,7 @@ if rth_native
             rth_close_t := day_close_t
         day_real := false
         if not na(rth_close) and rth_close != open
-            add_gap(rt_gaps, rtc, rtp, rth_close, rth_close_t, open, time, x_end)
+            add_gap(rt_gaps, rtc, rtp, rth_close, rth_close_t, open, time)
             rt_pending := true
     if sod >= S_RTH_OPEN and sod < S_RTH_CLOSE
         day_close   := close
@@ -565,23 +577,23 @@ if rth_native
         rt_pending := false
     else if rt_pending and (sod >= S_HALT or sod < S_RTH_OPEN)
         // Halted before 13:00: no regular session today, so drop its gap
-        drop_newest(rt_gaps, rtc, rtp, x_end)
+        drop_newest(rt_gaps, rtc, rtp)
         rt_pending := false
 else if tf_ok
     // 2m, 10m, 30m, 1h, 4h ... - the gap comes from rth_src, whose bars close
     // inside the chart bar, so it appears with the chart bar holding 09:30.
     if h_op_t != 0 and h_op_t != nz(h_op_t[1], 0)
-        add_gap(rt_gaps, rtc, rtp, h_pc, h_pc_t, h_op, h_op_t, x_end)
+        add_gap(rt_gaps, rtc, rtp, h_pc, h_pc_t, h_op, h_op_t)
     if h_drop != 0 and h_drop != nz(h_drop[1], 0)
-        drop_newest(rt_gaps, rtc, rtp, x_end)
+        drop_newest(rt_gaps, rtc, rtp)
 
 // Once history has loaded, fill in gaps from before the chart's first bar. Gaps
 // that form after this keep coming from the chart's own bars, so the current
 // gap still appears the moment it opens.
 if barstate.islastconfirmedhistory and tf_ok
-    merge_backfill(nw_gaps, nwc, nwp, nw_bf, x_end)
-    merge_backfill(nd_gaps, ndc, ndp, nd_bf, x_end)
-    merge_backfill(rt_gaps, rtc, rtp, rt_bf, x_end)
+    merge_backfill(nw_gaps, nwc, nwp, nw_bf)
+    merge_backfill(nd_gaps, ndc, ndp, nd_bf)
+    merge_backfill(rt_gaps, rtc, rtp, rt_bf)
 
 // High and low of the bars in view; the script recalculates when the view changes
 var float vis_hi = na
@@ -594,9 +606,9 @@ const int LEAD_BARS = 3   // length of a leader to a moved label
 var array<line> leaders = array.new<line>()
 
 if barstate.islast
-    extend_all(nw_gaps, x_end)
-    extend_all(nd_gaps, x_end)
-    extend_all(rt_gaps, x_end)
+    extend_all(nw_gaps)
+    extend_all(nd_gaps)
+    extend_all(rt_gaps)
     for l in leaders
         l.delete()
     leaders.clear()
@@ -619,7 +631,8 @@ if barstate.islast
         collect_levels(rt_gaps, lbs, lns, ys, cs, ss, ws)
         float tol = syminfo.mintick / 2
         float thr = math.max(nz(vis_hi - vis_lo) * lbl_gap / 100, tol)
-        int   x_ldr = x_end - math.min(LEAD_BARS, ext_bars) * tf_sec * 1000   // where a leader starts
+        int   x_lbl = bar_index + ext_bars
+        int   x_ldr = bar_index + math.max(ext_bars - LEAD_BARS, 0)   // where a leader starts
         int   n   = lbs.size()
         // Crowded: more labels in view than fit one label height apart
         int n_vis = 0
@@ -662,6 +675,6 @@ if barstate.islast
                     if math.abs(y - p) > tol and not too_far
                         lns.get(idx).set_x2(x_ldr)
                         lbs.get(idx).set_y(y)
-                        leaders.push(line.new(x_ldr, p, x_end, y, xloc=xloc.bar_time,
+                        leaders.push(line.new(x_ldr, p, x_lbl, y, xloc=xloc.bar_index,
                                               color=cs.get(idx), style=ls(ss.get(idx)), width=ws.get(idx)))
                     k += 1

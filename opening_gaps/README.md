@@ -29,6 +29,12 @@ A gap where the open equals the prior close is not drawn.
 - Quarter levels are exact fractions of the gap and can fall between ticks
   (e.g. 29494.125).
 - Lines keep extending after a gap fills.
+- Past the current bar, the extension, labels and leaders are positioned by bar
+  count, not time. Each level is drawn in two parts that meet at the current
+  bar: time-based behind it (so a level can start weeks back) and bar-based ahead
+  of it. A time-based future position would collapse into the next session open
+  during the 17:00 halt and over weekends, squeezing Extend Right to one bar and
+  turning leaders vertical.
 
 **Labels** name the gap and carry the date of its open, so several gaps of
 different types can sit on the chart without ambiguity:
@@ -182,6 +188,16 @@ whose start lies before the chart's first bar draw from the left edge, which
 makes no difference for a horizontal level.
 
 ## Validation
+
+**v1.8.1, 2026-10-15, MNQZ2026.** Tested during the 17:00 halt (last bar 16:59),
+where 1.8.0 collapsed everything to the first future bar slot: labels at 301 and
+leaders 301 → 301, so the leaders were vertical. In 1.8.1, on all 11 timeframes
+from 15s to 1h with Previous on at 2:
+- Every label sits exactly 20 bars past the last bar.
+- Every leader spans the last 3 of those bars (e.g. 317 → 320).
+- Every line reaches the current bar and continues to its label.
+- All 45 levels are at their correct prices.
+- Screenshots on every timeframe show angled leaders and full-length lines.
 
 **v1.8.0, 2026-10-15, MNQZ2026.** Label High/Low Only (previous blocks) was
 replaced by a Label checkbox on every Mid Line and Quarters row.

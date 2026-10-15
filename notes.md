@@ -66,11 +66,12 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.8.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.8.0 on 2026-10-15)
+### Opening Gaps 1.8.1 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.8.1 on 2026-10-15)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
 Design decisions:
+- 1.8.1: user saw vertical leaders during the 17:00 halt. Future positions were time-based, and times in the halt collapsed onto the 18:00 bar (Extend Right squeezed to 1 bar too). Now everything past the current bar is in bars (xloc.bar_index), and each level is drawn in two parts meeting at the current bar. Same fix as Key Levels 1.13.2.
 - 1.8.0: a Label checkbox on every Mid Line and Quarters row (12 total) to show lines only. The user chose separate switches for Mid Line and Quarters, defaults labelled on Current and lines only on Previous, and to replace Label High/Low Only rather than keep both (keeping it would override the new switches and make them look broken).
 - 1.7.0: separate Bold for the Mid Line (50%) and Quarters (25/75%) labels in every block (12 new switches, at the end of those rows). User's choices: the Text-row Bold now covers High/Low only, and the new switches default off, so High/Low stand out over the plain percent levels.
 - 1.6.0: **Bold** checkbox on each block's Text row (6 total), default on, copied from Key Levels. The user found the text the right size but hard to read even in the darker grays.
