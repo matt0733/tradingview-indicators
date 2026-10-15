@@ -66,9 +66,8 @@ Each block has its own full styling:
 |---|---|---|
 | Line | NWOG `#673AB7` Solid 2 · NDOG `#2962FF` Solid 2 · RTH `#FF9800` Solid 1 | Color, style, width for High/Low |
 | Text | Small, Middle, Date on, Bold on | Color, size (Tiny–Large), position (Top, Middle, Bottom), date on/off, bold for the High/Low labels |
-| Mid Line | on, Dotted 1, Bold off | Uses the block's line color; Bold applies to the 50% label |
-| Quarters | on, Dotted 1, Bold off | 25% and 75%; uses the block's line color; Bold applies to their labels |
-| Label High/Low Only | on (Previous blocks only) | Previous gaps keep their 25/50/75% lines but only High and Low get a label |
+| Mid Line | on, Dotted 1, Bold off, Label on (Current) / off (Previous) | Uses the block's line color; Bold and Label apply to the 50% label |
+| Quarters | on, Dotted 1, Bold off, Label on (Current) / off (Previous) | 25% and 75%; uses the block's line color; Bold and Label apply to their labels |
 
 Previous gaps default to solid grays, so the current gaps stand out in color:
 RTH `#4A4D57` (darkest), NDOG `#6A6D78`, NWOG `#8A8D97` (lightest). Line and
@@ -79,8 +78,13 @@ Text row (default on), the 50% label on the Mid Line row and the 25%/75% labels
 on the Quarters row (both default off). That's 18 switches in total. By
 default High and Low stand out in bold while the percent levels stay plain.
 Bold text reads much better at small sizes, especially the lighter grays,
-without making the labels bigger. In a Previous block with **Label High/Low
-Only** on, the percent labels are blank, so their Bold switches have no effect.
+without making the labels bigger.
+
+The **Label** checkbox on each Mid Line and Quarters row shows or hides that
+row's text. Off draws the line at its exact price with no label, which also
+keeps it out of the label spreading. By default current gaps label every level
+and previous gaps label only High and Low, keeping charts with several previous
+gaps readable. A row's Bold switch only matters while its Label is on.
 
 The two checkboxes are independent, and each one switches off everything under
 it: lines, labels, mid line, quarters and dates. With Current off and Previous on,
@@ -114,9 +118,9 @@ and NDOG/RTH Previous 2:
 | Spread alone (all percent labels) | clean | busy, readable | a column of labels running off the screen |
 | + Max Label Move 3 | clean | a few overlapping clumps | many overlapping clumps |
 | + Skip Spread When Crowded | clean | same as spread alone | no spreading, overlaps everywhere |
-| **+ Previous Label High/Low Only (default)** | **clean** | **clean** | **clean** |
+| **+ Previous gaps label High/Low only (default)** | **clean** | **clean** | **clean** |
 
-High/Low Only takes previous gaps from five labels to two: 33 labels instead of
+Labelling only High/Low on previous gaps takes them from five labels to two: 33 labels instead of
 60 for that setup, with labels moving at most about 3 label heights. With every
 count at its maximum (45 labels) 1h is still readable, but the upper band is
 dense. Max Label Move and Skip Spread When Crowded stay as options, off by
@@ -178,6 +182,15 @@ whose start lies before the chart's first bar draw from the left edge, which
 makes no difference for a horizontal level.
 
 ## Validation
+
+**v1.8.0, 2026-10-15, MNQZ2026.** Label High/Low Only (previous blocks) was
+replaced by a Label checkbox on every Mid Line and Quarters row.
+- Pure defaults: all 11 timeframes from 15s to 1h draw 15 lines and 15 labels.
+- Previous on at 2: all 11 timeframes draw all 45 lines at their exact prices.
+  Current gaps label 25/50/75%, and previous gaps draw those lines with no
+  text. Checked by screenshot too.
+- On 1h, each of the 12 Label switches flipped on its own changed only its
+  own labels and never removed a line.
 
 **v1.7.0, 2026-10-15, MNQZ2026.**
 - On defaults, all 11 timeframes from 15s to 1h draw every High/Low label bold
@@ -243,5 +256,6 @@ against the 1m-derived values to the tick.
   example crypto on 4h) may place NWOG/NDOG on the wrong bar.
 - Spread labels move as you zoom or scroll, since the spacing is measured
   against the visible range.
-- With every Previous count at 5 and High/Low Only off, 30m and 1h have more
-  labels than the screen can hold. Leave High/Low Only on for those timeframes.
+- With every Previous count at 5 and the previous gaps' Mid Line and Quarters
+  labels turned on, 30m and 1h have more labels than the screen can hold. Leave
+  them off (the default) for those timeframes.

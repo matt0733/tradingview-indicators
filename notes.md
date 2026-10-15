@@ -66,16 +66,17 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.7.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.7.0 on 2026-10-15)
+### Opening Gaps 1.8.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.8.0 on 2026-10-15)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
 Design decisions:
+- 1.8.0: a Label checkbox on every Mid Line and Quarters row (12 total) to show lines only. The user chose separate switches for Mid Line and Quarters, defaults labelled on Current and lines only on Previous, and to replace Label High/Low Only rather than keep both (keeping it would override the new switches and make them look broken).
 - 1.7.0: separate Bold for the Mid Line (50%) and Quarters (25/75%) labels in every block (12 new switches, at the end of those rows). User's choices: the Text-row Bold now covers High/Low only, and the new switches default off, so High/Low stand out over the plain percent levels.
 - 1.6.0: **Bold** checkbox on each block's Text row (6 total), default on, copied from Key Levels. The user found the text the right size but hard to read even in the darker grays.
 - 1.5.1 (shipped in the 1.6.0 commit): Previous defaults are solid grays. Order chosen by the user: RTH darkest `#4A4D57`, then NDOG `#6A6D78`, then NWOG lightest `#8A8D97`. Text matches its line. Replaces the 50% faded type colors.
 - 1.5.0: overlapping labels are spread with leaders, the same block method as Key Levels. Prompted by RTH High 10/15 overwriting NDOG Low 10/14. The user found Key Levels' spread messy but asked to try it, chose "share of the screen" spacing (labels shift on zoom) over a fixed distance, and kept a Spread on/off switch.
-  - Spread alone was clean up to 5m but a wall of labels on 30m/1h with previous gaps on. Three fixes were tested on all 11 timeframes. Only **Label High/Low Only** on previous gaps (blank 25/50/75% labels, lines kept) was clean everywhere.
+  - Spread alone was clean up to 5m but a wall of labels on 30m/1h with previous gaps on. Three fixes were tested on all 11 timeframes. Only labelling High/Low on previous gaps (blank 25/50/75% labels, lines kept) was clean everywhere; first a per-type Label High/Low Only setting, replaced in 1.8.0 by per-row Label switches.
   - The user made it one setting per Previous block (NWOG, NDOG, RTH), on its own row under Text, default on. Max Label Move and Skip Spread When Crowded failed to help but the user chose to keep them, off by default.
   - Rejected first: separate label columns per gap type. They need retuning with zoom, and the user wants nothing to adjust regularly.
 - 1.4.0: Gaps older than the chart's history are backfilled from a `request.security` context: NWOG and NDOG from 60m, RTH from 15m. Those are the same trades the chart uses: the 60m bar that ends at the 17:00 halt closes on the 16:59 trade, the 18:00 bar opens on the 18:00 trade, and 15m bars close at 16:15 and open at 09:30. Backfill merges once, on the last historical bar, matched on open time. The current gap still comes from the chart's own bars, so it isn't late. Measured on 2026-10-15:

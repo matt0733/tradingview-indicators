@@ -1,5 +1,5 @@
 //@version=6
-indicator("Opening Gaps 1.7.0", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.8.0", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -36,10 +36,14 @@ bool   nwc_mid  = input.bool(true, "Mid Line ▸", group=GNW, display=display.no
 string nwc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc3")
 int    nwc_mw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc3")
 bool   nwc_mbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwc3")
+bool   nwc_mlbl = input.bool(true, "Label", group=GNW, display=display.none, inline="nwc3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
 bool   nwc_qtr  = input.bool(true, "Quarters ▸", group=GNW, display=display.none, inline="nwc4")
 string nwc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc4")
 int    nwc_qw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc4")
 bool   nwc_qbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwc4")
+bool   nwc_qlbl = input.bool(true, "Label", group=GNW, display=display.none, inline="nwc4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
 
 bool   nwp_on   = input.bool(false, "Previous ▸", group=GNW, display=display.none, inline="nwp0")
 int    nwp_keep = input.int(2, "Show Last:", minval=1, maxval=5, group=GNW, display=display.none, inline="nwp0",
@@ -54,16 +58,18 @@ bool   nwp_date = input.bool(true, "Date", group=GNW, display=display.none, inli
     tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NWOG High 09/13'.")
 bool   nwp_bold = input.bool(true, "Bold", group=GNW, display=display.none, inline="nwp2",
     tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
-bool   nwp_hl   = input.bool(true, "Label High/Low Only", group=GNW, display=display.none, inline="nwp2b",
-    tooltip="On previous NWOG gaps, the 25%, 50% and 75% lines still draw but carry no label, so only High and Low are named. Keeps the chart readable when several previous gaps are showing.")
 bool   nwp_mid  = input.bool(true, "Mid Line ▸", group=GNW, display=display.none, inline="nwp3")
 string nwp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp3")
 int    nwp_mw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp3")
 bool   nwp_mbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwp3")
+bool   nwp_mlbl = input.bool(false, "Label", group=GNW, display=display.none, inline="nwp3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
 bool   nwp_qtr  = input.bool(true, "Quarters ▸", group=GNW, display=display.none, inline="nwp4")
 string nwp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp4")
 int    nwp_qw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp4")
 bool   nwp_qbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwp4")
+bool   nwp_qlbl = input.bool(false, "Label", group=GNW, display=display.none, inline="nwp4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
 
 // ===========================================================================
 // INPUTS - NDOG
@@ -84,10 +90,14 @@ bool   ndc_mid  = input.bool(true, "Mid Line ▸", group=GND, display=display.no
 string ndc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc3")
 int    ndc_mw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc3")
 bool   ndc_mbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndc3")
+bool   ndc_mlbl = input.bool(true, "Label", group=GND, display=display.none, inline="ndc3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
 bool   ndc_qtr  = input.bool(true, "Quarters ▸", group=GND, display=display.none, inline="ndc4")
 string ndc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc4")
 int    ndc_qw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc4")
 bool   ndc_qbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndc4")
+bool   ndc_qlbl = input.bool(true, "Label", group=GND, display=display.none, inline="ndc4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
 
 bool   ndp_on   = input.bool(false, "Previous ▸", group=GND, display=display.none, inline="ndp0")
 int    ndp_keep = input.int(2, "Show Last:", minval=1, maxval=5, group=GND, display=display.none, inline="ndp0",
@@ -102,16 +112,18 @@ bool   ndp_date = input.bool(true, "Date", group=GND, display=display.none, inli
     tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NDOG High 09/13'.")
 bool   ndp_bold = input.bool(true, "Bold", group=GND, display=display.none, inline="ndp2",
     tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
-bool   ndp_hl   = input.bool(true, "Label High/Low Only", group=GND, display=display.none, inline="ndp2b",
-    tooltip="On previous NDOG gaps, the 25%, 50% and 75% lines still draw but carry no label, so only High and Low are named. Keeps the chart readable when several previous gaps are showing.")
 bool   ndp_mid  = input.bool(true, "Mid Line ▸", group=GND, display=display.none, inline="ndp3")
 string ndp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp3")
 int    ndp_mw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp3")
 bool   ndp_mbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndp3")
+bool   ndp_mlbl = input.bool(false, "Label", group=GND, display=display.none, inline="ndp3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
 bool   ndp_qtr  = input.bool(true, "Quarters ▸", group=GND, display=display.none, inline="ndp4")
 string ndp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp4")
 int    ndp_qw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp4")
 bool   ndp_qbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndp4")
+bool   ndp_qlbl = input.bool(false, "Label", group=GND, display=display.none, inline="ndp4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
 
 // ===========================================================================
 // INPUTS - RTH GAP
@@ -132,10 +144,14 @@ bool   rtc_mid  = input.bool(true, "Mid Line ▸", group=GRT, display=display.no
 string rtc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc3")
 int    rtc_mw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc3")
 bool   rtc_mbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtc3")
+bool   rtc_mlbl = input.bool(true, "Label", group=GRT, display=display.none, inline="rtc3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
 bool   rtc_qtr  = input.bool(true, "Quarters ▸", group=GRT, display=display.none, inline="rtc4")
 string rtc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc4")
 int    rtc_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc4")
 bool   rtc_qbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtc4")
+bool   rtc_qlbl = input.bool(true, "Label", group=GRT, display=display.none, inline="rtc4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
 
 bool   rtp_on   = input.bool(false, "Previous ▸", group=GRT, display=display.none, inline="rtp0")
 int    rtp_keep = input.int(2, "Show Last:", minval=1, maxval=5, group=GRT, display=display.none, inline="rtp0",
@@ -150,16 +166,18 @@ bool   rtp_date = input.bool(true, "Date", group=GRT, display=display.none, inli
     tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'RTH High 09/13'.")
 bool   rtp_bold = input.bool(true, "Bold", group=GRT, display=display.none, inline="rtp2",
     tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
-bool   rtp_hl   = input.bool(true, "Label High/Low Only", group=GRT, display=display.none, inline="rtp2b",
-    tooltip="On previous RTH gaps, the 25%, 50% and 75% lines still draw but carry no label, so only High and Low are named. Keeps the chart readable when several previous gaps are showing.")
 bool   rtp_mid  = input.bool(true, "Mid Line ▸", group=GRT, display=display.none, inline="rtp3")
 string rtp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp3")
 int    rtp_mw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp3")
 bool   rtp_mbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtp3")
+bool   rtp_mlbl = input.bool(false, "Label", group=GRT, display=display.none, inline="rtp3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
 bool   rtp_qtr  = input.bool(true, "Quarters ▸", group=GRT, display=display.none, inline="rtp4")
 string rtp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp4")
 int    rtp_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp4")
 bool   rtp_qbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtp4")
+bool   rtp_qlbl = input.bool(false, "Label", group=GRT, display=display.none, inline="rtp4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
 
 
 // ===========================================================================
@@ -168,7 +186,6 @@ bool   rtp_qbold = input.bool(false, "Bold", group=GRT, display=display.none, in
 type GapCfg
     string name
     bool   on
-    bool   hl     // label only High and Low (previous gaps)
     int    keep
     bool   date
     color  lcol
@@ -182,10 +199,12 @@ type GapCfg
     string msty
     int    mw
     bool   mbold  // bold 50% label
+    bool   mlbl   // show the 50% label
     bool   qtr
     string qsty
     int    qw
     bool   qbold  // bold 25%/75% labels
+    bool   qlbl   // show the 25%/75% labels
 
 type Gap
     float         pc     // prior close
@@ -252,12 +271,11 @@ draw_gap(Gap g, GapCfg c, int x2) =>
     draw_level(g, c, gap_dn ? g.pc_t : g.op_t, x2, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt, c.bold)
     draw_level(g, c, gap_dn ? g.op_t : g.pc_t, x2, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt, c.bold)
     float span = g.pc - g.op
-    bool pct_txt = not c.hl   // blank percent labels if this block labels High/Low only
     if c.qtr
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.25, c.qsty, c.qw, pct_txt ? c.name + " 25%" + dt : "", c.qbold)
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.75, c.qsty, c.qw, pct_txt ? c.name + " 75%" + dt : "", c.qbold)
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.25, c.qsty, c.qw, c.qlbl ? c.name + " 25%" + dt : "", c.qbold)
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.75, c.qsty, c.qw, c.qlbl ? c.name + " 75%" + dt : "", c.qbold)
     if c.mid
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.5, c.msty, c.mw, pct_txt ? c.name + " 50%" + dt : "", c.mbold)
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.5, c.msty, c.mw, c.mlbl ? c.name + " 50%" + dt : "", c.mbold)
 
 clear_gap(Gap g) =>
     for l in g.lines
@@ -463,12 +481,12 @@ merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf, int x2
 // ===========================================================================
 // STATE
 // ===========================================================================
-var GapCfg nwc = GapCfg.new("NWOG", nwc_on, false, 1,        nwc_date, nwc_lcol, nwc_lsty, nwc_lw, nwc_tcol, nwc_tsz, nwc_tpos, nwc_bold, nwc_mid, nwc_msty, nwc_mw, nwc_mbold, nwc_qtr, nwc_qsty, nwc_qw, nwc_qbold)
-var GapCfg nwp = GapCfg.new("NWOG", nwp_on, nwp_hl, nwp_keep, nwp_date, nwp_lcol, nwp_lsty, nwp_lw, nwp_tcol, nwp_tsz, nwp_tpos, nwp_bold, nwp_mid, nwp_msty, nwp_mw, nwp_mbold, nwp_qtr, nwp_qsty, nwp_qw, nwp_qbold)
-var GapCfg ndc = GapCfg.new("NDOG", ndc_on, false, 1,        ndc_date, ndc_lcol, ndc_lsty, ndc_lw, ndc_tcol, ndc_tsz, ndc_tpos, ndc_bold, ndc_mid, ndc_msty, ndc_mw, ndc_mbold, ndc_qtr, ndc_qsty, ndc_qw, ndc_qbold)
-var GapCfg ndp = GapCfg.new("NDOG", ndp_on, ndp_hl, ndp_keep, ndp_date, ndp_lcol, ndp_lsty, ndp_lw, ndp_tcol, ndp_tsz, ndp_tpos, ndp_bold, ndp_mid, ndp_msty, ndp_mw, ndp_mbold, ndp_qtr, ndp_qsty, ndp_qw, ndp_qbold)
-var GapCfg rtc = GapCfg.new("RTH",  rtc_on, false, 1,        rtc_date, rtc_lcol, rtc_lsty, rtc_lw, rtc_tcol, rtc_tsz, rtc_tpos, rtc_bold, rtc_mid, rtc_msty, rtc_mw, rtc_mbold, rtc_qtr, rtc_qsty, rtc_qw, rtc_qbold)
-var GapCfg rtp = GapCfg.new("RTH",  rtp_on, rtp_hl, rtp_keep, rtp_date, rtp_lcol, rtp_lsty, rtp_lw, rtp_tcol, rtp_tsz, rtp_tpos, rtp_bold, rtp_mid, rtp_msty, rtp_mw, rtp_mbold, rtp_qtr, rtp_qsty, rtp_qw, rtp_qbold)
+var GapCfg nwc = GapCfg.new("NWOG", nwc_on, 1,        nwc_date, nwc_lcol, nwc_lsty, nwc_lw, nwc_tcol, nwc_tsz, nwc_tpos, nwc_bold, nwc_mid, nwc_msty, nwc_mw, nwc_mbold, nwc_mlbl, nwc_qtr, nwc_qsty, nwc_qw, nwc_qbold, nwc_qlbl)
+var GapCfg nwp = GapCfg.new("NWOG", nwp_on, nwp_keep, nwp_date, nwp_lcol, nwp_lsty, nwp_lw, nwp_tcol, nwp_tsz, nwp_tpos, nwp_bold, nwp_mid, nwp_msty, nwp_mw, nwp_mbold, nwp_mlbl, nwp_qtr, nwp_qsty, nwp_qw, nwp_qbold, nwp_qlbl)
+var GapCfg ndc = GapCfg.new("NDOG", ndc_on, 1,        ndc_date, ndc_lcol, ndc_lsty, ndc_lw, ndc_tcol, ndc_tsz, ndc_tpos, ndc_bold, ndc_mid, ndc_msty, ndc_mw, ndc_mbold, ndc_mlbl, ndc_qtr, ndc_qsty, ndc_qw, ndc_qbold, ndc_qlbl)
+var GapCfg ndp = GapCfg.new("NDOG", ndp_on, ndp_keep, ndp_date, ndp_lcol, ndp_lsty, ndp_lw, ndp_tcol, ndp_tsz, ndp_tpos, ndp_bold, ndp_mid, ndp_msty, ndp_mw, ndp_mbold, ndp_mlbl, ndp_qtr, ndp_qsty, ndp_qw, ndp_qbold, ndp_qlbl)
+var GapCfg rtc = GapCfg.new("RTH",  rtc_on, 1,        rtc_date, rtc_lcol, rtc_lsty, rtc_lw, rtc_tcol, rtc_tsz, rtc_tpos, rtc_bold, rtc_mid, rtc_msty, rtc_mw, rtc_mbold, rtc_mlbl, rtc_qtr, rtc_qsty, rtc_qw, rtc_qbold, rtc_qlbl)
+var GapCfg rtp = GapCfg.new("RTH",  rtp_on, rtp_keep, rtp_date, rtp_lcol, rtp_lsty, rtp_lw, rtp_tcol, rtp_tsz, rtp_tpos, rtp_bold, rtp_mid, rtp_msty, rtp_mw, rtp_mbold, rtp_mlbl, rtp_qtr, rtp_qsty, rtp_qw, rtp_qbold, rtp_qlbl)
 
 var array<Gap> nw_gaps = array.new<Gap>()
 var array<Gap> nd_gaps = array.new<Gap>()
