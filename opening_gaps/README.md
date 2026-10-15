@@ -65,18 +65,22 @@ Each block has its own full styling:
 | Row | Default (Current) | Notes |
 |---|---|---|
 | Line | NWOG `#673AB7` Solid 2 · NDOG `#2962FF` Solid 2 · RTH `#FF9800` Solid 1 | Color, style, width for High/Low |
-| Text | Small, Middle, Date on, Bold on | Color, size (Tiny–Large), position (Top, Middle, Bottom), date on/off, bold on/off |
-| Mid Line | on, Dotted 1 | Uses the block's line color |
-| Quarters | on, Dotted 1 | 25% and 75%; uses the block's line color |
+| Text | Small, Middle, Date on, Bold on | Color, size (Tiny–Large), position (Top, Middle, Bottom), date on/off, bold for the High/Low labels |
+| Mid Line | on, Dotted 1, Bold off | Uses the block's line color; Bold applies to the 50% label |
+| Quarters | on, Dotted 1, Bold off | 25% and 75%; uses the block's line color; Bold applies to their labels |
 | Label High/Low Only | on (Previous blocks only) | Previous gaps keep their 25/50/75% lines but only High and Low get a label |
 
 Previous gaps default to solid grays, so the current gaps stand out in color:
 RTH `#4A4D57` (darkest), NDOG `#6A6D78`, NWOG `#8A8D97` (lightest). Line and
 text use the same shade.
 
-Every block has its own **Bold** checkbox on the Text row, on by default. Bold
-text reads much better at small sizes, especially the lighter grays, without
-making the labels bigger.
+Each label type has its own **Bold** switch in every block: High/Low on the
+Text row (default on), the 50% label on the Mid Line row and the 25%/75% labels
+on the Quarters row (both default off). That's 18 switches in total. By
+default High and Low stand out in bold while the percent levels stay plain.
+Bold text reads much better at small sizes, especially the lighter grays,
+without making the labels bigger. In a Previous block with **Label High/Low
+Only** on, the percent labels are blank, so their Bold switches have no effect.
 
 The two checkboxes are independent, and each one switches off everything under
 it: lines, labels, mid line, quarters and dates. With Current off and Previous on,
@@ -174,6 +178,15 @@ whose start lies before the chart's first bar draw from the left edge, which
 makes no difference for a horizontal level.
 
 ## Validation
+
+**v1.7.0, 2026-10-15, MNQZ2026.**
+- On defaults, all 11 timeframes from 15s to 1h draw every High/Low label bold
+  and every 25/50/75% label plain.
+- Prices, leaders and spacing are correct, and each timeframe was checked by
+  screenshot too.
+- On 1h, with Previous on and Label High/Low Only off, each of the 18 Bold
+  switches was flipped on its own; each changed only its own labels and left
+  the other 17 groups unchanged.
 
 **v1.6.0, 2026-10-15, MNQZ2026.** On defaults, with every Previous count at 5:
 - 15s, 30s, 1, 2, 3, 4, 5, 10, 15 and 30 minutes and 1h each draw all 45 labels

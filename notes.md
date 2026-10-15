@@ -66,11 +66,12 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.6.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.6.0 on 2026-10-15)
+### Opening Gaps 1.7.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.7.0 on 2026-10-15)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
 Design decisions:
+- 1.7.0: separate Bold for the Mid Line (50%) and Quarters (25/75%) labels in every block (12 new switches, at the end of those rows). User's choices: the Text-row Bold now covers High/Low only, and the new switches default off, so High/Low stand out over the plain percent levels.
 - 1.6.0: **Bold** checkbox on each block's Text row (6 total), default on, copied from Key Levels. The user found the text the right size but hard to read even in the darker grays.
 - 1.5.1 (shipped in the 1.6.0 commit): Previous defaults are solid grays. Order chosen by the user: RTH darkest `#4A4D57`, then NDOG `#6A6D78`, then NWOG lightest `#8A8D97`. Text matches its line. Replaces the 50% faded type colors.
 - 1.5.0: overlapping labels are spread with leaders, the same block method as Key Levels. Prompted by RTH High 10/15 overwriting NDOG Low 10/14. The user found Key Levels' spread messy but asked to try it, chose "share of the screen" spacing (labels shift on zoom) over a fixed distance, and kept a Spread on/off switch.
