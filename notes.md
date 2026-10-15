@@ -66,11 +66,13 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.5.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.5.0 on 2026-10-15)
+### Opening Gaps 1.6.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.6.0 on 2026-10-15)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
 Design decisions:
+- 1.6.0: **Bold** checkbox on each block's Text row (6 total), default on, copied from Key Levels. The user found the text the right size but hard to read even in the darker grays.
+- 1.5.1 (shipped in the 1.6.0 commit): Previous defaults are solid grays. Order chosen by the user: RTH darkest `#4A4D57`, then NDOG `#6A6D78`, then NWOG lightest `#8A8D97`. Text matches its line. Replaces the 50% faded type colors.
 - 1.5.0: overlapping labels are spread with leaders, the same block method as Key Levels. Prompted by RTH High 10/15 overwriting NDOG Low 10/14. The user found Key Levels' spread messy but asked to try it, chose "share of the screen" spacing (labels shift on zoom) over a fixed distance, and kept a Spread on/off switch.
   - Spread alone was clean up to 5m but a wall of labels on 30m/1h with previous gaps on. Three fixes were tested on all 11 timeframes. Only **Label High/Low Only** on previous gaps (blank 25/50/75% labels, lines kept) was clean everywhere.
   - The user made it one setting per Previous block (NWOG, NDOG, RTH), on its own row under Text, default on. Max Label Move and Skip Spread When Crowded failed to help but the user chose to keep them, off by default.
@@ -85,7 +87,7 @@ Design decisions:
   - Current = 1 gap, Previous = 1–5 more.
   - Settings grouped by gap type.
   - One Date checkbox per block, 6 in total.
-  - Previous defaults to off, in the same colors at 50% transparency. The user may pick grey shades later and ask for new defaults.
+  - Previous defaults to off. It started as the type colors at 50% transparency; replaced by grays in 1.5.1.
 - 1.2.0: RTH draws on every intraday timeframe. It used to be hidden on 2m/10m/30m/1h, and the user ran into that. Off-grid timeframes read RTH from the largest boundary-safe timeframe at or below the chart's own (1/3/5/15m). The user's idea: that source's bars have already closed, so there's no delay.
 - 1.1.0: labels name the gap and carry the open's date (`NWOG 75% 10/11`). The user couldn't tell the gap types apart by color alone.
 - Gaps are lines, not boxes. The settings layout copies the reference graphic (『 』 headers, ▸ rows); keep those characters.
@@ -97,7 +99,6 @@ Design decisions:
 Possible follow-ups (not requested yet):
 - Stop extending lines, or fade them, once a gap is filled.
 - Stagger labels when all five levels of a small gap overlap.
-- Grey shades for the Previous defaults (user to pick).
 
 ### Macros 1.2.0 — `macros/` (2026-08-28)
 
