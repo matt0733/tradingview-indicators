@@ -72,16 +72,28 @@ before the reopen, so a holiday NDOG runs from the 12:59 close to 18:00.
 
 ## Timeframes
 
-| Timeframe | NWOG / NDOG | RTH |
-|---|---|---|
-| 1s–15m that divide 15 minutes (1, 3, 5, 15) | yes | yes |
-| Other intraday (2, 10, 30m, 1h, 4h) | yes | hidden |
-| Daily and above | hidden | hidden |
+| Timeframe | NWOG / NDOG | RTH | RTH source |
+|---|---|---|---|
+| Divides 15 minutes (1, 3, 5, 15m) | yes | yes | chart's own bars |
+| 2m | yes | yes | 1m |
+| 5m–14m (e.g. 10m) | yes | yes | 5m |
+| 30m and above, intraday | yes | yes | 15m |
+| Daily and above | hidden | hidden | — |
 
-The RTH gap is limited to timeframes that divide evenly into 15 minutes because
-any other bar size has a bar spanning 16:15, whose close is not the 16:14 close.
-NWOG and NDOG work on every intraday timeframe because the 17:00 halt ends the
-last bar early regardless of bar size.
+All three gaps draw on every intraday timeframe. The RTH boundaries at 09:30 and
+16:15 fall inside a bar on sizes that don't divide 15 minutes, so those read the
+gap from the largest boundary-safe timeframe at or below the chart's own, through
+`request.security`. Those bars have already closed inside the chart bar, so the
+gap appears with the chart bar holding 09:30 and nothing is drawn late. Prices
+are identical to the chart-native path, since 1m, 3m, 5m and 15m all resolve
+09:30 and 16:15 exactly.
+
+NWOG and NDOG always come from the chart's own bars, since the 17:00 halt ends
+the last bar early whatever the bar size.
+
+One limit worth knowing: on a chart far above the source timeframe, RTH history
+reaches only as far back as that source has data in the chart's range. With
+Show Last at 10 (two weeks of RTH gaps) this does not bite.
 
 ## Validation
 
