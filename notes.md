@@ -66,11 +66,15 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.4.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.4.0 on 2026-10-15)
+### Opening Gaps 1.5.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.5.0 on 2026-10-15)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
 Design decisions:
+- 1.5.0: overlapping labels are spread with leaders, the same block method as Key Levels. Prompted by RTH High 10/15 overwriting NDOG Low 10/14. The user found Key Levels' spread messy but asked to try it, chose "share of the screen" spacing (labels shift on zoom) over a fixed distance, and kept a Spread on/off switch.
+  - Spread alone was clean up to 5m but a wall of labels on 30m/1h with previous gaps on. Three fixes were tested on all 11 timeframes. Only **Label High/Low Only** on previous gaps (blank 25/50/75% labels, lines kept) was clean everywhere.
+  - The user made it one setting per Previous block (NWOG, NDOG, RTH), on its own row under Text, default on. Max Label Move and Skip Spread When Crowded failed to help but the user chose to keep them, off by default.
+  - Rejected first: separate label columns per gap type. They need retuning with zoom, and the user wants nothing to adjust regularly.
 - 1.4.0: Gaps older than the chart's history are backfilled from a `request.security` context: NWOG and NDOG from 60m, RTH from 15m. Those are the same trades the chart uses: the 60m bar that ends at the 17:00 halt closes on the 16:59 trade, the 18:00 bar opens on the 18:00 trade, and 15m bars close at 16:15 and open at 09:30. Backfill merges once, on the last historical bar, matched on open time. The current gap still comes from the chart's own bars, so it isn't late. Measured on 2026-10-15:
   - A live 1m chart loads ~25.8k bars, back only to Sun 09/20, which gave 3 of 6 NWOGs.
   - A 60m security context reached back to Jan 2026 and a 15m context to 08/31.

@@ -1,5 +1,5 @@
 //@version=6
-indicator("Opening Gaps 1.4.0", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.5.0", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -8,6 +8,14 @@ indicator("Opening Gaps 1.4.0", shorttitle="Opening Gaps", overlay=true,
 string GEN = "『 GENERAL 』"
 int ext_bars = input.int(20, "Extend Right (bars)", minval=0, maxval=500, group=GEN, display=display.none,
     tooltip="How far past the current bar every gap line reaches. Labels sit at the right end of the lines.")
+bool  spread_on = input.bool(true, "Spread Overlapping Labels", group=GEN, display=display.none,
+    tooltip="When labels sit closer than the spacing below, space them out evenly around their prices, each joined to its own line by a short leader. Turn off to leave every label level with its line.")
+float lbl_gap   = input.float(2.0, "Label Spacing (% of view)", minval=0, maxval=20, step=0.5, group=GEN, display=display.none,
+    tooltip="Roughly the height of one label, as a share of the chart's visible price range. Labels closer together than this are spread. The visible range is re-measured as you zoom and scroll. Raise it if labels still touch, lower it if they spread out when they don't need to.")
+int   max_move  = input.int(0, "Max Label Move (label heights)", minval=0, maxval=20, group=GEN, display=display.none,
+    tooltip="0 = no limit. A label that would have to move further than this many label heights stays on its own line instead, even if it then touches another label.")
+bool  crowd_off = input.bool(false, "Skip Spread When Crowded", group=GEN, display=display.none,
+    tooltip="When more labels are in view than fit at the Label Spacing, leave every label on its own line instead of spreading them.")
 
 // ===========================================================================
 // INPUTS - NWOG
@@ -40,6 +48,8 @@ string nwp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","La
 string nwp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GNW, display=display.none, inline="nwp2")
 bool   nwp_date = input.bool(true, "Date", group=GNW, display=display.none, inline="nwp2",
     tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NWOG High 09/13'.")
+bool   nwp_hl   = input.bool(true, "Label High/Low Only", group=GNW, display=display.none, inline="nwp2b",
+    tooltip="On previous NWOG gaps, the 25%, 50% and 75% lines still draw but carry no label, so only High and Low are named. Keeps the chart readable when several previous gaps are showing.")
 bool   nwp_mid  = input.bool(true, "Mid Line ▸", group=GNW, display=display.none, inline="nwp3")
 string nwp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp3")
 int    nwp_mw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp3")
@@ -78,6 +88,8 @@ string ndp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","La
 string ndp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GND, display=display.none, inline="ndp2")
 bool   ndp_date = input.bool(true, "Date", group=GND, display=display.none, inline="ndp2",
     tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NDOG High 09/13'.")
+bool   ndp_hl   = input.bool(true, "Label High/Low Only", group=GND, display=display.none, inline="ndp2b",
+    tooltip="On previous NDOG gaps, the 25%, 50% and 75% lines still draw but carry no label, so only High and Low are named. Keeps the chart readable when several previous gaps are showing.")
 bool   ndp_mid  = input.bool(true, "Mid Line ▸", group=GND, display=display.none, inline="ndp3")
 string ndp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp3")
 int    ndp_mw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp3")
@@ -116,6 +128,8 @@ string rtp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","La
 string rtp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GRT, display=display.none, inline="rtp2")
 bool   rtp_date = input.bool(true, "Date", group=GRT, display=display.none, inline="rtp2",
     tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'RTH High 09/13'.")
+bool   rtp_hl   = input.bool(true, "Label High/Low Only", group=GRT, display=display.none, inline="rtp2b",
+    tooltip="On previous RTH gaps, the 25%, 50% and 75% lines still draw but carry no label, so only High and Low are named. Keeps the chart readable when several previous gaps are showing.")
 bool   rtp_mid  = input.bool(true, "Mid Line ▸", group=GRT, display=display.none, inline="rtp3")
 string rtp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp3")
 int    rtp_mw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp3")
@@ -130,6 +144,7 @@ int    rtp_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=displ
 type GapCfg
     string name
     bool   on
+    bool   hl     // label only High and Low (previous gaps)
     int    keep
     bool   date
     color  lcol
@@ -146,12 +161,15 @@ type GapCfg
     int    qw
 
 type Gap
-    float        pc     // prior close
-    int          pc_t
-    float        op     // open
-    int          op_t
-    array<line>  lines
-    array<label> labels
+    float         pc     // prior close
+    int           pc_t
+    float         op     // open
+    int           op_t
+    array<line>   lines
+    array<label>  labels
+    array<color>  cols   // per level, so a leader can match its line
+    array<string> stys
+    array<int>    wids
 
 // ===========================================================================
 // HELPERS
@@ -190,6 +208,9 @@ f_mmdd(t) =>
 
 draw_level(Gap g, GapCfg c, int x1, int x2, float y, string sty, int w, string txt) =>
     g.lines.push(line.new(x1, y, x2, y, xloc=xloc.bar_time, color=c.lcol, style=ls(sty), width=w))
+    g.cols.push(c.lcol)
+    g.stys.push(sty)
+    g.wids.push(w)
     g.labels.push(label.new(x2, y, txt, xloc=xloc.bar_time, style=lbl_sty(c.tpos),
                             color=color.new(color.white, 100), textcolor=c.tcol,
                             size=lbl_sz(c.tsz), textalign=text.align_left))
@@ -203,11 +224,12 @@ draw_gap(Gap g, GapCfg c, int x2) =>
     draw_level(g, c, gap_dn ? g.pc_t : g.op_t, x2, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt)
     draw_level(g, c, gap_dn ? g.op_t : g.pc_t, x2, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt)
     float span = g.pc - g.op
+    bool pct_txt = not c.hl   // blank percent labels if this block labels High/Low only
     if c.qtr
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.25, c.qsty, c.qw, c.name + " 25%" + dt)
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.75, c.qsty, c.qw, c.name + " 75%" + dt)
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.25, c.qsty, c.qw, pct_txt ? c.name + " 25%" + dt : "")
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.75, c.qsty, c.qw, pct_txt ? c.name + " 75%" + dt : "")
     if c.mid
-        draw_level(g, c, g.op_t, x2, g.op + span * 0.5, c.msty, c.mw, c.name + " 50%" + dt)
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.5, c.msty, c.mw, pct_txt ? c.name + " 50%" + dt : "")
 
 clear_gap(Gap g) =>
     for l in g.lines
@@ -216,6 +238,9 @@ clear_gap(Gap g) =>
         lb.delete()
     g.lines.clear()
     g.labels.clear()
+    g.cols.clear()
+    g.stys.clear()
+    g.wids.clear()
 
 // Redraws a whole store: the newest gap in the Current styling, the ones behind
 // it in the Previous styling, and trims records past what Previous asks for.
@@ -237,7 +262,7 @@ redraw(array<Gap> store, GapCfg cur, GapCfg prv, int x2) =>
                 draw_gap(g, prv, x2)
 
 add_gap(array<Gap> store, GapCfg cur, GapCfg prv, float pc, int pc_t, float op, int op_t, int x2) =>
-    store.push(Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<label>()))
+    store.push(Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
     redraw(store, cur, prv, x2)
     log.info("{0}: close {1} -> open {2} ({3} pts)", cur.name,
              str.tostring(pc, format.mintick), str.tostring(op, format.mintick),
@@ -255,10 +280,30 @@ drop_newest(array<Gap> store, GapCfg cur, GapCfg prv, int x2) =>
 
 extend_all(array<Gap> store, int x2) =>
     for g in store
-        for l in g.lines
-            l.set_x2(x2)
-        for lb in g.labels
-            lb.set_x(x2)
+        int n = g.lines.size()
+        if n > 0
+            for i = 0 to n - 1
+                line  l  = g.lines.get(i)
+                label lb = g.labels.get(i)
+                l.set_x2(x2)
+                lb.set_x(x2)
+                lb.set_y(l.get_y1())
+
+// Gathers every drawn level from a store into the parallel arrays used by the spread
+collect_levels(array<Gap> store, array<label> lbs, array<line> lns, array<float> ys,
+               array<color> cs, array<string> ss, array<int> ws) =>
+    for g in store
+        int n = g.labels.size()
+        if n > 0
+            for i = 0 to n - 1
+                if g.labels.get(i).get_text() == ""
+                    continue
+                lbs.push(g.labels.get(i))
+                lns.push(g.lines.get(i))
+                ys.push(g.lines.get(i).get_y1())
+                cs.push(g.cols.get(i))
+                ss.push(g.stys.get(i))
+                ws.push(g.wids.get(i))
 
 // The RTH gap as seen on a lower series, for chart timeframes that cannot
 // resolve 09:30 and 16:15 exactly. Returns the current gap and the open time of
@@ -382,7 +427,7 @@ merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf, int x2
                         pos := j + 1
             if not dup
                 store.insert(pos, Gap.new(bf.get(i * 4 + 2), int(bf.get(i * 4 + 3)), bf.get(i * 4 + 1), opt,
-                                          array.new<line>(), array.new<label>()))
+                                          array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
                 added += 1
         redraw(store, cur, prv, x2)
     log.info("{0}: backfilled {1} of {2}", cur.name, added, n)
@@ -390,12 +435,12 @@ merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf, int x2
 // ===========================================================================
 // STATE
 // ===========================================================================
-var GapCfg nwc = GapCfg.new("NWOG", nwc_on, 1,        nwc_date, nwc_lcol, nwc_lsty, nwc_lw, nwc_tcol, nwc_tsz, nwc_tpos, nwc_mid, nwc_msty, nwc_mw, nwc_qtr, nwc_qsty, nwc_qw)
-var GapCfg nwp = GapCfg.new("NWOG", nwp_on, nwp_keep, nwp_date, nwp_lcol, nwp_lsty, nwp_lw, nwp_tcol, nwp_tsz, nwp_tpos, nwp_mid, nwp_msty, nwp_mw, nwp_qtr, nwp_qsty, nwp_qw)
-var GapCfg ndc = GapCfg.new("NDOG", ndc_on, 1,        ndc_date, ndc_lcol, ndc_lsty, ndc_lw, ndc_tcol, ndc_tsz, ndc_tpos, ndc_mid, ndc_msty, ndc_mw, ndc_qtr, ndc_qsty, ndc_qw)
-var GapCfg ndp = GapCfg.new("NDOG", ndp_on, ndp_keep, ndp_date, ndp_lcol, ndp_lsty, ndp_lw, ndp_tcol, ndp_tsz, ndp_tpos, ndp_mid, ndp_msty, ndp_mw, ndp_qtr, ndp_qsty, ndp_qw)
-var GapCfg rtc = GapCfg.new("RTH",  rtc_on, 1,        rtc_date, rtc_lcol, rtc_lsty, rtc_lw, rtc_tcol, rtc_tsz, rtc_tpos, rtc_mid, rtc_msty, rtc_mw, rtc_qtr, rtc_qsty, rtc_qw)
-var GapCfg rtp = GapCfg.new("RTH",  rtp_on, rtp_keep, rtp_date, rtp_lcol, rtp_lsty, rtp_lw, rtp_tcol, rtp_tsz, rtp_tpos, rtp_mid, rtp_msty, rtp_mw, rtp_qtr, rtp_qsty, rtp_qw)
+var GapCfg nwc = GapCfg.new("NWOG", nwc_on, false, 1,        nwc_date, nwc_lcol, nwc_lsty, nwc_lw, nwc_tcol, nwc_tsz, nwc_tpos, nwc_mid, nwc_msty, nwc_mw, nwc_qtr, nwc_qsty, nwc_qw)
+var GapCfg nwp = GapCfg.new("NWOG", nwp_on, nwp_hl, nwp_keep, nwp_date, nwp_lcol, nwp_lsty, nwp_lw, nwp_tcol, nwp_tsz, nwp_tpos, nwp_mid, nwp_msty, nwp_mw, nwp_qtr, nwp_qsty, nwp_qw)
+var GapCfg ndc = GapCfg.new("NDOG", ndc_on, false, 1,        ndc_date, ndc_lcol, ndc_lsty, ndc_lw, ndc_tcol, ndc_tsz, ndc_tpos, ndc_mid, ndc_msty, ndc_mw, ndc_qtr, ndc_qsty, ndc_qw)
+var GapCfg ndp = GapCfg.new("NDOG", ndp_on, ndp_hl, ndp_keep, ndp_date, ndp_lcol, ndp_lsty, ndp_lw, ndp_tcol, ndp_tsz, ndp_tpos, ndp_mid, ndp_msty, ndp_mw, ndp_qtr, ndp_qsty, ndp_qw)
+var GapCfg rtc = GapCfg.new("RTH",  rtc_on, false, 1,        rtc_date, rtc_lcol, rtc_lsty, rtc_lw, rtc_tcol, rtc_tsz, rtc_tpos, rtc_mid, rtc_msty, rtc_mw, rtc_qtr, rtc_qsty, rtc_qw)
+var GapCfg rtp = GapCfg.new("RTH",  rtp_on, rtp_hl, rtp_keep, rtp_date, rtp_lcol, rtp_lsty, rtp_lw, rtp_tcol, rtp_tsz, rtp_tpos, rtp_mid, rtp_msty, rtp_mw, rtp_qtr, rtp_qsty, rtp_qw)
 
 var array<Gap> nw_gaps = array.new<Gap>()
 var array<Gap> nd_gaps = array.new<Gap>()
@@ -492,7 +537,85 @@ if barstate.islastconfirmedhistory and tf_ok
     merge_backfill(nd_gaps, ndc, ndp, nd_bf, x_end)
     merge_backfill(rt_gaps, rtc, rtp, rt_bf, x_end)
 
+// High and low of the bars in view; the script recalculates when the view changes
+var float vis_hi = na
+var float vis_lo = na
+if time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
+    vis_hi := na(vis_hi) ? high : math.max(vis_hi, high)
+    vis_lo := na(vis_lo) ? low  : math.min(vis_lo, low)
+
+const int LEAD_BARS = 3   // length of a leader to a moved label
+var array<line> leaders = array.new<line>()
+
 if barstate.islast
     extend_all(nw_gaps, x_end)
     extend_all(nd_gaps, x_end)
     extend_all(rt_gaps, x_end)
+    for l in leaders
+        l.delete()
+    leaders.clear()
+
+    // Labels closer than one label height (thr) are spaced out evenly around their
+    // prices, highest at the top. Each moved label gets a short leader from the end
+    // of its line, which then stops LEAD_BARS short of the label. Labels with room
+    // stay on their line. Works top-down in blocks: a label that overlaps the block
+    // above joins it, and the block is re-centred on its members' prices (which can
+    // make it overlap the next block up, so merging repeats). Same as Key Levels.
+    if spread_on
+        array<label>  lbs = array.new<label>()
+        array<line>   lns = array.new<line>()
+        array<float>  ys  = array.new<float>()
+        array<color>  cs  = array.new<color>()
+        array<string> ss  = array.new<string>()
+        array<int>    ws  = array.new<int>()
+        collect_levels(nw_gaps, lbs, lns, ys, cs, ss, ws)
+        collect_levels(nd_gaps, lbs, lns, ys, cs, ss, ws)
+        collect_levels(rt_gaps, lbs, lns, ys, cs, ss, ws)
+        float tol = syminfo.mintick / 2
+        float thr = math.max(nz(vis_hi - vis_lo) * lbl_gap / 100, tol)
+        int   x_ldr = x_end - math.min(LEAD_BARS, ext_bars) * tf_sec * 1000   // where a leader starts
+        int   n   = lbs.size()
+        // Crowded: more labels in view than fit one label height apart
+        int n_vis = 0
+        for y in ys
+            if y >= vis_lo and y <= vis_hi
+                n_vis += 1
+        bool crowded = crowd_off and n_vis * thr > nz(vis_hi - vis_lo)
+        if n > 1 and not crowded
+            array<int>   ord   = ys.sort_indices(order.descending)
+            array<float> b_top = array.new<float>()   // y of each block's first label
+            array<float> b_sum = array.new<float>()   // sum of its members' prices
+            array<int>   b_len = array.new<int>()
+            for i = 0 to n - 1
+                float p = ys.get(ord.get(i))
+                b_top.push(p)
+                b_sum.push(p)
+                b_len.push(1)
+                while b_top.size() > 1
+                    int   m     = b_top.size()
+                    float above = b_top.get(m - 2) - (b_len.get(m - 2) - 1) * thr   // lowest y of block above
+                    if b_top.get(m - 1) > above - thr
+                        float sum = b_sum.get(m - 2) + b_sum.get(m - 1)
+                        int   len = b_len.get(m - 2) + b_len.get(m - 1)
+                        b_top.pop()
+                        b_sum.pop()
+                        b_len.pop()
+                        b_top.set(m - 2, sum / len + (len - 1) * thr / 2)
+                        b_sum.set(m - 2, sum)
+                        b_len.set(m - 2, len)
+                    else
+                        break
+            int k = 0
+            for b = 0 to b_top.size() - 1
+                for r = 0 to b_len.get(b) - 1
+                    int   idx = ord.get(k)
+                    float y   = b_top.get(b) - r * thr
+                    float p   = ys.get(idx)
+                    // Past the move limit a label stays on its own line
+                    bool too_far = max_move > 0 and math.abs(y - p) > max_move * thr + tol
+                    if math.abs(y - p) > tol and not too_far
+                        lns.get(idx).set_x2(x_ldr)
+                        lbs.get(idx).set_y(y)
+                        leaders.push(line.new(x_ldr, p, x_end, y, xloc=xloc.bar_time,
+                                              color=cs.get(idx), style=ls(ss.get(idx)), width=ws.get(idx)))
+                    k += 1
