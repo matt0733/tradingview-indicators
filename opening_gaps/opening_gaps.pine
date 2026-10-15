@@ -1,76 +1,137 @@
 //@version=6
-indicator("Opening Gaps 1.2.0", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.4.0", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — GENERAL
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - GENERAL
+// ===========================================================================
 string GEN = "『 GENERAL 』"
 int ext_bars = input.int(20, "Extend Right (bars)", minval=0, maxval=500, group=GEN, display=display.none,
     tooltip="How far past the current bar every gap line reaches. Labels sit at the right end of the lines.")
-bool show_date = input.bool(true, "Show Date in Labels", group=GEN, display=display.none,
-    tooltip="Append the date of the gap's open to every label, as MM/DD — e.g. 'NWOG High 09/13' and '25% 09/13'. All five levels of a gap carry the open's date, including the level taken from the prior close.")
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INPUTS — OPENING GAPS
-// ═══════════════════════════════════════════════════════════════════════════
-string GG = "『 OPENING GAPS 』"
+// ===========================================================================
+// INPUTS - NWOG
+// ===========================================================================
+string GNW = "『 NWOG 』"
+bool   nwc_on   = input.bool(true, "Current ▸", group=GNW, display=display.none, inline="nwc0", tooltip="New Week Opening Gap: Friday's 16:59 close to Sunday's 18:00 open (New York time). Quarter and mid levels are measured from the open toward the prior close, so 25% means the gap is a quarter filled.")
+color  nwc_lcol = input.color(#673AB7, "Line ▸", group=GNW, display=display.none, inline="nwc1")
+string nwc_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc1")
+int    nwc_lw   = input.int(2, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc1")
+color  nwc_tcol = input.color(#673AB7, "Text ▸", group=GNW, display=display.none, inline="nwc2")
+string nwc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GNW, display=display.none, inline="nwc2")
+string nwc_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GNW, display=display.none, inline="nwc2")
+bool   nwc_date = input.bool(true, "Date", group=GNW, display=display.none, inline="nwc2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NWOG High 09/13'.")
+bool   nwc_mid  = input.bool(true, "Mid Line ▸", group=GNW, display=display.none, inline="nwc3")
+string nwc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc3")
+int    nwc_mw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc3")
+bool   nwc_qtr  = input.bool(true, "Quarters ▸", group=GNW, display=display.none, inline="nwc4")
+string nwc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc4")
+int    nwc_qw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc4")
 
-bool   nw_on    = input.bool(true, "NWOG ▸", group=GG, display=display.none, inline="nw0")
-int    nw_keep  = input.int(1, "Show Last:", minval=1, maxval=10, group=GG, display=display.none, inline="nw0",
-    tooltip="New Week Opening Gap: Friday's 16:59 close to Sunday's 18:00 open (New York time). Quarter and mid levels are measured from the open toward the prior close, so 25% means the gap is a quarter filled.")
-color  nw_lcol  = input.color(#673AB7, "Line ▸", group=GG, display=display.none, inline="nw1")
-string nw_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="nw1")
-int    nw_lw    = input.int(2, "", minval=1, maxval=10, group=GG, display=display.none, inline="nw1")
-color  nw_tcol  = input.color(#673AB7, "Text ▸", group=GG, display=display.none, inline="nw2")
-string nw_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GG, display=display.none, inline="nw2")
-string nw_tpos  = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GG, display=display.none, inline="nw2")
-bool   nw_mid   = input.bool(true, "Mid Line ▸", group=GG, display=display.none, inline="nw3")
-string nw_msty  = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="nw3")
-int    nw_mw    = input.int(1, "", minval=1, maxval=10, group=GG, display=display.none, inline="nw3")
-bool   nw_qtr   = input.bool(true, "Quarters ▸", group=GG, display=display.none, inline="nw4")
-string nw_qsty  = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="nw4")
-int    nw_qw    = input.int(1, "", minval=1, maxval=10, group=GG, display=display.none, inline="nw4")
+bool   nwp_on   = input.bool(false, "Previous ▸", group=GNW, display=display.none, inline="nwp0")
+int    nwp_keep = input.int(2, "Show Last:", minval=1, maxval=5, group=GNW, display=display.none, inline="nwp0",
+    tooltip="How many NWOG gaps before the current one to draw, each in the Previous styling below. The current gap is controlled by its own checkbox above.")
+color  nwp_lcol = input.color(color.new(#673AB7, 50), "Line ▸", group=GNW, display=display.none, inline="nwp1")
+string nwp_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp1")
+int    nwp_lw   = input.int(2, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp1")
+color  nwp_tcol = input.color(color.new(#673AB7, 50), "Text ▸", group=GNW, display=display.none, inline="nwp2")
+string nwp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GNW, display=display.none, inline="nwp2")
+string nwp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GNW, display=display.none, inline="nwp2")
+bool   nwp_date = input.bool(true, "Date", group=GNW, display=display.none, inline="nwp2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NWOG High 09/13'.")
+bool   nwp_mid  = input.bool(true, "Mid Line ▸", group=GNW, display=display.none, inline="nwp3")
+string nwp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp3")
+int    nwp_mw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp3")
+bool   nwp_qtr  = input.bool(true, "Quarters ▸", group=GNW, display=display.none, inline="nwp4")
+string nwp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp4")
+int    nwp_qw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp4")
 
-bool   nd_on    = input.bool(true, "NDOG ▸", group=GG, display=display.none, inline="nd0")
-int    nd_keep  = input.int(1, "Show Last:", minval=1, maxval=10, group=GG, display=display.none, inline="nd0",
-    tooltip="New Day Opening Gap: the 16:59 close to the 18:00 open, Monday through Thursday (New York time). Quarter and mid levels are measured from the open toward the prior close.")
-color  nd_lcol  = input.color(#2962FF, "Line ▸", group=GG, display=display.none, inline="nd1")
-string nd_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="nd1")
-int    nd_lw    = input.int(2, "", minval=1, maxval=10, group=GG, display=display.none, inline="nd1")
-color  nd_tcol  = input.color(#2962FF, "Text ▸", group=GG, display=display.none, inline="nd2")
-string nd_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GG, display=display.none, inline="nd2")
-string nd_tpos  = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GG, display=display.none, inline="nd2")
-bool   nd_mid   = input.bool(true, "Mid Line ▸", group=GG, display=display.none, inline="nd3")
-string nd_msty  = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="nd3")
-int    nd_mw    = input.int(1, "", minval=1, maxval=10, group=GG, display=display.none, inline="nd3")
-bool   nd_qtr   = input.bool(true, "Quarters ▸", group=GG, display=display.none, inline="nd4")
-string nd_qsty  = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="nd4")
-int    nd_qw    = input.int(1, "", minval=1, maxval=10, group=GG, display=display.none, inline="nd4")
+// ===========================================================================
+// INPUTS - NDOG
+// ===========================================================================
+string GND = "『 NDOG 』"
+bool   ndc_on   = input.bool(true, "Current ▸", group=GND, display=display.none, inline="ndc0", tooltip="New Day Opening Gap: the 16:59 close to the 18:00 open, Monday through Thursday (New York time). Quarter and mid levels are measured from the open toward the prior close.")
+color  ndc_lcol = input.color(#2962FF, "Line ▸", group=GND, display=display.none, inline="ndc1")
+string ndc_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc1")
+int    ndc_lw   = input.int(2, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc1")
+color  ndc_tcol = input.color(#2962FF, "Text ▸", group=GND, display=display.none, inline="ndc2")
+string ndc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GND, display=display.none, inline="ndc2")
+string ndc_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GND, display=display.none, inline="ndc2")
+bool   ndc_date = input.bool(true, "Date", group=GND, display=display.none, inline="ndc2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NDOG High 09/13'.")
+bool   ndc_mid  = input.bool(true, "Mid Line ▸", group=GND, display=display.none, inline="ndc3")
+string ndc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc3")
+int    ndc_mw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc3")
+bool   ndc_qtr  = input.bool(true, "Quarters ▸", group=GND, display=display.none, inline="ndc4")
+string ndc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc4")
+int    ndc_qw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc4")
 
-bool   rt_on    = input.bool(true, "RTH Gap ▸", group=GG, display=display.none, inline="rt0")
-int    rt_keep  = input.int(1, "Show Last:", minval=1, maxval=10, group=GG, display=display.none, inline="rt0",
-    tooltip="Regular Trading Hours Opening Range Gap: the 16:14 close to the next 09:30 open, Monday through Friday (New York time). Quarter and mid levels are measured from the open toward the prior close. Futures holidays with no regular session (e.g. Labor Day) are skipped, so the next day's gap runs from the last real 16:14 close. On timeframes that divide evenly into 15 minutes (1, 3, 5, 15m) the gap is read from the chart's own bars and appears at 09:30. On every other intraday timeframe (2, 10, 30m, 1h, 4h ...) the chart's bars straddle 09:30 or 16:15, so the prices come from the largest boundary-safe timeframe at or below the chart's own (1m, 3m, 5m or 15m). Those bars close inside the chart bar, so the gap still appears with the bar holding 09:30, and the prices are identical.")
-color  rt_lcol  = input.color(#FF9800, "Line ▸", group=GG, display=display.none, inline="rt1")
-string rt_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="rt1")
-int    rt_lw    = input.int(1, "", minval=1, maxval=10, group=GG, display=display.none, inline="rt1")
-color  rt_tcol  = input.color(#FF9800, "Text ▸", group=GG, display=display.none, inline="rt2")
-string rt_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GG, display=display.none, inline="rt2")
-string rt_tpos  = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GG, display=display.none, inline="rt2")
-bool   rt_mid   = input.bool(true, "Mid Line ▸", group=GG, display=display.none, inline="rt3")
-string rt_msty  = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="rt3")
-int    rt_mw    = input.int(1, "", minval=1, maxval=10, group=GG, display=display.none, inline="rt3")
-bool   rt_qtr   = input.bool(true, "Quarters ▸", group=GG, display=display.none, inline="rt4")
-string rt_qsty  = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GG, display=display.none, inline="rt4")
-int    rt_qw    = input.int(1, "", minval=1, maxval=10, group=GG, display=display.none, inline="rt4")
+bool   ndp_on   = input.bool(false, "Previous ▸", group=GND, display=display.none, inline="ndp0")
+int    ndp_keep = input.int(2, "Show Last:", minval=1, maxval=5, group=GND, display=display.none, inline="ndp0",
+    tooltip="How many NDOG gaps before the current one to draw, each in the Previous styling below. The current gap is controlled by its own checkbox above.")
+color  ndp_lcol = input.color(color.new(#2962FF, 50), "Line ▸", group=GND, display=display.none, inline="ndp1")
+string ndp_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp1")
+int    ndp_lw   = input.int(2, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp1")
+color  ndp_tcol = input.color(color.new(#2962FF, 50), "Text ▸", group=GND, display=display.none, inline="ndp2")
+string ndp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GND, display=display.none, inline="ndp2")
+string ndp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GND, display=display.none, inline="ndp2")
+bool   ndp_date = input.bool(true, "Date", group=GND, display=display.none, inline="ndp2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NDOG High 09/13'.")
+bool   ndp_mid  = input.bool(true, "Mid Line ▸", group=GND, display=display.none, inline="ndp3")
+string ndp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp3")
+int    ndp_mw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp3")
+bool   ndp_qtr  = input.bool(true, "Quarters ▸", group=GND, display=display.none, inline="ndp4")
+string ndp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp4")
+int    ndp_qw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp4")
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// INPUTS - RTH GAP
+// ===========================================================================
+string GRT = "『 RTH GAP 』"
+bool   rtc_on   = input.bool(true, "Current ▸", group=GRT, display=display.none, inline="rtc0", tooltip="Regular Trading Hours Opening Range Gap: the 16:14 close to the next 09:30 open, Monday through Friday (New York time). Quarter and mid levels are measured from the open toward the prior close. Futures holidays with no regular session (e.g. Labor Day) are skipped, so the next day's gap runs from the last real 16:14 close. On timeframes that divide evenly into 15 minutes (1, 3, 5, 15m) the gap is read from the chart's own bars; on every other intraday timeframe the prices come from the largest boundary-safe timeframe at or below the chart's own, which gives identical prices.")
+color  rtc_lcol = input.color(#FF9800, "Line ▸", group=GRT, display=display.none, inline="rtc1")
+string rtc_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc1")
+int    rtc_lw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc1")
+color  rtc_tcol = input.color(#FF9800, "Text ▸", group=GRT, display=display.none, inline="rtc2")
+string rtc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GRT, display=display.none, inline="rtc2")
+string rtc_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GRT, display=display.none, inline="rtc2")
+bool   rtc_date = input.bool(true, "Date", group=GRT, display=display.none, inline="rtc2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'RTH High 09/13'.")
+bool   rtc_mid  = input.bool(true, "Mid Line ▸", group=GRT, display=display.none, inline="rtc3")
+string rtc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc3")
+int    rtc_mw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc3")
+bool   rtc_qtr  = input.bool(true, "Quarters ▸", group=GRT, display=display.none, inline="rtc4")
+string rtc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc4")
+int    rtc_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc4")
+
+bool   rtp_on   = input.bool(false, "Previous ▸", group=GRT, display=display.none, inline="rtp0")
+int    rtp_keep = input.int(2, "Show Last:", minval=1, maxval=5, group=GRT, display=display.none, inline="rtp0",
+    tooltip="How many RTH gaps before the current one to draw, each in the Previous styling below. The current gap is controlled by its own checkbox above.")
+color  rtp_lcol = input.color(color.new(#FF9800, 50), "Line ▸", group=GRT, display=display.none, inline="rtp1")
+string rtp_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp1")
+int    rtp_lw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp1")
+color  rtp_tcol = input.color(color.new(#FF9800, 50), "Text ▸", group=GRT, display=display.none, inline="rtp2")
+string rtp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GRT, display=display.none, inline="rtp2")
+string rtp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GRT, display=display.none, inline="rtp2")
+bool   rtp_date = input.bool(true, "Date", group=GRT, display=display.none, inline="rtp2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'RTH High 09/13'.")
+bool   rtp_mid  = input.bool(true, "Mid Line ▸", group=GRT, display=display.none, inline="rtp3")
+string rtp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp3")
+int    rtp_mw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp3")
+bool   rtp_qtr  = input.bool(true, "Quarters ▸", group=GRT, display=display.none, inline="rtp4")
+string rtp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp4")
+int    rtp_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp4")
+
+
+// ===========================================================================
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 type GapCfg
     string name
     bool   on
     int    keep
+    bool   date
     color  lcol
     string lsty
     int    lw
@@ -92,9 +153,9 @@ type Gap
     array<line>  lines
     array<label> labels
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 const string TZ = "America/New_York"
 
 const int S_RTH_OPEN  = 9 * 3600 + 30 * 60
@@ -102,7 +163,6 @@ const int S_HOLIDAY   = 13 * 3600
 const int S_RTH_CLOSE = 16 * 3600 + 15 * 60
 const int S_HALT      = 17 * 3600
 const int S_REOPEN    = 18 * 3600
-
 
 ls(s) =>
     switch s
@@ -134,56 +194,76 @@ draw_level(Gap g, GapCfg c, int x1, int x2, float y, string sty, int w, string t
                             color=color.new(color.white, 100), textcolor=c.tcol,
                             size=lbl_sz(c.tsz), textalign=text.align_left))
 
-// Draws one gap: High/Low from where each price was set, mid/quarters from the open.
-// Percent levels run from the open toward the prior close (25% = a quarter filled).
-// Every label carries the open's date, including the level taken from the prior close.
-draw_gap(GapCfg c, float pc, int pc_t, float op, int op_t, int x2) =>
-    Gap g = Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<label>())
-    string dt = show_date ? " " + f_mmdd(op_t) : ""
-    bool gap_dn = pc >= op
-    draw_level(g, c, gap_dn ? pc_t : op_t, x2, math.max(pc, op), c.lsty, c.lw, c.name + " High" + dt)
-    draw_level(g, c, gap_dn ? op_t : pc_t, x2, math.min(pc, op), c.lsty, c.lw, c.name + " Low" + dt)
-    float span = pc - op
+// Draws one gap in the given styling: High/Low from where each price was set,
+// mid/quarters from the open. Percent levels run from the open toward the prior
+// close (25% = a quarter filled). Labels carry the open's date when asked for.
+draw_gap(Gap g, GapCfg c, int x2) =>
+    string dt = c.date ? " " + f_mmdd(g.op_t) : ""
+    bool gap_dn = g.pc >= g.op
+    draw_level(g, c, gap_dn ? g.pc_t : g.op_t, x2, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt)
+    draw_level(g, c, gap_dn ? g.op_t : g.pc_t, x2, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt)
+    float span = g.pc - g.op
     if c.qtr
-        draw_level(g, c, op_t, x2, op + span * 0.25, c.qsty, c.qw, c.name + " 25%" + dt)
-        draw_level(g, c, op_t, x2, op + span * 0.75, c.qsty, c.qw, c.name + " 75%" + dt)
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.25, c.qsty, c.qw, c.name + " 25%" + dt)
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.75, c.qsty, c.qw, c.name + " 75%" + dt)
     if c.mid
-        draw_level(g, c, op_t, x2, op + span * 0.5, c.msty, c.mw, c.name + " 50%" + dt)
-    g
+        draw_level(g, c, g.op_t, x2, g.op + span * 0.5, c.msty, c.mw, c.name + " 50%" + dt)
 
 clear_gap(Gap g) =>
     for l in g.lines
         l.delete()
     for lb in g.labels
         lb.delete()
+    g.lines.clear()
+    g.labels.clear()
 
-// Adds a gap and trims the oldest beyond Show Last. Returns the gap trimmed, if any.
-add_gap(GapCfg c, array<Gap> store, float pc, int pc_t, float op, int op_t, int x2) =>
-    store.push(draw_gap(c, pc, pc_t, op, op_t, x2))
-    Gap evicted = na
-    while store.size() > c.keep
-        evicted := store.shift()
-        clear_gap(evicted)
-    log.info("{0}: close {1} -> open {2} ({3} pts)", c.name,
+// Redraws a whole store: the newest gap in the Current styling, the ones behind
+// it in the Previous styling, and trims records past what Previous asks for.
+// Each switch stands alone, so Previous on with Current off hides only the newest.
+redraw(array<Gap> store, GapCfg cur, GapCfg prv, int x2) =>
+    int keep_n = (prv.on ? prv.keep : 0) + 1
+    while store.size() > keep_n
+        clear_gap(store.shift())
+    int n = store.size()
+    if n > 0
+        for i = 0 to n - 1
+            Gap g = store.get(i)
+            clear_gap(g)
+            int age = n - 1 - i        // 0 = current, 1+ = previous
+            if age == 0
+                if cur.on
+                    draw_gap(g, cur, x2)
+            else if prv.on
+                draw_gap(g, prv, x2)
+
+add_gap(array<Gap> store, GapCfg cur, GapCfg prv, float pc, int pc_t, float op, int op_t, int x2) =>
+    store.push(Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<label>()))
+    redraw(store, cur, prv, x2)
+    log.info("{0}: close {1} -> open {2} ({3} pts)", cur.name,
              str.tostring(pc, format.mintick), str.tostring(op, format.mintick),
              str.tostring(op - pc, format.mintick))
-    evicted
 
-// Removes the newest gap and redraws the one it had trimmed. Used when a day
-// turns out to be a holiday with no regular session.
-drop_newest(GapCfg c, array<Gap> store, Gap evicted, int x2) =>
+// Removes the newest gap. Used when a day turns out to be a holiday with no
+// regular session, which promotes the one behind it back to current.
+drop_newest(array<Gap> store, GapCfg cur, GapCfg prv, int x2) =>
     if store.size() > 0
         Gap g = store.pop()
         clear_gap(g)
-        if not na(evicted)
-            store.unshift(draw_gap(c, evicted.pc, evicted.pc_t, evicted.op, evicted.op_t, x2))
-        log.info("{0}: dropped holiday gap {1} -> {2}", c.name,
+        redraw(store, cur, prv, x2)
+        log.info("{0}: dropped holiday gap {1} -> {2}", cur.name,
                  str.tostring(g.pc, format.mintick), str.tostring(g.op, format.mintick))
 
-// The RTH gap as seen on a 15m series, for chart timeframes that cannot resolve
-// 09:30 and 16:15 exactly. Returns the current gap and the open time of any gap
-// withdrawn as a holiday. All values persist, so they survive being aggregated
-// onto a slower chart bar; the chart side acts when they change.
+extend_all(array<Gap> store, int x2) =>
+    for g in store
+        for l in g.lines
+            l.set_x2(x2)
+        for lb in g.labels
+            lb.set_x(x2)
+
+// The RTH gap as seen on a lower series, for chart timeframes that cannot
+// resolve 09:30 and 16:15 exactly. Returns the current gap and the open time of
+// any gap withdrawn as a holiday. All values persist, so they survive being
+// aggregated onto a slower chart bar; the chart side acts when they change.
 rth_state() =>
     var float pc       = na    // close before 16:15 of the last real session
     var int   pc_t     = na
@@ -221,22 +301,101 @@ rth_state() =>
         pend   := false
     [cur_op_t, cur_op, cur_pc, cur_pc_t, drop_t]
 
-extend_all(array<Gap> store, int x2) =>
-    for g in store
-        for l in g.lines
-            l.set_x2(x2)
-        for lb in g.labels
-            lb.set_x(x2)
+// ---------------------------------------------------------------------------
+// Backfill. A 1m chart only loads a few weeks of bars, but a request.security
+// context runs over its own, longer history. These scanners run inside such a
+// context and return the most recent gaps as a flat array of
+// [open time, open, prior close, prior close time] per gap, oldest first.
+// Their prices are the same trades the chart would use: a 60m bar closing at the
+// 17:00 halt closes on the 16:59 trade and the 18:00 bar opens on the 18:00
+// trade; a 15m bar closes at 16:15 on the 16:14 trade and opens at 09:30.
+// ---------------------------------------------------------------------------
+eve_scan(bool weekly) =>
+    var float pc   = na
+    var int   pc_t = na
+    var array<float> g = array.new<float>()
+    int tfs = timeframe.in_seconds()
+    int s   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+    int d   = dayofweek(time, TZ)
+    if s <= S_REOPEN and S_REOPEN < s + tfs and not na(pc) and pc != open
+        bool day_ok = weekly ? d == dayofweek.sunday : d >= dayofweek.monday and d <= dayofweek.thursday
+        if day_ok
+            g.push(time), g.push(open), g.push(pc), g.push(pc_t)
+            while g.size() > 24
+                g.shift()
+    if s < S_HALT
+        pc   := close
+        pc_t := time_close - 60000    // last minute of the bar, e.g. 16:59
+    g.copy()
 
-// ═══════════════════════════════════════════════════════════════════════════
+rth_scan() =>
+    var float pc      = na
+    var int   pc_t    = na
+    var float day_c   = na
+    var int   day_c_t = na
+    var bool  day_ok  = false
+    var bool  pend    = false
+    var array<float> g = array.new<float>()
+    int tfs = timeframe.in_seconds()
+    int s   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+    int d   = dayofweek(time, TZ)
+    if s <= S_RTH_OPEN and S_RTH_OPEN < s + tfs and d >= dayofweek.monday and d <= dayofweek.friday
+        if day_ok
+            pc   := day_c
+            pc_t := day_c_t
+        day_ok := false
+        if not na(pc) and pc != open
+            g.push(time), g.push(open), g.push(pc), g.push(pc_t)
+            while g.size() > 28       // one spare, so a dropped holiday doesn't cost a gap
+                g.shift()
+            pend := true
+    if s >= S_RTH_OPEN and s < S_RTH_CLOSE
+        day_c   := close
+        day_c_t := time_close - 60000 // last minute of the bar, e.g. 16:14
+    if s >= S_HOLIDAY and s < S_HALT
+        day_ok := true
+        pend   := false
+    else if pend and (s >= S_HALT or s < S_RTH_OPEN)
+        // Halted before 13:00: a holiday with no regular session
+        for k = 1 to 4
+            g.pop()
+        pend := false
+    g.copy()
+
+// Adds backfilled gaps the chart's own bars could not reach, skipping any it
+// already found (matched on open time), and keeps the store in time order.
+merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf, int x2) =>
+    int n = na(bf) ? 0 : bf.size() / 4
+    int added = 0
+    if n > 0
+        for i = 0 to n - 1
+            int  opt = int(bf.get(i * 4))
+            int  pos = 0
+            bool dup = false
+            int  m   = store.size()
+            if m > 0
+                for j = 0 to m - 1
+                    int t = store.get(j).op_t
+                    if t == opt
+                        dup := true
+                    if t < opt
+                        pos := j + 1
+            if not dup
+                store.insert(pos, Gap.new(bf.get(i * 4 + 2), int(bf.get(i * 4 + 3)), bf.get(i * 4 + 1), opt,
+                                          array.new<line>(), array.new<label>()))
+                added += 1
+        redraw(store, cur, prv, x2)
+    log.info("{0}: backfilled {1} of {2}", cur.name, added, n)
+
+// ===========================================================================
 // STATE
-// ═══════════════════════════════════════════════════════════════════════════
-var GapCfg nw_cfg = GapCfg.new("NWOG", nw_on, nw_keep, nw_lcol, nw_lsty, nw_lw, nw_tcol, nw_tsz, nw_tpos,
-                               nw_mid, nw_msty, nw_mw, nw_qtr, nw_qsty, nw_qw)
-var GapCfg nd_cfg = GapCfg.new("NDOG", nd_on, nd_keep, nd_lcol, nd_lsty, nd_lw, nd_tcol, nd_tsz, nd_tpos,
-                               nd_mid, nd_msty, nd_mw, nd_qtr, nd_qsty, nd_qw)
-var GapCfg rt_cfg = GapCfg.new("RTH",  rt_on, rt_keep, rt_lcol, rt_lsty, rt_lw, rt_tcol, rt_tsz, rt_tpos,
-                               rt_mid, rt_msty, rt_mw, rt_qtr, rt_qsty, rt_qw)
+// ===========================================================================
+var GapCfg nwc = GapCfg.new("NWOG", nwc_on, 1,        nwc_date, nwc_lcol, nwc_lsty, nwc_lw, nwc_tcol, nwc_tsz, nwc_tpos, nwc_mid, nwc_msty, nwc_mw, nwc_qtr, nwc_qsty, nwc_qw)
+var GapCfg nwp = GapCfg.new("NWOG", nwp_on, nwp_keep, nwp_date, nwp_lcol, nwp_lsty, nwp_lw, nwp_tcol, nwp_tsz, nwp_tpos, nwp_mid, nwp_msty, nwp_mw, nwp_qtr, nwp_qsty, nwp_qw)
+var GapCfg ndc = GapCfg.new("NDOG", ndc_on, 1,        ndc_date, ndc_lcol, ndc_lsty, ndc_lw, ndc_tcol, ndc_tsz, ndc_tpos, ndc_mid, ndc_msty, ndc_mw, ndc_qtr, ndc_qsty, ndc_qw)
+var GapCfg ndp = GapCfg.new("NDOG", ndp_on, ndp_keep, ndp_date, ndp_lcol, ndp_lsty, ndp_lw, ndp_tcol, ndp_tsz, ndp_tpos, ndp_mid, ndp_msty, ndp_mw, ndp_qtr, ndp_qsty, ndp_qw)
+var GapCfg rtc = GapCfg.new("RTH",  rtc_on, 1,        rtc_date, rtc_lcol, rtc_lsty, rtc_lw, rtc_tcol, rtc_tsz, rtc_tpos, rtc_mid, rtc_msty, rtc_mw, rtc_qtr, rtc_qsty, rtc_qw)
+var GapCfg rtp = GapCfg.new("RTH",  rtp_on, rtp_keep, rtp_date, rtp_lcol, rtp_lsty, rtp_lw, rtp_tcol, rtp_tsz, rtp_tpos, rtp_mid, rtp_msty, rtp_mw, rtp_qtr, rtp_qsty, rtp_qw)
 
 var array<Gap> nw_gaps = array.new<Gap>()
 var array<Gap> nd_gaps = array.new<Gap>()
@@ -247,18 +406,17 @@ var int   eve_close_t = na
 
 // RTH close is only carried forward from a real session. Holiday Globex sessions
 // (Labor Day, Presidents Day, ...) still print a 09:30 bar but halt at 13:00, so a
-// day counts only once it trades past 13:00 — early-close days run to 13:15.
+// day counts only once it trades past 13:00 - early-close days run to 13:15.
 var float rth_close   = na    // close before 16:15 of the last real RTH session
 var int   rth_close_t = na
 var float day_close   = na    // running close before 16:15 today
 var int   day_close_t = na
 var bool  day_real    = false // today traded past 13:00
 var bool  rt_pending  = false // today's RTH gap is waiting on day_real
-var Gap   rt_evicted  = na    // gap trimmed by today's, restored if today is a holiday
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // PROCESSING
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 int  tf_sec = timeframe.in_seconds()
 bool tf_ok  = tf_sec < 86400
 bool rth_native = tf_ok and 900 % tf_sec == 0   // chart resolves 09:30 and 16:15 exactly
@@ -272,34 +430,41 @@ string rth_src = tf_sec >= 900 ? "15" : tf_sec >= 300 ? "5" : tf_sec >= 180 ? "3
 // the chart's own bars cannot place the boundaries.
 [h_op_t, h_op, h_pc, h_pc_t, h_drop] = request.security(syminfo.tickerid, rth_src, rth_state(),
      lookahead=barmerge.lookahead_off)
-int  sod    = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
-int  dow    = dayofweek(time, TZ)
-int  x_end  = time + ext_bars * tf_sec * 1000
+
+// Backfill sources: 60m for NWOG/NDOG (their 17:00 and 18:00 boundaries are
+// hourly bar edges), 15m for RTH (60m would straddle 09:30 and 16:15).
+array<float> nw_bf = request.security(syminfo.tickerid, "60", eve_scan(true),  lookahead=barmerge.lookahead_off)
+array<float> nd_bf = request.security(syminfo.tickerid, "60", eve_scan(false), lookahead=barmerge.lookahead_off)
+array<float> rt_bf = request.security(syminfo.tickerid, "15", rth_scan(),      lookahead=barmerge.lookahead_off)
+
+int  sod   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+int  dow   = dayofweek(time, TZ)
+int  x_end = time + ext_bars * tf_sec * 1000
 
 // True only on the bar whose span contains the given second of the day
 contains(int s) =>
     sod <= s and s < sod + tf_sec
 
 if tf_ok
-    // 18:00 reopen — Sunday is NWOG, Monday–Thursday is NDOG
+    // 18:00 reopen - Sunday is NWOG, Monday-Thursday is NDOG
     if contains(S_REOPEN) and not na(eve_close) and eve_close != open
-        if dow == dayofweek.sunday and nw_cfg.on
-            add_gap(nw_cfg, nw_gaps, eve_close, eve_close_t, open, time, x_end)
-        else if dow >= dayofweek.monday and dow <= dayofweek.thursday and nd_cfg.on
-            add_gap(nd_cfg, nd_gaps, eve_close, eve_close_t, open, time, x_end)
+        if dow == dayofweek.sunday
+            add_gap(nw_gaps, nwc, nwp, eve_close, eve_close_t, open, time, x_end)
+        else if dow >= dayofweek.monday and dow <= dayofweek.thursday
+            add_gap(nd_gaps, ndc, ndp, eve_close, eve_close_t, open, time, x_end)
     if sod < S_HALT
         eve_close   := close
         eve_close_t := time
 
 if rth_native
-    // 09:30 open, Monday–Friday, straight from the chart's own bars
+    // 09:30 open, Monday-Friday, straight from the chart's own bars
     if contains(S_RTH_OPEN) and dow >= dayofweek.monday and dow <= dayofweek.friday
         if day_real
             rth_close   := day_close
             rth_close_t := day_close_t
         day_real := false
-        if rt_cfg.on and not na(rth_close) and rth_close != open
-            rt_evicted := add_gap(rt_cfg, rt_gaps, rth_close, rth_close_t, open, time, x_end)
+        if not na(rth_close) and rth_close != open
+            add_gap(rt_gaps, rtc, rtp, rth_close, rth_close_t, open, time, x_end)
             rt_pending := true
     if sod >= S_RTH_OPEN and sod < S_RTH_CLOSE
         day_close   := close
@@ -309,15 +474,23 @@ if rth_native
         rt_pending := false
     else if rt_pending and (sod >= S_HALT or sod < S_RTH_OPEN)
         // Halted before 13:00: no regular session today, so drop its gap
-        drop_newest(rt_cfg, rt_gaps, rt_evicted, x_end)
+        drop_newest(rt_gaps, rtc, rtp, x_end)
         rt_pending := false
-else if tf_ok and rt_cfg.on
-    // 2m, 10m, 30m, 1h, 4h ... — the gap comes from rth_src, whose bars close
+else if tf_ok
+    // 2m, 10m, 30m, 1h, 4h ... - the gap comes from rth_src, whose bars close
     // inside the chart bar, so it appears with the chart bar holding 09:30.
     if h_op_t != 0 and h_op_t != nz(h_op_t[1], 0)
-        rt_evicted := add_gap(rt_cfg, rt_gaps, h_pc, h_pc_t, h_op, h_op_t, x_end)
+        add_gap(rt_gaps, rtc, rtp, h_pc, h_pc_t, h_op, h_op_t, x_end)
     if h_drop != 0 and h_drop != nz(h_drop[1], 0)
-        drop_newest(rt_cfg, rt_gaps, rt_evicted, x_end)
+        drop_newest(rt_gaps, rtc, rtp, x_end)
+
+// Once history has loaded, fill in gaps from before the chart's first bar. Gaps
+// that form after this keep coming from the chart's own bars, so the current
+// gap still appears the moment it opens.
+if barstate.islastconfirmedhistory and tf_ok
+    merge_backfill(nw_gaps, nwc, nwp, nw_bf, x_end)
+    merge_backfill(nd_gaps, ndc, ndp, nd_bf, x_end)
+    merge_backfill(rt_gaps, rtc, rtp, rt_bf, x_end)
 
 if barstate.islast
     extend_all(nw_gaps, x_end)

@@ -39,20 +39,35 @@ NWOG High 09/13   NWOG 75% 09/13   NWOG 50% 09/13   NWOG 25% 09/13   NWOG Low 09
 
 Every level of a gap shows the open's date, including the one taken from the
 prior close — the NWOG High above is Friday 09/11's close, labelled 09/13.
-Dates can be turned off with **Show Date in Labels**.
+Dates can be turned off per block with each block's **Date** checkbox.
 
 ## Settings
 
-| Setting | Default | Notes |
+**General:** Extend Right (bars), default 20, sets how far past the current bar
+lines and labels reach.
+
+Each gap type (NWOG, NDOG, RTH Gap) has its own section with two blocks:
+
+| Block | Default | What it controls |
 |---|---|---|
-| Extend Right (bars) | 20 | How far past the current bar lines and labels reach |
-| Show Date in Labels | on | Appends the open's date as MM/DD to every label |
-| *Gap* ▸ on/off | on | One checkbox per gap type |
-| Show Last | 1 | 1–10 most recent gaps of that type |
+| **Current** | on | The newest gap of that type |
+| **Previous** + Show Last | off, 2 (max 5) | Up to 5 gaps before the current one |
+
+Each block has its own full styling:
+
+| Row | Default (Current) | Notes |
+|---|---|---|
 | Line | NWOG `#673AB7` Solid 2 · NDOG `#2962FF` Solid 2 · RTH `#FF9800` Solid 1 | Color, style, width for High/Low |
-| Text | Small, Middle | Color, size (Tiny–Large), position (Top, Middle, Bottom) |
-| Mid Line | on, Dotted 1 | Uses the gap's line color |
-| Quarters | on, Dotted 1 | 25% and 75%; uses the gap's line color |
+| Text | Small, Middle, Date on | Color, size (Tiny–Large), position (Top, Middle, Bottom), date on/off |
+| Mid Line | on, Dotted 1 | Uses the block's line color |
+| Quarters | on, Dotted 1 | 25% and 75%; uses the block's line color |
+
+Previous defaults to the same colors as Current at 50% transparency.
+
+The two checkboxes are independent, and each one switches off everything under
+it: lines, labels, mid line, quarters and dates. With Current off and Previous on,
+the older gaps draw and the newest is hidden. Up to 6 gaps of each type can show
+at once.
 
 Text position is relative to the line: Top sits above it, Middle level with it,
 Bottom below it. Inputs are hidden from the chart status line.
@@ -91,13 +106,38 @@ are identical to the chart-native path, since 1m, 3m, 5m and 15m all resolve
 NWOG and NDOG always come from the chart's own bars, since the 17:00 halt ends
 the last bar early whatever the bar size.
 
-One limit worth knowing: on a chart far above the source timeframe, RTH history
-reaches only as far back as that source has data in the chart's range. With
-Show Last at 10 (two weeks of RTH gaps) this does not bite.
+## Gaps older than the chart's history
+
+A chart only loads a limited number of bars. On MNQ 1m that was about 25,800 bars,
+reaching back only to Sun 09/20, enough for 3 NWOGs out of 6. Short charts have
+even less: 15s reached about a day.
+
+A `request.security` context runs over its own, longer history, so the indicator
+scans for gaps there and fills in any the chart's own bars could not reach:
+
+| Gap | Backfill source | Why that timeframe |
+|---|---|---|
+| NWOG, NDOG | 60m | The 16:00 bar closes at the 17:00 halt on the 16:59 trade; the 18:00 bar opens on the 18:00 trade |
+| RTH | 15m | The 16:00 bar closes at 16:15 on the 16:14 trade; the 09:30 bar opens on the 09:30 trade |
+
+These are the same trades the chart would use, not approximations. The fill
+happens once, on the last historical bar. Gaps the chart found itself are matched
+by open time and drawn once. Gaps that form after that, including the current
+one, still come from the chart's own bars, so nothing appears late. Older gaps
+whose start lies before the chart's first bar draw from the left edge, which
+makes no difference for a horizontal level.
 
 ## Validation
 
-On MNQZ2026 (CME_MINI), 2026-09-15:
+**v1.4.0, 2026-10-15, MNQZ2026.** With Previous at 5 for all three types, the 5m
+chart, where every gap comes from the chart's own bars, gave the reference set:
+6 NWOG, 6 NDOG and 6 RTH (90 labels). Every label on 15s, 30s, 1, 2, 3, 4, 10, 15
+and 30 minutes and 1h matched it exactly: same gaps, same prices, no duplicates,
+nothing missing. Before backfill, 1m showed 3 NWOGs and 15s showed 0 NWOG, 2 NDOG
+and 3 RTH. A standalone probe had already confirmed the six 60m-sourced NWOGs
+against the 1m-derived values to the tick.
+
+**v1.0.0, 2026-09-15, MNQZ2026:**
 
 - **Levels** — every High, Low, mid and quarter level for all three gaps matched
   the raw bars on 1m, and was identical on 3m, 5m and 15m. NWOG and NDOG were
