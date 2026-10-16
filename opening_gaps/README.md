@@ -189,6 +189,27 @@ makes no difference for a horizontal level.
 
 ## Validation
 
+**v1.8.3, 2026-10-15, MNQZ2026.** Fixes changed colors not showing on the chart.
+- **Cause:** a drawing colored straight from a color setting is drawn from a
+  TradingView palette slot, and the chart's copy of those slots could keep the
+  old colors. After resetting to defaults with an immediate timeframe switch,
+  1.8.2's settings and TradingView's computed palette both held the defaults,
+  but 11 of 12 slots still drew the previous colors.
+- **Fix:** every line and text color is rebuilt at runtime with
+  `color.new(c, color.t(c))`. That gives the same color and transparency, but
+  each drawing now carries its own color instead of a slot number. On the chart,
+  1.8.3 has 0 palette slots (1.8.2 had 13).
+- **Tests:**
+  - All 12 colors were changed with Previous on, and the timeframe was switched
+    at the same instant.
+  - On all 11 timeframes from 15s to 1h, every line and label then showed its
+    new color, with none wrong or missing.
+  - Screenshots on every timeframe showed all 12 colors.
+  - Resetting to defaults with an instant switch to 1m put every drawing back on
+    its default color.
+- **1.8.2**, which built the settings every bar instead of once, did not fix
+  this. It is kept, since it does no harm.
+
 **v1.8.1, 2026-10-15, MNQZ2026.** Tested during the 17:00 halt (last bar 16:59),
 where 1.8.0 collapsed everything to the first future bar slot: labels at 301 and
 leaders 301 → 301, so the leaders were vertical. In 1.8.1, on all 11 timeframes

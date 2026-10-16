@@ -1,5 +1,5 @@
 //@version=6
-indicator("Opening Gaps 1.8.1", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.8.3", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -494,12 +494,19 @@ merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf) =>
 // ===========================================================================
 // STATE
 // ===========================================================================
-var GapCfg nwc = GapCfg.new("NWOG", nwc_on, 1,        nwc_date, nwc_lcol, nwc_lsty, nwc_lw, nwc_tcol, nwc_tsz, nwc_tpos, nwc_bold, nwc_mid, nwc_msty, nwc_mw, nwc_mbold, nwc_mlbl, nwc_qtr, nwc_qsty, nwc_qw, nwc_qbold, nwc_qlbl)
-var GapCfg nwp = GapCfg.new("NWOG", nwp_on, nwp_keep, nwp_date, nwp_lcol, nwp_lsty, nwp_lw, nwp_tcol, nwp_tsz, nwp_tpos, nwp_bold, nwp_mid, nwp_msty, nwp_mw, nwp_mbold, nwp_mlbl, nwp_qtr, nwp_qsty, nwp_qw, nwp_qbold, nwp_qlbl)
-var GapCfg ndc = GapCfg.new("NDOG", ndc_on, 1,        ndc_date, ndc_lcol, ndc_lsty, ndc_lw, ndc_tcol, ndc_tsz, ndc_tpos, ndc_bold, ndc_mid, ndc_msty, ndc_mw, ndc_mbold, ndc_mlbl, ndc_qtr, ndc_qsty, ndc_qw, ndc_qbold, ndc_qlbl)
-var GapCfg ndp = GapCfg.new("NDOG", ndp_on, ndp_keep, ndp_date, ndp_lcol, ndp_lsty, ndp_lw, ndp_tcol, ndp_tsz, ndp_tpos, ndp_bold, ndp_mid, ndp_msty, ndp_mw, ndp_mbold, ndp_mlbl, ndp_qtr, ndp_qsty, ndp_qw, ndp_qbold, ndp_qlbl)
-var GapCfg rtc = GapCfg.new("RTH",  rtc_on, 1,        rtc_date, rtc_lcol, rtc_lsty, rtc_lw, rtc_tcol, rtc_tsz, rtc_tpos, rtc_bold, rtc_mid, rtc_msty, rtc_mw, rtc_mbold, rtc_mlbl, rtc_qtr, rtc_qsty, rtc_qw, rtc_qbold, rtc_qlbl)
-var GapCfg rtp = GapCfg.new("RTH",  rtp_on, rtp_keep, rtp_date, rtp_lcol, rtp_lsty, rtp_lw, rtp_tcol, rtp_tsz, rtp_tpos, rtp_bold, rtp_mid, rtp_msty, rtp_mw, rtp_mbold, rtp_mlbl, rtp_qtr, rtp_qsty, rtp_qw, rtp_qbold, rtp_qlbl)
+// Colors go through live(): a drawing colored straight from an input.color is
+// drawn from a TradingView palette slot, and that slot sometimes kept the old
+// color after the input changed (1.8.2: the input and TradingView's computed
+// palette held the new color, the drawings still showed the old one). A rebuilt
+// color is sent with the drawing itself, so there is no slot to go stale.
+live(color c) => color.new(c, color.t(c))
+
+GapCfg nwc = GapCfg.new("NWOG", nwc_on, 1,        nwc_date, live(nwc_lcol), nwc_lsty, nwc_lw, live(nwc_tcol), nwc_tsz, nwc_tpos, nwc_bold, nwc_mid, nwc_msty, nwc_mw, nwc_mbold, nwc_mlbl, nwc_qtr, nwc_qsty, nwc_qw, nwc_qbold, nwc_qlbl)
+GapCfg nwp = GapCfg.new("NWOG", nwp_on, nwp_keep, nwp_date, live(nwp_lcol), nwp_lsty, nwp_lw, live(nwp_tcol), nwp_tsz, nwp_tpos, nwp_bold, nwp_mid, nwp_msty, nwp_mw, nwp_mbold, nwp_mlbl, nwp_qtr, nwp_qsty, nwp_qw, nwp_qbold, nwp_qlbl)
+GapCfg ndc = GapCfg.new("NDOG", ndc_on, 1,        ndc_date, live(ndc_lcol), ndc_lsty, ndc_lw, live(ndc_tcol), ndc_tsz, ndc_tpos, ndc_bold, ndc_mid, ndc_msty, ndc_mw, ndc_mbold, ndc_mlbl, ndc_qtr, ndc_qsty, ndc_qw, ndc_qbold, ndc_qlbl)
+GapCfg ndp = GapCfg.new("NDOG", ndp_on, ndp_keep, ndp_date, live(ndp_lcol), ndp_lsty, ndp_lw, live(ndp_tcol), ndp_tsz, ndp_tpos, ndp_bold, ndp_mid, ndp_msty, ndp_mw, ndp_mbold, ndp_mlbl, ndp_qtr, ndp_qsty, ndp_qw, ndp_qbold, ndp_qlbl)
+GapCfg rtc = GapCfg.new("RTH",  rtc_on, 1,        rtc_date, live(rtc_lcol), rtc_lsty, rtc_lw, live(rtc_tcol), rtc_tsz, rtc_tpos, rtc_bold, rtc_mid, rtc_msty, rtc_mw, rtc_mbold, rtc_mlbl, rtc_qtr, rtc_qsty, rtc_qw, rtc_qbold, rtc_qlbl)
+GapCfg rtp = GapCfg.new("RTH",  rtp_on, rtp_keep, rtp_date, live(rtp_lcol), rtp_lsty, rtp_lw, live(rtp_tcol), rtp_tsz, rtp_tpos, rtp_bold, rtp_mid, rtp_msty, rtp_mw, rtp_mbold, rtp_mlbl, rtp_qtr, rtp_qsty, rtp_qw, rtp_qbold, rtp_qlbl)
 
 var array<Gap> nw_gaps = array.new<Gap>()
 var array<Gap> nd_gaps = array.new<Gap>()
