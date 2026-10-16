@@ -177,6 +177,19 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   5 and 3, all six monthly opens (May-Oct) matched TradingView's M candles and
   all four weekly opens matched its W candles; weekly opens were hidden on the
   monthly chart.
+- **Colors** (1.14.1, 2026-10-15, MNQZ2026): 1.14.0 could draw old colors after
+  a color change. A drawing colored straight from a color setting is drawn from
+  a TradingView palette slot, and the chart's copy of those slots kept old
+  colors. Changing all 20 colors with an immediate switch to 5m left 1 slot
+  stale (Previous Day Close text stayed black); restoring them with an
+  immediate switch to 1m left 17 of 20 stale (e.g. Daily Low drawn cyan instead
+  of `#801922`). 1.14.1 has 0 palette slots (1.14.0 had 21). All 20 colors were
+  then changed with a timeframe switch at the same instant on all 11 timeframes
+  from 15s to 1h, alternating two color sets: every line, leader and label had
+  its new color (48-58 lines and 24 labels per timeframe, none wrong), and
+  screenshots on every timeframe showed them. Restoring the colors with an
+  immediate switch to 1m put every drawing back. The saved script matches this
+  file by hash.
 - **Roll at close** (1.14.0, 2026-10-10, Saturday): on MNQZ2026, EURUSD and AAPL
   (closed) the newest daily levels were Fri 10/09, Previous Day Close was
   Friday's daily close and Previous Weekly High/Low the week just ended, on 1m,
@@ -261,6 +274,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.14.1 | Changed colors always show on the chart: colors are rebuilt with `color.new(c, color.t(c))` so each drawing carries its own color instead of a palette slot that could keep the old one |
 | 1.14.0 | Periods count as completed once their session closes (weekends, the daily break, holidays), not when the next one opens; replaces the weekly-chart month rollover workaround. 24/7 markets unchanged |
 | 1.13.2 | Label Offset counted in bars past the current bar; with a time offset, labels collapsed to the next session open whenever the offset landed in a weekend or the daily break |
 | 1.13.1 | A time that falls in a gap between bars (weekend, or a minute with no trades) snaps to the next bar, not the one before the gap (daily and lower charts) |

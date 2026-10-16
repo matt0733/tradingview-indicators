@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.14.0", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.14.1", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -448,14 +448,20 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
 // ===========================================================================
 // STATE
 // ===========================================================================
-// Built every bar (not var) so a changed input always reaches the drawing code
-Cfg m_cfg  = Cfg.new(0, "M", m_on, m_keep, m_lcol, m_lsty, m_lw, m_tcol, m_tsz, m_take, m_lcol2, m_lsty2, m_lw2, m_tcol2, m_tsz2, m_tb, m_tb2)
-Cfg w_cfg  = Cfg.new(1, "W", w_on, w_keep, w_lcol, w_lsty, w_lw, w_tcol, w_tsz, w_take, w_lcol2, w_lsty2, w_lw2, w_tcol2, w_tsz2, w_tb, w_tb2)
-Cfg d_cfg  = Cfg.new(2, "D", d_on, d_keep, d_lcol, d_lsty, d_lw, d_tcol, d_tsz, d_take, d_lcol2, d_lsty2, d_lw2, d_tcol2, d_tsz2, d_tb, d_tb2)
-Cfg mo_cfg = Cfg.new(3, "M", mo_on, mo_prev + 1, mo_lcol, mo_lsty, mo_lw, mo_tcol, mo_tsz, "Keep", na, na, na, na, na, mo_tb)
-Cfg wo_cfg = Cfg.new(4, "W", wo_on, 1, wo_lcol, wo_lsty, wo_lw, wo_tcol, wo_tsz, "Keep", na, na, na, na, na, wo_tb)
-Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, mc_lcol, mc_lsty, mc_lw, mc_tcol, mc_tsz, "Keep", na, na, na, na, na, mc_tb)
-Cfg pc_cfg = Cfg.new(6, "D", pc_on, 1, pc_lcol, pc_lsty, pc_lw, pc_tcol, pc_tsz, "Keep", na, na, na, na, na, pc_tb)
+// Built every bar (not var). Colors go through live(): a drawing colored straight
+// from an input.color is drawn from a TradingView palette slot, and that slot kept
+// the old color after the input changed (1.14.0: the input held the new color,
+// the drawings still showed the old one). A rebuilt color is sent with the drawing
+// itself, so there is no slot to go stale. Same fix as Opening Gaps 1.8.3.
+live(color c) => color.new(c, color.t(c))
+
+Cfg m_cfg  = Cfg.new(0, "M", m_on, m_keep, live(m_lcol), m_lsty, m_lw, live(m_tcol), m_tsz, m_take, live(m_lcol2), m_lsty2, m_lw2, live(m_tcol2), m_tsz2, m_tb, m_tb2)
+Cfg w_cfg  = Cfg.new(1, "W", w_on, w_keep, live(w_lcol), w_lsty, w_lw, live(w_tcol), w_tsz, w_take, live(w_lcol2), w_lsty2, w_lw2, live(w_tcol2), w_tsz2, w_tb, w_tb2)
+Cfg d_cfg  = Cfg.new(2, "D", d_on, d_keep, live(d_lcol), d_lsty, d_lw, live(d_tcol), d_tsz, d_take, live(d_lcol2), d_lsty2, d_lw2, live(d_tcol2), d_tsz2, d_tb, d_tb2)
+Cfg mo_cfg = Cfg.new(3, "M", mo_on, mo_prev + 1, live(mo_lcol), mo_lsty, mo_lw, live(mo_tcol), mo_tsz, "Keep", na, na, na, na, na, mo_tb)
+Cfg wo_cfg = Cfg.new(4, "W", wo_on, 1, live(wo_lcol), wo_lsty, wo_lw, live(wo_tcol), wo_tsz, "Keep", na, na, na, na, na, wo_tb)
+Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, live(mc_lcol), mc_lsty, mc_lw, live(mc_tcol), mc_tsz, "Keep", na, na, na, na, na, mc_tb)
+Cfg pc_cfg = Cfg.new(6, "D", pc_on, 1, live(pc_lcol), pc_lsty, pc_lw, live(pc_tcol), pc_tsz, "Keep", na, na, na, na, na, pc_tb)
 
 var array<Level> m_lv = array.new<Level>()
 var array<Level> w_lv = array.new<Level>()
