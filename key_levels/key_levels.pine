@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.14.2", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.14.3", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -17,17 +17,17 @@ float  lbl_gap  = input.float(2.0, "Label Spacing (% of view)", minval=0, maxval
 // ===========================================================================
 string GM = "Monthly"
 bool   m_on   = input.bool(true, "Monthly", group=GM, display=display.none, inline="m0")
-int    m_keep = input.int(3, "Show Last:", minval=1, maxval=12, group=GM, display=display.none, inline="m0",
+int    m_keep = input.int(6, "Show Last:", minval=1, maxval=12, group=GM, display=display.none, inline="m0",
     tooltip="Highs and lows of the last completed months, labelled by month and year, e.g. 'September 2026 Monthly High'. Shown on every timeframe up to monthly.")
 color  m_lcol = input.color(#2962FF, "High Line", group=GM, display=display.none, inline="m1")
 string m_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m1")
-int    m_lw   = input.int(1, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
+int    m_lw   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
 color  m_tcol = input.color(#2962FF, "High Text", group=GM, display=display.none, inline="m2")
 string m_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m2")
 bool   m_tb   = input.bool(true, "Bold", group=GM, display=display.none, inline="m2")
 color  m_lcol2 = input.color(#B22833, "Low Line", group=GM, display=display.none, inline="m3")
 string m_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m3")
-int    m_lw2   = input.int(1, "", minval=1, maxval=10, group=GM, display=display.none, inline="m3")
+int    m_lw2   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m3")
 color  m_tcol2 = input.color(#B22833, "Low Text", group=GM, display=display.none, inline="m4")
 string m_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m4")
 bool   m_tb2   = input.bool(true, "Bold", group=GM, display=display.none, inline="m4")
@@ -40,13 +40,13 @@ int    w_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GW, displa
     tooltip="Highs and lows of the last completed weeks, labelled 'Previous Weekly High' / 'Previous Weekly Low' for the last completed week; older weeks add the date the week opened (Sunday evening for CME futures), e.g. '09/27 Previous Weekly High'. Shown on every timeframe up to weekly.")
 color  w_lcol = input.color(#2962FF, "High Line", group=GW, display=display.none, inline="w1")
 string w_lsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
-int    w_lw   = input.int(1, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
+int    w_lw   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
 color  w_tcol = input.color(#2962FF, "High Text", group=GW, display=display.none, inline="w2")
 string w_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w2")
 bool   w_tb   = input.bool(true, "Bold", group=GW, display=display.none, inline="w2")
 color  w_lcol2 = input.color(#801922, "Low Line", group=GW, display=display.none, inline="w3")
 string w_lsty2 = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w3")
-int    w_lw2   = input.int(1, "", minval=1, maxval=10, group=GW, display=display.none, inline="w3")
+int    w_lw2   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w3")
 color  w_tcol2 = input.color(#801922, "Low Text", group=GW, display=display.none, inline="w4")
 string w_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w4")
 bool   w_tb2   = input.bool(true, "Bold", group=GW, display=display.none, inline="w4")
@@ -92,7 +92,7 @@ bool   wo_on   = input.bool(true, "Weekly Open", group=GO, display=display.none,
     tooltip="The current week's opening price, labelled 'Weekly Open'. For CME futures the week opens Sunday 18:00 New York. The line starts on the week's first candle. Shown on weekly and lower timeframes. Always runs to its label, even after price trades through it.")
 color  wo_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="wo1")
 string wo_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="wo1")
-int    wo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="wo1")
+int    wo_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display.none, inline="wo1")
 color  wo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="wo2")
 string wo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="wo2")
 bool   wo_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="wo2")
@@ -113,7 +113,7 @@ bool   pc_on   = input.bool(true, "Previous Day Close", group=GO, display=displa
     tooltip="The last completed trading day's closing price (the daily candle's close; for CME futures that is the settlement price). The line starts on that day's last candle. Shown on daily and lower timeframes. Always runs to its label, even after price trades through it.")
 color  pc_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="pc1")
 string pc_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="pc1")
-int    pc_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="pc1")
+int    pc_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display.none, inline="pc1")
 color  pc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="pc2")
 string pc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="pc2")
 bool   pc_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="pc2")
