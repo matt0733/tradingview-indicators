@@ -157,6 +157,12 @@ Inputs are hidden from the chart status line.
 
 On MNQZ2026 (CME_MINI), 2026-10-02:
 
+- **Straddling weeks** (1.14.2, 2026-10-16): with 12 monthly and 12 weekly levels,
+  every visible line started on a bar whose range contained its price on MNQZ2026
+  15s, 30s, 1m, 2m, 3m, 4m, 5m, 10m, 15m, 30m, 1h, 4h, daily, weekly and monthly,
+  and on EURUSD and AAPL daily, weekly and monthly (21 runs, 0 misses). Before the
+  fix the weekly charts had 1 miss each (MNQ April high, EURUSD September low,
+  AAPL April high, each inside a week that ran into the next month).
 - **Values**: every monthly, weekly and daily high and low matched TradingView's
   own M, W and D bars, with Show Last 1 and 12 (72 levels).
 - **Names** (1.0.0 wording): September for a monthly bar opening Aug 31 18:00; `09/20 Prev Week`
@@ -265,15 +271,13 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - Label Spacing only sees Key Levels' own labels. It can't move them away from
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
-- On a weekly chart a monthly high or low set in a week that straddles two
-  months (e.g. the week of 9/27, which includes Oct 1-2) can't be pinned to that
-  week, so its line starts at the week containing the month's first session.
 - Tested on MNQ, MES, MYM, AAPL, BTCUSD, ETHUSD and EURUSD.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.14.2 | Monthly highs/lows on a weekly chart, and weekly highs/lows on a monthly chart, start on a bar that traded the price when a week straddles two months (exact match first, else the latest bar whose range covers it; weekly levels on monthly start on the month after if the week's own month didn't reach the price) |
 | 1.14.1 | Changed colors always show on the chart: colors are rebuilt with `color.new(c, color.t(c))` so each drawing carries its own color instead of a palette slot that could keep the old one |
 | 1.14.0 | Periods count as completed once their session closes (weekends, the daily break, holidays), not when the next one opens; replaces the weekly-chart month rollover workaround. 24/7 markets unchanged |
 | 1.13.2 | Label Offset counted in bars past the current bar; with a time offset, labels collapsed to the next session open whenever the offset landed in a weekend or the daily break |

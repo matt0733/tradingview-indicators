@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.14.1", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.14.2", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -308,6 +308,19 @@ process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd, int pt) =>
 // are rebuilt on the last bar from the weekly candles, takes included. The weekly
 // timeframe is lower than the chart's here, and only lookahead_off returns the latest
 // week inside the monthly bar (lookahead_on returns its first week).
+// On a monthly chart, the bar a weekly level should start on: the month containing
+// the week's open if that bar traded the price, otherwise the month after (a week
+// straddling two months can set its high or low in the second one).
+month_for(int t, float p) =>
+    int r = t
+    for i = 0 to SEARCH_BARS
+        if na(time[i])
+            break
+        if time[i] <= t
+            r := low[i] <= p and p <= high[i] or i == 0 ? time[i] : time[i - 1]
+            break
+    r
+
 process_on_monthly(Cfg c, array<Level> lv, bool show) =>
     if c.on and show and barstate.islast
         lv.clear()
@@ -317,8 +330,8 @@ process_on_monthly(Cfg c, array<Level> lv, bool show) =>
             if not na(hs.get(k))
                 int   t = ts.get(k)
                 int   e = k > 0 ? ts.get(k - 1) : cur_t
-                Level h = Level.new(c.kind, true,  hs.get(k), t, e, na, lvl_name(c.kind, t, ds.get(k), true))
-                Level l = Level.new(c.kind, false, lo.get(k), t, e, na, lvl_name(c.kind, t, ds.get(k), false))
+                Level h = Level.new(c.kind, true,  hs.get(k), month_for(t, hs.get(k)), e, na, lvl_name(c.kind, t, ds.get(k), true))
+                Level l = Level.new(c.kind, false, lo.get(k), month_for(t, lo.get(k)), e, na, lvl_name(c.kind, t, ds.get(k), false))
                 if k > 0
                     for j = k - 1 to 0
                         if na(h.take_t) and hs.get(j) >= h.price
@@ -333,8 +346,8 @@ process_on_monthly(Cfg c, array<Level> lv, bool show) =>
                 lv.unshift(h)
         // A week whose session has closed (e.g. over the weekend) counts as completed
         if not na(ce) and timenow >= ce and not na(ch)
-            lv.unshift(Level.new(c.kind, false, cl, cur_t, ce, na, lvl_name(c.kind, cur_t, cd, false)))
-            lv.unshift(Level.new(c.kind, true,  ch, cur_t, ce, na, lvl_name(c.kind, cur_t, cd, true)))
+            lv.unshift(Level.new(c.kind, false, cl, month_for(cur_t, cl), ce, na, lvl_name(c.kind, cur_t, cd, false)))
+            lv.unshift(Level.new(c.kind, true,  ch, month_for(cur_t, ch), ce, na, lvl_name(c.kind, cur_t, cd, true)))
             while lv.size() > c.keep * 2
                 lv.pop()
 
@@ -352,6 +365,24 @@ process_open_on_monthly(Cfg c, array<Level> lv, bool show) =>
 // completed: these build its levels on the last bar for display only, so nothing is
 // stored twice when the next period opens. 24/7 markets never get here: their
 // period closes the moment the next one starts.
+// The bar of the period starting at pt (searching back from `start` bars ago, at
+// most SEARCH_BARS) to start a level at price p on, or na: the earliest bar whose
+// high (or low) equals p, else the latest bar whose range contains p. Used when the
+// bar with the period's running extreme doesn't match the higher-timeframe price:
+// a weekly bar that straddles two months carries the next month's high/low, and
+// the month's own extreme can sit inside such a week without being its extreme.
+match_bar(float p, int pt, int start, bool hi) =>
+    int exact = na
+    int cover = na
+    for i = start to SEARCH_BARS
+        if na(time[i]) or time[i] < pt
+            break
+        if math.abs((hi ? high[i] : low[i]) - p) < tol
+            exact := time[i]
+        if na(cover) and low[i] - tol <= p and p <= high[i] + tol
+            cover := time[i]
+    na(exact) ? cover : exact
+
 period_closed(int tclose) =>
     barstate.islast and not na(tclose) and timenow >= tclose
 
@@ -360,8 +391,8 @@ rolled_hl(Cfg c, Tracker tr, int cur_t, float h0, float l0, int td0, int tclose)
     if c.on and tf_vis(c.tf) and not na(cur_t) and not na(h0) and period_closed(tclose)
         bool seen = tr.cur_t == cur_t
         bool nest = tr.full and not (timeframe.isweekly and c.kind == 0)
-        int  hx   = seen and (nest or math.abs(tr.hi - h0) < tol) ? tr.hi_t : cur_t
-        int  lx   = seen and (nest or math.abs(tr.lo - l0) < tol) ? tr.lo_t : cur_t
+        int  hx   = seen and (nest or math.abs(tr.hi - h0) < tol) ? tr.hi_t : nz(match_bar(h0, cur_t, 0, true), cur_t)
+        int  lx   = seen and (nest or math.abs(tr.lo - l0) < tol) ? tr.lo_t : nz(match_bar(l0, cur_t, 0, false), cur_t)
         out.push(Level.new(c.kind, true,  h0, hx, tclose, na, lvl_name(c.kind, cur_t, td0, true)))
         out.push(Level.new(c.kind, false, l0, lx, tclose, na, lvl_name(c.kind, cur_t, td0, false)))
     out
@@ -413,12 +444,13 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
             // period is loaded and the chart's bars fit inside it, that is the chart's
             // own high/low bar even when the higher-timeframe candle differs by a few
             // ticks (TradingView's FX daily and intraday feeds can). Weekly bars can
-            // straddle two months, so there a monthly level needs a matching price.
-            // Otherwise fall back to the period's open.
+            // straddle two months, so there a monthly level needs a matching price:
+            // the period's bar with exactly that high/low. Otherwise fall back to
+            // the period's open.
             bool seen = pt == tr.cur_t
             bool nest = tr.full and not (timeframe.isweekly and c.kind == 0)
-            int  hx   = seen and (nest or math.abs(tr.hi - hp) < tol) ? tr.hi_t : pt
-            int  lx   = seen and (nest or math.abs(tr.lo - lp) < tol) ? tr.lo_t : pt
+            int  hx   = seen and (nest or math.abs(tr.hi - hp) < tol) ? tr.hi_t : nz(match_bar(hp, pt, 1, true), pt)
+            int  lx   = seen and (nest or math.abs(tr.lo - lp) < tol) ? tr.lo_t : nz(match_bar(lp, pt, 1, false), pt)
             lv.unshift(Level.new(c.kind, false, lp, lx, cur_t, na, lvl_name(c.kind, pt, pd, false)))
             lv.unshift(Level.new(c.kind, true,  hp, hx, cur_t, na, lvl_name(c.kind, pt, pd, true)))
             while lv.size() > c.keep * 2
