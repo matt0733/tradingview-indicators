@@ -1,5 +1,5 @@
 //@version=6
-indicator("Opening Gaps 1.8.3", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.9.0", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -129,7 +129,7 @@ bool   ndp_qlbl = input.bool(false, "Label", group=GND, display=display.none, in
 // INPUTS - RTH GAP
 // ===========================================================================
 string GRT = "『 RTH GAP 』"
-bool   rtc_on   = input.bool(true, "Current ▸", group=GRT, display=display.none, inline="rtc0", tooltip="Regular Trading Hours Opening Range Gap: the 16:14 close to the next 09:30 open, Monday through Friday (New York time). Quarter and mid levels are measured from the open toward the prior close. Futures holidays with no regular session (e.g. Labor Day) are skipped, so the next day's gap runs from the last real 16:14 close. On timeframes that divide evenly into 15 minutes (1, 3, 5, 15m) the gap is read from the chart's own bars; on every other intraday timeframe the prices come from the largest boundary-safe timeframe at or below the chart's own, which gives identical prices.")
+bool   rtc_on   = input.bool(true, "Current ▸", group=GRT, display=display.none, inline="rtc0", tooltip="Regular Trading Hours Opening Range Gap: the regular session's close to the next regular open, Monday through Friday (New York time) - for Equity Index the 16:14 close to the next 09:30 open. The session, and whether the close is the last trade or the settlement, are set by Market and Close Price at the bottom of this section. Quarter and mid levels are measured from the open toward the prior close. Futures holidays (e.g. Labor Day) are skipped, so the next day's gap runs from the last real session's close. When the chart's bars land exactly on the open and close (e.g. 1, 3, 5, 15m for Equity Index) the gap is read from them; on every other intraday timeframe the prices come from the largest timeframe at or below the chart's own that does, which gives identical prices.")
 color  rtc_lcol = input.color(#FF9800, "Line ▸", group=GRT, display=display.none, inline="rtc1")
 string rtc_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc1")
 int    rtc_lw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc1")
@@ -178,6 +178,15 @@ int    rtp_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=displ
 bool   rtp_qbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtp4")
 bool   rtp_qlbl = input.bool(false, "Label", group=GRT, display=display.none, inline="rtp4",
     tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+// Added after the styling inputs so charts and templates saved with earlier
+// versions keep every setting above in place.
+string rt_mkt = input.string("Auto", "Market", options=["Auto","Equity Index","Treasuries","Crude Oil","Natural Gas","Gold","Silver","Copper","Custom"],
+    group=GRT, display=display.none,
+    tooltip="Sets the regular session the RTH gap runs between (New York time): Equity Index 09:30-16:15, Treasuries 08:20-15:00, Crude Oil and Natural Gas 09:00-14:30, Gold 08:20-13:30, Silver 08:25-13:25, Copper 08:10-13:00 (CME's floor hours; each close is where that market's settlement window ends). Auto picks from the chart's own symbol: ZT, ZF, ZN, TN, ZB, TWE, UB = Treasuries; CL, MCL, QM = Crude Oil; NG, MNG, QG = Natural Gas; GC, MGC, QO, 1OZ = Gold; SI, SIL, QI, SIC = Silver; HG, MHG, QC = Copper; anything else = Equity Index.")
+string rt_hrs = input.session("0930-1615", "Custom Hours", group=GRT, display=display.none,
+    tooltip="Used when Market is Custom: the regular session's open and close, New York time, within one day.")
+string rt_px  = input.string("Auto", "Close Price", options=["Auto","Settlement","Last Trade"], group=GRT, display=display.none,
+    tooltip="What the gap is measured from. Last Trade: the last trade before the session close (e.g. 16:14 for Equity Index). Settlement: CME's daily settlement price, which can differ from the last trade by a few ticks; its line starts on the latest candle before the close that traded that price. Auto: Last Trade for Equity Index and Custom, Settlement for every other market. 1OZ and SIC always use Last Trade: they trade around the clock and their daily close is the 17:00 trade, not the settlement.")
 
 
 // ===========================================================================
@@ -211,6 +220,8 @@ type Gap
     int           pc_t
     float         op     // open
     int           op_t
+    int           pc_x   // chart bar holding pc_t / op_t, where the lines start
+    int           op_x
     array<line>   lines  // up to the current bar, placed by time
     array<line>   futs   // past the current bar, placed by bar count
     array<label>  labels
@@ -223,11 +234,65 @@ type Gap
 // ===========================================================================
 const string TZ = "America/New_York"
 
-const int S_RTH_OPEN  = 9 * 3600 + 30 * 60
-const int S_HOLIDAY   = 13 * 3600
-const int S_RTH_CLOSE = 16 * 3600 + 15 * 60
 const int S_HALT      = 17 * 3600
 const int S_REOPEN    = 18 * 3600
+
+// Market for the RTH gap, from the chart's own symbol root when set to Auto
+auto_market(string r) =>
+    if array.from("ZT", "ZF", "ZN", "TN", "ZB", "TWE", "UB").includes(r)
+        "Treasuries"
+    else if array.from("CL", "MCL", "QM").includes(r)
+        "Crude Oil"
+    else if array.from("NG", "MNG", "QG").includes(r)
+        "Natural Gas"
+    else if array.from("GC", "MGC", "QO", "1OZ").includes(r)
+        "Gold"
+    else if array.from("SI", "SIL", "QI", "SIC").includes(r)
+        "Silver"
+    else if array.from("HG", "MHG", "QC").includes(r)
+        "Copper"
+    else
+        "Equity Index"
+
+// Seconds since midnight of an "HHMM" time
+hhmm_sec(string s) =>
+    int(str.tonumber(str.substring(s, 0, 2))) * 3600 + int(str.tonumber(str.substring(s, 2, 4))) * 60
+
+string RT_MKT = rt_mkt == "Auto" ? auto_market(syminfo.root) : rt_mkt
+// CME's floor hours, New York time. Each close is where the market's daily
+// settlement window ends (e.g. Gold settles 13:29-13:30).
+string RT_HRS = switch RT_MKT
+    "Treasuries"  => "0820-1500"
+    "Crude Oil"   => "0900-1430"
+    "Natural Gas" => "0900-1430"
+    "Gold"        => "0820-1330"
+    "Silver"      => "0825-1325"
+    "Copper"      => "0810-1300"
+    "Custom"      => rt_hrs
+    =>               "0930-1615"
+int  S_RTH_OPEN  = hhmm_sec(str.substring(RT_HRS, 0, 4))
+int  S_RTH_CLOSE = hhmm_sec(str.substring(RT_HRS, 5, 9))
+// 1OZ and SIC trade around the clock; their daily close is the 17:00 trade, so
+// it can't stand in for the settlement.
+bool RT_SETTLE   = (rt_px == "Settlement" or (rt_px == "Auto" and RT_MKT != "Equity Index" and RT_MKT != "Custom"))
+     and not array.from("1OZ", "SIC").includes(syminfo.root)
+
+// The trading date a bar belongs to, against the calendar date it trades on.
+// CME folds a holiday's Globex trading into the next trading date, so a holiday
+// morning's bars carry the next day's date and have no regular session.
+ymd(int t, string tz) =>
+    year(t, tz) * 10000 + month(t, tz) * 100 + dayofmonth(t, tz)
+own_trading_day() =>
+    ymd(time_tradingday, "UTC") == ymd(time, TZ)
+
+// True on the bar that opens a weekday's regular session: the one holding the
+// open time, or for a thinly traded contract (e.g. QI, QC) with no trade then,
+// its first bar after it. Once a day: open_day is the last date it fired on.
+opens_session(int sod_, int dow_, int tfs, int open_day) =>
+    bool weekday = dow_ >= dayofweek.monday and dow_ <= dayofweek.friday
+    bool holds   = sod_ <= S_RTH_OPEN and S_RTH_OPEN < sod_ + tfs
+    bool after   = sod_ > S_RTH_OPEN and sod_ < S_RTH_CLOSE
+    weekday and (holds or after) and ymd(time, TZ) != open_day
 
 ls(s) =>
     switch s
@@ -269,20 +334,48 @@ draw_level(Gap g, GapCfg c, int x1, float y, string sty, int w, string txt, bool
                             size=lbl_sz(c.tsz), textalign=text.align_left,
                             text_formatting=bold ? text.format_bold : text.format_none))
 
+// Latest chart bar at or before t_end, within the day before it, that traded
+// p. Settlement is an average over its window, so it can sit off the last
+// candle; t_end itself when no bar in reach did.
+const int SEARCH_BARS = 4999    // max_bars_back allows 5000
+touch_t(float p, int t_end) =>
+    float tol = syminfo.mintick / 2
+    int r = na
+    for i = 0 to SEARCH_BARS
+        if na(time[i]) or time[i] < t_end - 86400000
+            break
+        if time[i] <= t_end and low[i] - tol <= p and p <= high[i] + tol
+            r := time[i]
+            break
+    nz(r, t_end)
+
+// Open time of the chart bar holding t. xloc.bar_time puts a time that falls
+// inside a bar (e.g. 09:30 on 1h, a 16:59 backfill close on 15m) on the NEXT
+// bar, so line starts are snapped first. t itself when no bar in reach holds it.
+snap_t(int t) =>
+    int r = t
+    for i = 0 to SEARCH_BARS
+        if na(time[i])
+            break
+        if time[i] <= t
+            r := time[i]
+            break
+    r
+
 // Draws one gap in the given styling: High/Low from where each price was set,
 // mid/quarters from the open. Percent levels run from the open toward the prior
 // close (25% = a quarter filled). Labels carry the open's date when asked for.
 draw_gap(Gap g, GapCfg c) =>
     string dt = c.date ? " " + f_mmdd(g.op_t) : ""
     bool gap_dn = g.pc >= g.op
-    draw_level(g, c, gap_dn ? g.pc_t : g.op_t, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt, c.bold)
-    draw_level(g, c, gap_dn ? g.op_t : g.pc_t, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt, c.bold)
+    draw_level(g, c, gap_dn ? g.pc_x : g.op_x, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt, c.bold)
+    draw_level(g, c, gap_dn ? g.op_x : g.pc_x, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt, c.bold)
     float span = g.pc - g.op
     if c.qtr
-        draw_level(g, c, g.op_t, g.op + span * 0.25, c.qsty, c.qw, c.qlbl ? c.name + " 25%" + dt : "", c.qbold)
-        draw_level(g, c, g.op_t, g.op + span * 0.75, c.qsty, c.qw, c.qlbl ? c.name + " 75%" + dt : "", c.qbold)
+        draw_level(g, c, g.op_x, g.op + span * 0.25, c.qsty, c.qw, c.qlbl ? c.name + " 25%" + dt : "", c.qbold)
+        draw_level(g, c, g.op_x, g.op + span * 0.75, c.qsty, c.qw, c.qlbl ? c.name + " 75%" + dt : "", c.qbold)
     if c.mid
-        draw_level(g, c, g.op_t, g.op + span * 0.5, c.msty, c.mw, c.mlbl ? c.name + " 50%" + dt : "", c.mbold)
+        draw_level(g, c, g.op_x, g.op + span * 0.5, c.msty, c.mw, c.mlbl ? c.name + " 50%" + dt : "", c.mbold)
 
 clear_gap(Gap g) =>
     for l in g.lines
@@ -318,21 +411,11 @@ redraw(array<Gap> store, GapCfg cur, GapCfg prv) =>
                 draw_gap(g, prv)
 
 add_gap(array<Gap> store, GapCfg cur, GapCfg prv, float pc, int pc_t, float op, int op_t) =>
-    store.push(Gap.new(pc, pc_t, op, op_t, array.new<line>(), array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
+    store.push(Gap.new(pc, pc_t, op, op_t, snap_t(pc_t), snap_t(op_t), array.new<line>(), array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
     redraw(store, cur, prv)
     log.info("{0}: close {1} -> open {2} ({3} pts)", cur.name,
              str.tostring(pc, format.mintick), str.tostring(op, format.mintick),
              str.tostring(op - pc, format.mintick))
-
-// Removes the newest gap. Used when a day turns out to be a holiday with no
-// regular session, which promotes the one behind it back to current.
-drop_newest(array<Gap> store, GapCfg cur, GapCfg prv) =>
-    if store.size() > 0
-        Gap g = store.pop()
-        clear_gap(g)
-        redraw(store, cur, prv)
-        log.info("{0}: dropped holiday gap {1} -> {2}", cur.name,
-                 str.tostring(g.pc, format.mintick), str.tostring(g.op, format.mintick))
 
 extend_all(array<Gap> store) =>
     for g in store
@@ -365,45 +448,38 @@ collect_levels(array<Gap> store, array<label> lbs, array<line> lns, array<float>
                 ws.push(g.wids.get(i))
 
 // The RTH gap as seen on a lower series, for chart timeframes that cannot
-// resolve 09:30 and 16:15 exactly. Returns the current gap and the open time of
-// any gap withdrawn as a holiday. All values persist, so they survive being
-// aggregated onto a slower chart bar; the chart side acts when they change.
+// resolve the session open and close exactly. Returns the current gap. All
+// values persist, so they survive being aggregated onto a slower chart bar; the
+// chart side acts when they change.
 rth_state() =>
-    var float pc       = na    // close before 16:15 of the last real session
+    var float pc       = na    // last trade before the close of the last real session
     var int   pc_t     = na
-    var float day_c    = na    // running close before 16:15 today
+    var float day_c    = na    // running last trade before the close today
     var int   day_c_t  = na
-    var bool  day_ok   = false // today traded past 13:00
-    var bool  pend     = false
+    var bool  day_ok   = false // today's open is on its own trading date
+    var int   open_day = 0
     var int   cur_op_t = 0
     var float cur_op   = na
     var float cur_pc   = na
     var int   cur_pc_t = 0
-    var int   drop_t   = 0
     int tfs  = timeframe.in_seconds()
     int sod2 = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
     int dow2 = dayofweek(time, TZ)
-    if sod2 <= S_RTH_OPEN and S_RTH_OPEN < sod2 + tfs and dow2 >= dayofweek.monday and dow2 <= dayofweek.friday
+    if opens_session(sod2, dow2, tfs, open_day)
+        open_day := ymd(time, TZ)
         if day_ok
             pc   := day_c
             pc_t := day_c_t
-        day_ok := false
-        if not na(pc) and pc != open
+        day_ok := own_trading_day()
+        if day_ok and not na(pc)
             cur_op_t := time
             cur_op   := open
             cur_pc   := pc
             cur_pc_t := pc_t
-            pend     := true
-    if sod2 >= S_RTH_OPEN and sod2 < S_RTH_CLOSE
+    if day_ok and dow2 >= dayofweek.monday and dow2 <= dayofweek.friday and sod2 >= S_RTH_OPEN and sod2 < S_RTH_CLOSE
         day_c   := close
         day_c_t := time
-    if sod2 >= S_HOLIDAY and sod2 < S_HALT
-        day_ok := true
-        pend   := false
-    else if pend and (sod2 >= S_HALT or sod2 < S_RTH_OPEN)
-        drop_t := cur_op_t
-        pend   := false
-    [cur_op_t, cur_op, cur_pc, cur_pc_t, drop_t]
+    [cur_op_t, cur_op, cur_pc, cur_pc_t]
 
 // ---------------------------------------------------------------------------
 // Backfill. A 1m chart only loads a few weeks of bars, but a request.security
@@ -438,32 +514,24 @@ rth_scan() =>
     var float day_c   = na
     var int   day_c_t = na
     var bool  day_ok  = false
-    var bool  pend    = false
+    var int   open_day = 0
     var array<float> g = array.new<float>()
     int tfs = timeframe.in_seconds()
     int s   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
     int d   = dayofweek(time, TZ)
-    if s <= S_RTH_OPEN and S_RTH_OPEN < s + tfs and d >= dayofweek.monday and d <= dayofweek.friday
+    if opens_session(s, d, tfs, open_day)
+        open_day := ymd(time, TZ)
         if day_ok
             pc   := day_c
             pc_t := day_c_t
-        day_ok := false
-        if not na(pc) and pc != open
+        day_ok := own_trading_day()
+        if day_ok and not na(pc)
             g.push(time), g.push(open), g.push(pc), g.push(pc_t)
-            while g.size() > 28       // one spare, so a dropped holiday doesn't cost a gap
+            while g.size() > 28       // one spare, for a gap Settlement drops
                 g.shift()
-            pend := true
-    if s >= S_RTH_OPEN and s < S_RTH_CLOSE
+    if day_ok and d >= dayofweek.monday and d <= dayofweek.friday and s >= S_RTH_OPEN and s < S_RTH_CLOSE
         day_c   := close
         day_c_t := time_close - 60000 // last minute of the bar, e.g. 16:14
-    if s >= S_HOLIDAY and s < S_HALT
-        day_ok := true
-        pend   := false
-    else if pend and (s >= S_HALT or s < S_RTH_OPEN)
-        // Halted before 13:00: a holiday with no regular session
-        for k = 1 to 4
-            g.pop()
-        pend := false
     g.copy()
 
 // Adds backfilled gaps the chart's own bars could not reach, skipping any it
@@ -485,11 +553,33 @@ merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf) =>
                     if t < opt
                         pos := j + 1
             if not dup
-                store.insert(pos, Gap.new(bf.get(i * 4 + 2), int(bf.get(i * 4 + 3)), bf.get(i * 4 + 1), opt,
+                int pct = int(bf.get(i * 4 + 3))
+                store.insert(pos, Gap.new(bf.get(i * 4 + 2), pct, bf.get(i * 4 + 1), opt, snap_t(pct), snap_t(opt),
                                           array.new<line>(), array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>()))
                 added += 1
         redraw(store, cur, prv)
     log.info("{0}: backfilled {1} of {2}", cur.name, added, n)
+
+// Daily [open time, close] pairs, oldest first. For CME futures a daily close is
+// the settlement price.
+d_scan() =>
+    var array<float> a = array.new<float>()
+    a.push(time), a.push(close)
+    while a.size() > 80
+        a.shift()
+    a.copy()
+
+// Settlement of the trading day holding time t, or na when it isn't in d
+settle_of(array<float> d, int t) =>
+    float r = na
+    int n = na(d) ? 0 : d.size() / 2
+    if n > 0
+        for i = n - 1 to 0
+            if d.get(i * 2) <= t
+                r := d.get(i * 2 + 1)
+                break
+    r
+
 
 // ===========================================================================
 // STATE
@@ -515,38 +605,95 @@ var array<Gap> rt_gaps = array.new<Gap>()
 var float eve_close   = na    // last bar starting before 17:00
 var int   eve_close_t = na
 
-// RTH close is only carried forward from a real session. Holiday Globex sessions
-// (Labor Day, Presidents Day, ...) still print a 09:30 bar but halt at 13:00, so a
-// day counts only once it trades past 13:00 - early-close days run to 13:15.
-var float rth_close   = na    // close before 16:15 of the last real RTH session
+// RTH close is only carried forward from a real session. A holiday's Globex
+// session (Labor Day, Presidents Day, ...) still prints bars at the open, but they
+// belong to the next trading date, so the day is skipped and its trades ignored.
+var float rth_close   = na    // last trade before the close of the last real session
 var int   rth_close_t = na
-var float day_close   = na    // running close before 16:15 today
+var float day_close   = na    // running last trade before the close today
 var int   day_close_t = na
-var bool  day_real    = false // today traded past 13:00
-var bool  rt_pending  = false // today's RTH gap is waiting on day_real
+var bool  day_real    = false // today's open is on its own trading date
+var int   rth_day     = 0     // date of the last session open taken
 
 // ===========================================================================
 // PROCESSING
 // ===========================================================================
 int  tf_sec = timeframe.in_seconds()
 bool tf_ok  = tf_sec < 86400
-bool rth_native = tf_ok and 900 % tf_sec == 0   // chart resolves 09:30 and 16:15 exactly
 
-// Source timeframe for charts whose own bars cannot place 09:30 and 16:15: the
-// largest size that divides 15 minutes and is no larger than the chart's own, so
+gcd(int a, int b) =>
+    int x = a
+    int y = b
+    while y != 0
+        int t = x % y
+        x := y
+        y := t
+    x
+
+// Largest bar size, at most max_sec, whose bars land exactly on the session
+// open and close ("1" always does).
+src_tf(int step, int max_sec) =>
+    string r = "1"
+    for m in array.from(30, 15, 10, 5, 3, 2)
+        if m * 60 <= max_sec and step % (m * 60) == 0
+            r := str.tostring(m)
+            break
+    r
+
+int  rth_step   = gcd(S_RTH_OPEN, S_RTH_CLOSE)        // 900 (15m) for 09:30 and 16:15
+bool rth_native = tf_ok and rth_step % tf_sec == 0     // chart resolves open and close exactly
+
+// Source timeframe for charts whose own bars cannot place the open and close:
+// the largest size that lands on both and is no larger than the chart's own, so
 // its bars have already closed inside the chart bar and nothing is drawn late.
-string rth_src = tf_sec >= 900 ? "15" : tf_sec >= 300 ? "5" : tf_sec >= 180 ? "3" : "1"
+string rth_src = src_tf(rth_step, tf_sec)
 
 // Read unconditionally: request.* must sit in the global scope. Only used when
 // the chart's own bars cannot place the boundaries.
-[h_op_t, h_op, h_pc, h_pc_t, h_drop] = request.security(syminfo.tickerid, rth_src, rth_state(),
+[h_op_t, h_op, h_pc, h_pc_t] = request.security(syminfo.tickerid, rth_src, rth_state(),
      lookahead=barmerge.lookahead_off)
 
 // Backfill sources: 60m for NWOG/NDOG (their 17:00 and 18:00 boundaries are
-// hourly bar edges), 15m for RTH (60m would straddle 09:30 and 16:15).
+// hourly bar edges), up to 30m for RTH (15m for 09:30 and 16:15; 60m would
+// straddle them).
 array<float> nw_bf = request.security(syminfo.tickerid, "60", eve_scan(true),  lookahead=barmerge.lookahead_off)
 array<float> nd_bf = request.security(syminfo.tickerid, "60", eve_scan(false), lookahead=barmerge.lookahead_off)
-array<float> rt_bf = request.security(syminfo.tickerid, "15", rth_scan(),      lookahead=barmerge.lookahead_off)
+array<float> rt_bf = request.security(syminfo.tickerid, src_tf(rth_step, 1800), rth_scan(), lookahead=barmerge.lookahead_off)
+
+// Daily settlements, for Close Price = Settlement. Without lookahead a past bar
+// sees only finished days, so a gap never reads a settlement not yet published.
+array<float> d_bf = request.security(syminfo.tickerid, "D", d_scan(), lookahead=barmerge.lookahead_off)
+max_bars_back(time, SEARCH_BARS + 1)
+max_bars_back(high, SEARCH_BARS + 1)
+max_bars_back(low,  SEARCH_BARS + 1)
+
+// The prior close the RTH gap runs from: the last trade, or that day's settlement
+// on the latest candle before the close that traded it.
+rth_from(float pc, int pc_t) =>
+    float s = RT_SETTLE ? settle_of(d_bf, pc_t) : na
+    float p = pc
+    int   t = pc_t
+    if not na(s) and s != pc
+        p := s
+        t := touch_t(s, pc_t)
+    [p, t]
+
+add_rth(float pc, int pc_t, float op, int op_t) =>
+    [p, t] = rth_from(pc, pc_t)
+    if p != op
+        add_gap(rt_gaps, rtc, rtp, p, t, op, op_t)
+
+// Backfilled RTH gaps with their prior close set the same way, minus any whose
+// prior close equals the open
+rth_bf(array<float> bf) =>
+    array<float> r = array.new<float>()
+    int n = na(bf) ? 0 : bf.size() / 4
+    if n > 0
+        for i = 0 to n - 1
+            [p, t] = rth_from(bf.get(i * 4 + 2), int(bf.get(i * 4 + 3)))
+            if p != bf.get(i * 4 + 1)
+                r.push(bf.get(i * 4)), r.push(bf.get(i * 4 + 1)), r.push(p), r.push(t)
+    r
 
 int  sod   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
 int  dow   = dayofweek(time, TZ)
@@ -567,32 +714,24 @@ if tf_ok
         eve_close_t := time
 
 if rth_native
-    // 09:30 open, Monday-Friday, straight from the chart's own bars
-    if contains(S_RTH_OPEN) and dow >= dayofweek.monday and dow <= dayofweek.friday
+    // Session open, Monday-Friday, straight from the chart's own bars
+    if opens_session(sod, dow, tf_sec, rth_day)
+        rth_day := ymd(time, TZ)
         if day_real
             rth_close   := day_close
             rth_close_t := day_close_t
-        day_real := false
-        if not na(rth_close) and rth_close != open
-            add_gap(rt_gaps, rtc, rtp, rth_close, rth_close_t, open, time)
-            rt_pending := true
-    if sod >= S_RTH_OPEN and sod < S_RTH_CLOSE
+        day_real := own_trading_day()
+        if day_real and not na(rth_close)
+            add_rth(rth_close, rth_close_t, open, time)
+    // Weekdays only: contracts that trade 24/7 (1OZ, SIC) have no weekend session
+    if day_real and dow >= dayofweek.monday and dow <= dayofweek.friday and sod >= S_RTH_OPEN and sod < S_RTH_CLOSE
         day_close   := close
         day_close_t := time
-    if sod >= S_HOLIDAY and sod < S_HALT
-        day_real   := true
-        rt_pending := false
-    else if rt_pending and (sod >= S_HALT or sod < S_RTH_OPEN)
-        // Halted before 13:00: no regular session today, so drop its gap
-        drop_newest(rt_gaps, rtc, rtp)
-        rt_pending := false
 else if tf_ok
-    // 2m, 10m, 30m, 1h, 4h ... - the gap comes from rth_src, whose bars close
-    // inside the chart bar, so it appears with the chart bar holding 09:30.
+    // e.g. 2m, 10m, 30m, 1h, 4h for 09:30 - the gap comes from rth_src, whose bars
+    // close inside the chart bar, so it appears with the chart bar holding the open.
     if h_op_t != 0 and h_op_t != nz(h_op_t[1], 0)
-        add_gap(rt_gaps, rtc, rtp, h_pc, h_pc_t, h_op, h_op_t)
-    if h_drop != 0 and h_drop != nz(h_drop[1], 0)
-        drop_newest(rt_gaps, rtc, rtp)
+        add_rth(h_pc, h_pc_t, h_op, h_op_t)
 
 // Once history has loaded, fill in gaps from before the chart's first bar. Gaps
 // that form after this keep coming from the chart's own bars, so the current
@@ -600,7 +739,7 @@ else if tf_ok
 if barstate.islastconfirmedhistory and tf_ok
     merge_backfill(nw_gaps, nwc, nwp, nw_bf)
     merge_backfill(nd_gaps, ndc, ndp, nd_bf)
-    merge_backfill(rt_gaps, rtc, rtp, rt_bf)
+    merge_backfill(rt_gaps, rtc, rtp, rth_bf(rt_bf))
 
 // High and low of the bars in view; the script recalculates when the view changes
 var float vis_hi = na

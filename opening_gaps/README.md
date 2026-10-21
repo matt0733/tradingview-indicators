@@ -13,9 +13,52 @@ All times are New York.
 |---|---|---|---|
 | **NWOG** | Friday, last price before 17:00 (the 16:59 close) | Sunday 18:00 | Weekly |
 | **NDOG** | Last price before 17:00 (the 16:59 close) | 18:00 the same day | Monday–Thursday |
-| **RTH** | Last price before 16:15 (the 16:14 close) | 09:30 the next day | Monday–Friday |
+| **RTH** | The regular session's close (Equity Index: the 16:14 close) | The next regular session's open (Equity Index: 09:30) | Monday–Friday |
 
 A gap where the open equals the prior close is not drawn.
+
+## RTH gap by market
+
+The RTH gap runs between each market's own regular session, set by **Market**
+at the bottom of the RTH Gap section. The times are CME's floor hours, New York
+time; each close is where that market's daily settlement window ends.
+
+| Market | Open | Close | Settlement window | Auto picks it for |
+|---|---|---|---|---|
+| Equity Index | 09:30 | 16:15 | 15:59:30–16:00 | anything not listed below |
+| Treasuries | 08:20 | 15:00 | 14:59:30–15:00 | ZT, ZF, ZN, TN, ZB, TWE, UB |
+| Crude Oil | 09:00 | 14:30 | 14:28–14:30 | CL, MCL, QM |
+| Natural Gas | 09:00 | 14:30 | 14:28–14:30 | NG, MNG, QG |
+| Gold | 08:20 | 13:30 | 13:29–13:30 | GC, MGC, QO, 1OZ |
+| Silver | 08:25 | 13:25 | 13:24–13:25 | SI, SIL, QI, SIC |
+| Copper | 08:10 | 13:00 | 12:59–13:00 | HG, MHG, QC |
+| Custom | your Custom Hours | | | — |
+
+**Auto** reads the chart's own symbol root, so continuous (`GC1!`) and dated
+(`MGCZ2026`) contracts both work, and the micro and E-mini contracts follow
+their full-size market. Sources, checked on CME's site on 2026-10-21: the
+settlement procedures for each market; the 2014 COMEX notice SER-7040R for the
+metals opens; NYMEX's 2006 notice moving the energy open to 09:00. No current CME
+page states the Treasury floor open; 08:20 is the interest-rate floor open in
+CME's SOFR options guide (7:20 a.m.–2 p.m. CT).
+
+**Close Price** picks what the gap is measured from:
+
+| Close Price | Prior close |
+|---|---|
+| Auto (default) | Last Trade for Equity Index and Custom, Settlement for every other market |
+| Last Trade | The last trade before the close (e.g. 16:14 for Equity Index, 13:29 for Gold) |
+| Settlement | CME's daily settlement, which is TradingView's daily close for CME futures |
+
+Auto keeps ES/NQ gaps exactly as before. With Settlement, the prior-close line
+starts on the latest candle before the close that traded the settlement price,
+since a settlement is an average over its window and can sit off the last
+candle. 1OZ and SIC always use Last Trade: they trade around the clock and
+their daily bars run 17:00 to 17:00, so the daily close is the 17:00 trade, not
+the settlement.
+
+Thinly traded contracts (e.g. QI, QC) sometimes have no trade at the open; the
+gap then opens on the first trade after it.
 
 ## How the levels are drawn
 
@@ -135,33 +178,41 @@ default.
 ## Holidays
 
 Futures trade on some days with no regular session: Labor Day, Presidents Day and
-similar. Globex still prints a 09:30 bar on those mornings and halts at 13:00.
+similar. Globex still prints bars at the open on those mornings, and halts early
+(13:00 for equities, 14:30 for metals and energy).
 
-An RTH gap only stands once the day trades past 13:00. If trading halts before
-then, the gap is removed at the 18:00 reopen, the gap it pushed out is redrawn,
-and the next day's RTH gap runs from the last real session's 16:14 close.
-Early-close days run to 13:15, so they still count.
+CME books a holiday's trading under the next trading date, so a day whose open
+belongs to a later trading date is a holiday: no RTH gap is drawn for it and its
+trades are ignored. The next day's RTH gap runs from the last real session's
+close. Early-close days (e.g. the day after Thanksgiving) are their own trading
+date, so they still count. This is known at the open, so a holiday gap never
+appears.
 
 NWOG and NDOG need no special handling: the prior close is simply the last price
-before the reopen, so a holiday NDOG runs from the 12:59 close to 18:00.
+before the reopen, so a holiday NDOG runs from the last trade before the early
+halt (e.g. 12:59 for equities) to 18:00.
 
 ## Timeframes
 
-| Timeframe | NWOG / NDOG | RTH | RTH source |
+| Timeframe (Equity Index) | NWOG / NDOG | RTH | RTH source |
 |---|---|---|---|
-| Divides 15 minutes (1, 3, 5, 15m) | yes | yes | chart's own bars |
+| Divides 15 minutes (15s, 30s, 1, 3, 5, 15m) | yes | yes | chart's own bars |
 | 2m | yes | yes | 1m |
 | 5m–14m (e.g. 10m) | yes | yes | 5m |
 | 30m and above, intraday | yes | yes | 15m |
 | Daily and above | hidden | hidden | — |
 
-All three gaps draw on every intraday timeframe. The RTH boundaries at 09:30 and
-16:15 fall inside a bar on sizes that don't divide 15 minutes, so those read the
-gap from the largest boundary-safe timeframe at or below the chart's own, through
+All three gaps draw on every intraday timeframe. The RTH open and close fall
+inside a bar on sizes that don't land on both, so those read the gap from the
+largest timeframe at or below the chart's own that does, through
 `request.security`. Those bars have already closed inside the chart bar, so the
-gap appears with the chart bar holding 09:30 and nothing is drawn late. Prices
-are identical to the chart-native path, since 1m, 3m, 5m and 15m all resolve
-09:30 and 16:15 exactly.
+gap appears with the chart bar holding the open and nothing is drawn late.
+Prices are identical to the chart-native path. Which sizes land on both depends
+on the market: 15 minutes for 09:30/16:15, 30 for Crude's 09:00/14:30, 10 for
+Gold's 08:20/13:30 and Treasuries' 08:20/15:00, 5 for Silver's 08:25/13:25.
+
+Lines start on the chart bar that holds their time: on 1h, the RTH open's line
+starts on the 09:00 candle that contains 09:30.
 
 NWOG and NDOG always come from the chart's own bars, since the 17:00 halt ends
 the last bar early whatever the bar size.
@@ -178,7 +229,7 @@ scans for gaps there and fills in any the chart's own bars could not reach:
 | Gap | Backfill source | Why that timeframe |
 |---|---|---|
 | NWOG, NDOG | 60m | The 16:00 bar closes at the 17:00 halt on the 16:59 trade; the 18:00 bar opens on the 18:00 trade |
-| RTH | 15m | The 16:00 bar closes at 16:15 on the 16:14 trade; the 09:30 bar opens on the 09:30 trade |
+| RTH | up to 30m, landing on the open and close (15m for Equity Index) | The 16:00 bar closes at 16:15 on the 16:14 trade; the 09:30 bar opens on the 09:30 trade |
 
 These are the same trades the chart would use, not approximations. The fill
 happens once, on the last historical bar. Gaps the chart found itself are matched
@@ -188,6 +239,36 @@ whose start lies before the chart's first bar draw from the left edge, which
 makes no difference for a horizontal level.
 
 ## Validation
+
+**v1.9.0, 2026-10-21, tested on a separate copy of the script.** RTH gap per
+market, Close Price, and a new holiday rule. Every check reads the drawn objects
+and compares them with values computed separately from each market's own 5m
+bars and daily closes, with history loaded back to late August.
+- **ES/NQ unchanged:** on MES and MNQ at 1m, 3m, 10m and 1h, all 63 shared
+  labels (RTH, NWOG, NDOG) had the same prices as 1.8.3. Start points were
+  identical on 1m, 3m and 10m. On 1h the RTH lines now start on the candle
+  holding 09:30 (High/Low lines not touching their price: 3 → 0).
+- **Every market:** 38 contracts, continuous and dated: all five Treasuries,
+  CL/MCL/QM, NG/MNG/QG, GC/MGC/QO/1OZ, SI/SIL/QI/SIC, HG/MHG/QC, ES/NQ/YM/MES/MNQ/
+  MYM/M2K. 220 of the 6 most recent gaps matched; the misses were QI and QC
+  (fixed below, then 34 of 34).
+- **Timeframes:** MNQ, MES, MGC, CL, SI, HG, ZB and NG on 15s, 30s, 1, 2, 3, 4,
+  10, 15, 30 minutes, 1h and 4h: every RTH level identical to 5m, and every High/
+  Low line starts on a candle that traded its price.
+- **Labor Day (2026-09-07), replayed** on GC, CL, NG, SI, HG, ZB, MNQ and ES: no
+  gap on the holiday morning, and Tuesday's gap ran from Friday. Friday's
+  settlements matched the daily closes exactly (e.g. GC 4476.6, CL 91.48, ZB
+  108.6875).
+- **Settings:** Close Price Last Trade on GC, Settlement on MNQ, Market Equity
+  Index on GC, Treasuries on MNQ, Custom 10:00-15:00 on CL with Last Trade and
+  with Settlement: 36 of 36 gaps correct.
+- **Other symbols** (Auto = Equity Index, Last Trade): SPY, QQQ, SPX, AAPL,
+  EURUSD, USDJPY, DXY, BTCUSDT.P, XAUUSD: 54 of 54 correct.
+- **Found and fixed during testing:** weekend trades on 1OZ/SIC were counted
+  (Monday's gap ran from Sunday 13:15); 1OZ/SIC's daily close is not the
+  settlement (now Last Trade); lines started one candle late wherever a time fell
+  inside a bar (also in 1.8.3); QI/QC had no gap on days without a trade at the
+  open.
 
 **v1.8.3, 2026-10-15, MNQZ2026.** Fixes changed colors not showing on the chart.
 - **Cause:** a drawing colored straight from a color setting is drawn from a
@@ -284,13 +365,17 @@ against the 1m-derived values to the tick.
 
 ## Known limits
 
-- On a futures holiday, the RTH gap is visible from 09:30 until the session halts
-  at 13:00 — it cannot be recognised as a holiday before then.
-- On stock charts, early-close days end at 13:00 and look like a futures holiday,
-  so their RTH gap is dropped and the next day measures from the prior full
-  session.
-- Tested on MNQ only. Instruments whose bars don't start at 18:00 New York (for
-  example crypto on 4h) may place NWOG/NDOG on the wrong bar.
+- Instruments whose bars don't start at 18:00 New York (for example crypto on 4h)
+  may place NWOG/NDOG on the wrong bar. 1OZ and SIC trade around the clock with
+  no 17:00 halt or weekend close, so their NWOG/NDOG don't mean anything.
+- With Settlement on a 15s chart, a settlement price last traded more than 5,000
+  bars back (a long holiday weekend) can't be searched for, and its line starts
+  on the last-trade candle instead.
+- The Treasury open (08:20) comes from CME's interest-rate floor hours, not a
+  Treasury-specific page.
+- Very thin contracts (QI, QC) have holes in their bars, so a line can start on
+  the last candle that traded before its time.
+- 1OZ on 15s shows only the 4 most recent RTH gaps (5m shows 6).
 - Spread labels move as you zoom or scroll, since the spacing is measured
   against the visible range.
 - With every Previous count at 5 and the previous gaps' Mid Line and Quarters

@@ -68,11 +68,19 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.8.3 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.8.3 on 2026-10-15)
+### Opening Gaps 1.9.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.9.0 on 2026-10-21)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
 Design decisions:
+- 1.9.0: RTH gap per market. The user trades gold, crude and silver as well as index futures; the 09:30/16:15 RTH gap means nothing on those.
+  - Market dropdown: Auto (from the chart's own symbol root), Equity Index, Treasuries, Crude Oil, Natural Gas, Gold, Silver, Copper, Custom. The user asked for the full list, plus Treasuries after seeing ZB on their watchlist. Times are CME floor hours, each checked on CME's site; the Treasury open is the only one taken from a sister product (SOFR floor hours).
+  - Close Price: Auto, Settlement, Last Trade, like Key Levels. Auto = Last Trade for Equity Index and Custom, Settlement elsewhere, because the user did not want ES/NQ gaps to change. 1OZ and SIC always use Last Trade (their daily close is the 17:00 trade).
+  - NWOG/NDOG stay the same for every market: all of them share CME's 18:00-17:00 Globex day (checked on each contract's session data). The user confirmed they don't want those per market.
+  - Holidays: a day whose open belongs to a later trading date (`time_tradingday`) is skipped. The old "traded past 13:00" rule fails on metals and energy, which halt at 14:30 on holidays (from TradingView's session corrections), and on Christmas Eve CL closes 13:45. Gives the same result as before on every ES/NQ holiday since 2024.
+  - New inputs were added after all styling inputs so saved charts keep their settings.
+  - Also fixed: line starts are snapped to the chart bar holding their time (xloc.bar_time otherwise moves them to the next bar), as in Key Levels.
+  - Tested on a separate "Opening Gaps Dev" script on the user's LLM layout, so the live script stayed untouched.
 - 1.8.3: the user's changed colors didn't show on the chart (styles and widths did).
   - Cause, measured: Pine gives every `input.color` that reaches a drawing a palette slot, and drawings carry only the slot number. The chart draws from its own copy of the palette (`properties().palettes`), and that copy kept old colors even while the inputs and TradingView's computed palette (`metaInfo().defaults.palettes`) held the new ones.
   - Fix: colors are rebuilt with `live(c) => color.new(c, color.t(c))`. That leaves the script with no palette, and each drawing carries its color, the same way Sessions already worked.
@@ -103,7 +111,7 @@ Design decisions:
 - Gaps are lines, not boxes. The settings layout copies the reference graphic (『 』 headers, ▸ rows); keep those characters.
 - Percent levels run from the open toward the prior close (25% = a quarter filled). This was inferred from the reference screenshots, where 25% sat next to the open in both a gap up and a gap down.
 - High/Low lines start at the bar that set each price; mid and quarters start at the open.
-- Futures holidays (Globex halts at 13:00, no RTH session): the day's RTH gap is dropped at the reopen, and the next day measures from the last real 16:14 close. Early-close days run to 13:15 and still count.
+- Futures holidays (no RTH session): skipped when the open belongs to the next trading date (1.9.0; before that, a day had to trade past 13:00). The next day measures from the last real session's close. Early-close days still count.
 - Zero-size gaps are skipped (e.g. Mon 2026-10-12: 16:59 close = 18:00 open = 30877.5).
 
 Possible follow-ups (not requested yet):
