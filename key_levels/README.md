@@ -157,6 +157,11 @@ Inputs are hidden from the chart status line.
 
 On MNQZ2026 (CME_MINI), 2026-10-02:
 
+- **Label spacing on coarse ticks** (1.14.4, 2026-10-21): on ZB, 1.14.3 put labels
+  closer than one label spacing on 15m, 5m and 1h (11 pairs, closest 0.83 of a
+  label). 1.14.4 has none on ZB 1m, 5m, 15m and 1h, ZN 15m, ZF 15m, MNQ 1m and
+  1h, GC 10m and CL 30m, and every column label sits on its line or is joined to
+  it by a leader.
 - **Straddling weeks** (1.14.2, 2026-10-16): with 12 monthly and 12 weekly levels,
   every visible line started on a bar whose range contained its price on MNQZ2026
   15s, 30s, 1m, 2m, 3m, 4m, 5m, 10m, 15m, 30m, 1h, 4h, daily, weekly and monthly,
@@ -272,11 +277,15 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
 - Tested on MNQ, MES, MYM, AAPL, BTCUSD, ETHUSD and EURUSD.
+- On fractional-priced markets such as ZB (1/32 tick), prices in labels are
+  rounded to one decimal (106.1875 shows as 106.2), from Pine's tick-precision
+  format.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.14.4 | Labels no longer land on each other on coarse-tick markets such as ZB: a label is treated as moved when its slot is off its price by more than 1% of a label height (was half a tick, which on ZB's 1/32 tick is about a whole label) |
 | 1.14.3 | Defaults from the user's chart: Monthly Show Last 6; Monthly and Weekly high/low lines, Weekly Open and Previous Day Close width 2 |
 | 1.14.2 | Monthly highs/lows on a weekly chart, and weekly highs/lows on a monthly chart, start on a bar that traded the price when a week straddles two months (exact match first, else the latest bar whose range covers it; weekly levels on monthly start on the month after if the week's own month didn't reach the price) |
 | 1.14.1 | Changed colors always show on the chart: colors are rebuilt with `color.new(c, color.t(c))` so each drawing carries its own color instead of a palette slot that could keep the old one |

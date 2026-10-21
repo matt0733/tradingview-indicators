@@ -20,7 +20,7 @@ _(none)_
 
 ## Released
 
-### Key Levels 1.1.0 - `key_levels/` (1.0.0 on 2026-10-02, 1.1.0 on 2026-10-04)
+### Key Levels 1.14.4 - `key_levels/` (1.0.0 on 2026-10-02, 1.14.4 on 2026-10-21)
 
 Previous monthly/weekly/daily highs and lows. See `key_levels/README.md`.
 
@@ -30,6 +30,7 @@ Design decisions (from the interview):
 - Equal prices are NOT merged: user asked for every level to keep its own line and label (merging was built, then removed).
 - Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
 - 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
+- 1.14.4: same spread fix as Opening Gaps 1.9.1. A label counted as unmoved when its slot was within half a tick (tol) of its price; on ZB that is about a label height, so labels overlapped (reproduced on 1.14.3: 11 pairs on ZB 15m/5m/1h). Now judged against thr / 100. ZB prices in labels still round to one decimal (format.mintick); left as a known limit pending the user's choice of format.
 - 1.14.2: weeks straddling two months (several times a year). Monthly H/L on weekly: if the tracked extreme doesn't match, search the month's bars for an exact high/low match, else the latest bar whose range covers the price. Weekly H/L on monthly: month containing the week's open if it traded the price, else the next month. Tested 21 runs, 0 misses.
 - 1.14.1: changed colors could draw old ones, the same palette-slot issue as Opening Gaps 1.8.3, measured on the chart. After changing all 20 colors with a timeframe switch at the same instant, the chart's copy of the palette (`properties().palettes`) kept 1 of 20 old colors (switch to 5m) and 17 of 20 (restore + switch to 1m). Every Cfg color now goes through `live(c) => color.new(c, color.t(c))`, which leaves 0 palette slots (was 21). Verified on all 11 timeframes from 15s to 1h, with none wrong.
 - 1.14.0: roll at session close (user chose this, conditional on crypto being unaffected; it is, since crypto periods only close when the next opens). Closed-period levels are built on the last bar for display only (not stored), so nothing duplicates when the next period opens.

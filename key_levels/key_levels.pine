@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.14.3", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.14.4", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -714,7 +714,10 @@ if barstate.islast
                 int   idx = ord.get(k)
                 float y   = b_top.get(b) - r * thr
                 float p   = col_y.get(idx)
-                if math.abs(y - p) > tol
+                // "Moved" is judged against the label height, not the tick: on a
+                // coarse tick (ZB's 1/32) half a tick can be a whole label, and a
+                // label left on its price then sits on its neighbour.
+                if math.abs(y - p) > thr / 100
                     line ln = col_ln.get(idx)
                     ln.set_x2(x_ldr)
                     col.get(idx).set_y(y)
