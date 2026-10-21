@@ -240,6 +240,15 @@ makes no difference for a horizontal level.
 
 ## Validation
 
+**v1.9.1, 2026-10-21.** Fixes labels drawn on top of each other on ZB. A label
+counted as "not moved" when its spread slot was within half a tick of its price,
+and stayed on its price while its neighbours were spaced around it. On ZB (tick
+1/32) half a tick was about one label height, so "NWOG 25% 10/18" and "NDOG 50%
+10/20" both sat at 105.703125. "Moved" is now judged against 1% of a label
+height. Tested on defaults and with every Previous at 5, on ZB 1m, 5m, 15m and
+1h, ZN 15m, MNQ 1m and 1h, GC 10m and CL 30m: no two labels closer than one label
+spacing, and every moved label has exactly one leader from its line.
+
 **v1.9.0, 2026-10-21, tested on a separate copy of the script.** RTH gap per
 market, Close Price, and a new holiday rule. Every check reads the drawn objects
 and compares them with values computed separately from each market's own 5m

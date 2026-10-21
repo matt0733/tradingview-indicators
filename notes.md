@@ -68,11 +68,12 @@ Possible follow-ups (not requested yet):
 - Only check invalidation for N bars after the signal, so "faded" means it failed soon rather than eventually traded through.
 - Re-measure on data after 2026-09-30 before trusting the edge or turning on the NY AM filter.
 
-### Opening Gaps 1.9.0 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.9.0 on 2026-10-21)
+### Opening Gaps 1.9.1 — `opening_gaps/` (1.0.0 on 2026-09-15, 1.9.1 on 2026-10-21)
 
 NWOG, NDOG and RTH opening gaps drawn as lines with mid and quarter levels. See `opening_gaps/README.md` for settings and validation.
 
 Design decisions:
+- 1.9.1: the spread treated a label as unmoved when its slot was within half a tick of its price (tol). On ZB the tick (1/32) made that about one label height, so labels sat on each other. Now judged against thr / 100. Key Levels has the same check (key_levels.pine:717).
 - 1.9.0: RTH gap per market. The user trades gold, crude and silver as well as index futures; the 09:30/16:15 RTH gap means nothing on those.
   - Market dropdown: Auto (from the chart's own symbol root), Equity Index, Treasuries, Crude Oil, Natural Gas, Gold, Silver, Copper, Custom. The user asked for the full list, plus Treasuries after seeing ZB on their watchlist. Times are CME floor hours, each checked on CME's site; the Treasury open is the only one taken from a sister product (SOFR floor hours).
   - Close Price: Auto, Settlement, Last Trade, like Key Levels. Auto = Last Trade for Equity Index and Custom, Settlement elsewhere, because the user did not want ES/NQ gaps to change. 1OZ and SIC always use Last Trade (their daily close is the 17:00 trade).

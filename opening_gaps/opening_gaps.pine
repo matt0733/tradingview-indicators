@@ -1,5 +1,5 @@
 //@version=6
-indicator("Opening Gaps 1.9.0", shorttitle="Opening Gaps", overlay=true,
+indicator("Opening Gaps 1.9.1", shorttitle="Opening Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -818,7 +818,10 @@ if barstate.islast
                     float p   = ys.get(idx)
                     // Past the move limit a label stays on its own line
                     bool too_far = max_move > 0 and math.abs(y - p) > max_move * thr + tol
-                    if math.abs(y - p) > tol and not too_far
+                    // "Moved" is judged against the label height, not the tick: on
+                    // a coarse tick (ZB's 1/32) half a tick can be a whole label,
+                    // and a label left on its price then sits on its neighbour.
+                    if math.abs(y - p) > thr / 100 and not too_far
                         lns.get(idx).set_x2(x_ldr)
                         lbs.get(idx).set_y(y)
                         leaders.push(line.new(x_ldr, p, x_lbl, y, xloc=xloc.bar_index,
