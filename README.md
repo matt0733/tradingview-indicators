@@ -1,7 +1,8 @@
 # TradingView Indicators
 
-Pine Script v6 indicators for TradingView, built for intraday index futures
-(MNQ/NQ) and ICT-style trading. All times are New York unless noted.
+Pine Script v6 indicators for TradingView, built for intraday futures (index
+futures such as MNQ/NQ first, plus metals, energy and Treasuries) and ICT-style
+trading. All times are New York unless noted.
 
 | Indicator | Version | What it does |
 |---|---|---|

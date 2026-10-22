@@ -281,7 +281,8 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - Label Spacing only sees Key Levels' own labels. It can't move them away from
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
-- Tested on MNQ, MES, MYM, AAPL, BTCUSD, ETHUSD and EURUSD.
+- Levels tested on MNQ, MES, MYM, MGC, CL, AAPL, BTCUSD, ETHUSD and EURUSD;
+  label spacing and prices also on ZB, UB, ZN, TN, ZF, ZT, ZC, ZS and GC.
 
 ## Changes
 
