@@ -7,7 +7,7 @@ trading. All times are New York unless noted.
 | Indicator | Version | What it does |
 |---|---|---|
 | [SMT Divergence](smt_divergence/) | 2.0.0 | Marks SMT divergence between the chart and one or two comparison markets (ES, YM by default) |
-| [Key Levels](key_levels/) | 1.14.5 | Previous monthly, weekly and daily highs and lows, plus monthly and weekly opens, monthly and previous-day closes, labelled by period |
+| [Key Levels](key_levels/) | 1.15.0 | Previous monthly, weekly and daily highs and lows, monthly, weekly and daily opens, monthly and previous-day closes, and the 07:00-09:00 premarket high and low, labelled by period |
 | [Opening Gaps](opening_gaps/) | 1.9.1 | New Week, New Day and RTH opening gaps with mid and quarter levels; RTH per market (equities, Treasuries, energy, metals) |
 | [Sessions](sessions/) | 1.10.0 | Asia, London, NY AM, Lunch and NY PM session boxes with high/low level lines |
 | [Macros](macros/) | 1.2.0 | Boxes over the hourly :50–:10 macro windows with a line at each macro's open |

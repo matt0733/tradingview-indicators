@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.14.5", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.15.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -120,11 +120,41 @@ bool   pc_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline
 string cl_md   = input.string("Settlement", "Close Price", options=["Settlement","Last Trade"], group=GO, display=display.none,
     tooltip="Which price Monthly Close and Previous Day Close use. Settlement: the daily/monthly candle's close (for CME futures the settlement price, set around 16:00 New York); the line starts on the last candle of the period that traded through it, or the closest one if none did. Last Trade: the close of the period's last candle, where the line starts. On daily and higher charts, and for closes older than the loaded history, both use the candle close.")
 
+// Added after every earlier input so charts saved with earlier versions keep their
+// settings in place.
+bool   do_on   = input.bool(true, "Daily Open", group=GO, display=display.none,
+    tooltip="The current trading day's opening price, from its first 1-minute candle (for CME futures the session opens 18:00 New York). The line starts on that candle. Shown on daily and lower timeframes, not on range or tick charts. Always runs to its label, even after price trades through it.")
+color  do_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="do1")
+string do_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="do1")
+int    do_lw   = input.int(2, "", minval=1, maxval=10, group=GO, display=display.none, inline="do1")
+color  do_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="do2")
+string do_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="do2")
+bool   do_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="do2")
+
+string GP = "Premarket"
+bool   pm_on   = input.bool(true, "Premarket High / Low", group=GP, display=display.none,
+    tooltip="The high and low between 07:00 and 09:00 New York, from 1-minute candles. They appear at 07:00 and follow new highs and lows until 09:00, then hold until the next day's 07:00. Lines start on the candle that set each price. Shown on 4-hour and lower timeframes, not on daily and higher, range or tick charts.")
+color  pm_lcol = input.color(#2962FF, "High Line", group=GP, display=display.none, inline="pm1")
+string pm_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GP, display=display.none, inline="pm1")
+int    pm_lw   = input.int(1, "", minval=1, maxval=10, group=GP, display=display.none, inline="pm1")
+color  pm_tcol = input.color(#2962FF, "High Text", group=GP, display=display.none, inline="pm2")
+string pm_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GP, display=display.none, inline="pm2")
+bool   pm_tb   = input.bool(true, "Bold", group=GP, display=display.none, inline="pm2")
+color  pm_lcol2 = input.color(#801922, "Low Line", group=GP, display=display.none, inline="pm3")
+string pm_lsty2 = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GP, display=display.none, inline="pm3")
+int    pm_lw2   = input.int(1, "", minval=1, maxval=10, group=GP, display=display.none, inline="pm3")
+color  pm_tcol2 = input.color(#801922, "Low Text", group=GP, display=display.none, inline="pm4")
+string pm_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GP, display=display.none, inline="pm4")
+bool   pm_tb2   = input.bool(true, "Bold", group=GP, display=display.none, inline="pm4")
+string pm_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GP, display=display.none,
+    tooltip="What happens once price trades through the premarket high or low after 09:00 (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for the high, below it for the low. Remove: the line and label are deleted.")
+
 // ===========================================================================
 // TYPES
 // ===========================================================================
 type Cfg
-    int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open, 5 monthly close, 6 previous day close
+    int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open, 5 monthly close, 6 previous day close,
+                    // 7 daily open, 8 premarket high/low
     string tf
     bool   on
     int    keep
@@ -505,6 +535,53 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
                 if x.is_hi ? high >= x.price : low <= x.price
                     x.take_t := time
 
+// Daily Open and Premarket come from 1-minute candles, so they are exact on any
+// chart: a 2h or 4h bar can't place 07:00 and 09:00. Run on 1-minute bars (or the
+// chart's own bars below 1 minute): the trading day's opening trade, and the
+// 07:00-09:00 New York high and low with the first candle after 09:00 that traded
+// through each. Values persist, so a slower chart reads them as of its bar.
+const string NY       = "America/New_York"
+const int    PM_START = 7 * 3600
+const int    PM_END   = 9 * 3600
+
+one_min() =>
+    var float o_px = na
+    var int   o_t  = na
+    var float h    = na
+    var int   ht   = na
+    var float l    = na
+    var int   lt   = na
+    var int   e    = na    // 09:00 of the latest premarket
+    var int   htk  = na    // first take of the high / low after 09:00
+    var int   ltk  = na
+    if na(time_tradingday[1]) or time_tradingday != time_tradingday[1]
+        o_px := open
+        o_t  := time
+    int sod = hour(time, NY) * 3600 + minute(time, NY) * 60 + second(time, NY)
+    if sod >= PM_START and sod < PM_END
+        if na(e) or time >= e
+            // First candle of a new premarket
+            e   := timestamp(NY, year(time, NY), month(time, NY), dayofmonth(time, NY), 9, 0)
+            h   := high
+            ht  := time
+            l   := low
+            lt  := time
+            htk := na
+            ltk := na
+        else
+            if high > h
+                h  := high
+                ht := time
+            if low < l
+                l  := low
+                lt := time
+    else if not na(e) and time >= e
+        if na(htk) and high >= h
+            htk := time
+        if na(ltk) and low <= l
+            ltk := time
+    [o_px, o_t, h, ht, l, lt, e, htk, ltk]
+
 // ===========================================================================
 // STATE
 // ===========================================================================
@@ -522,6 +599,8 @@ Cfg mo_cfg = Cfg.new(3, "M", mo_on, mo_prev + 1, live(mo_lcol), mo_lsty, mo_lw, 
 Cfg wo_cfg = Cfg.new(4, "W", wo_on, 1, live(wo_lcol), wo_lsty, wo_lw, live(wo_tcol), wo_tsz, "Keep", na, na, na, na, na, wo_tb)
 Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, live(mc_lcol), mc_lsty, mc_lw, live(mc_tcol), mc_tsz, "Keep", na, na, na, na, na, mc_tb)
 Cfg pc_cfg = Cfg.new(6, "D", pc_on, 1, live(pc_lcol), pc_lsty, pc_lw, live(pc_tcol), pc_tsz, "Keep", na, na, na, na, na, pc_tb)
+Cfg do_cfg = Cfg.new(7, "D", do_on, 1, live(do_lcol), do_lsty, do_lw, live(do_tcol), do_tsz, "Keep", na, na, na, na, na, do_tb)
+Cfg pm_cfg = Cfg.new(8, "D", pm_on, 1, live(pm_lcol), pm_lsty, pm_lw, live(pm_tcol), pm_tsz, pm_take, live(pm_lcol2), pm_lsty2, pm_lw2, live(pm_tcol2), pm_tsz2, pm_tb, pm_tb2)
 
 var array<Level> m_lv = array.new<Level>()
 var array<Level> w_lv = array.new<Level>()
@@ -581,7 +660,9 @@ cfg_of(int kind) =>
         3 => mo_cfg
         4 => wo_cfg
         5 => mc_cfg
-        =>   pc_cfg
+        6 => pc_cfg
+        7 => do_cfg
+        =>   pm_cfg
 
 collect(array<Level> dst, array<Level> src) =>
     for x in src
@@ -622,6 +703,15 @@ process_open_on_monthly(wo_cfg, wo_lv, wo_on_m and timeframe.ismonthly)
 process_close(mc_cfg, mc_lv, m_t, m_c1, m_pd, m_pt)
 process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd, d_pt)
 
+// Daily Open and Premarket, from 1-minute candles. Below 1 minute the chart's own
+// bars are used, since a 1-minute request there would only update once a minute.
+bool odd_chart = timeframe.isticks or chart.is_range
+bool do_vis    = do_on and not odd_chart and timeframe.in_seconds() <= 86400
+bool pm_vis    = pm_on and not odd_chart and timeframe.in_seconds() <= 4 * 3600
+[r_opx, r_ot, r_h, r_ht, r_l, r_lt, r_e, r_htk, r_ltk] = request.security(syminfo.tickerid, "1", one_min(), lookahead=barmerge.lookahead_off)
+[c_opx, c_ot, c_h, c_ht, c_l, c_lt, c_e, c_htk, c_ltk] = one_min()
+bool secs = timeframe.in_seconds() < 60
+
 // ===========================================================================
 // DRAWING
 // ===========================================================================
@@ -652,6 +742,19 @@ if barstate.islast
     collect(all, wo_lv)
     collect(all, mc_show)
     collect(all, pc_show)
+    array<Level> do_show = array.new<Level>()
+    float do_px = secs ? c_opx : r_opx
+    if do_vis and not na(do_px)
+        do_show.push(Level.new(7, true, do_px, secs ? c_ot : r_ot, na, na, "Daily Open"))
+    collect(all, do_show)
+    array<Level> pm_show = array.new<Level>()
+    float pm_h = secs ? c_h : r_h
+    float pm_l = secs ? c_l : r_l
+    if pm_vis and not na(pm_h)
+        int pm_e = secs ? c_e : r_e
+        pm_show.push(Level.new(8, true,  pm_h, secs ? c_ht : r_ht, pm_e, secs ? c_htk : r_htk, "Premarket High"))
+        pm_show.push(Level.new(8, false, pm_l, secs ? c_lt : r_lt, pm_e, secs ? c_ltk : r_ltk, "Premarket Low"))
+    collect(all, pm_show)
 
     // Past the current bar, positions are counted in bars (xloc.bar_index): a time
     // offset would collapse into the next session open whenever it lands in a market
@@ -671,7 +774,7 @@ if barstate.islast
         string nm   = a.kind == 1 and a.end_t == wk_last ? "Previous Weekly " + (a.is_hi ? "High" : "Low") : a.name
         string txt  = nm + (show_px ? " (" + fmt_px(a.price) + ")" : "")
         Cfg    c    = cfg_of(a.kind)
-        bool   lo   = not a.is_hi and a.kind <= 2   // lows of highs/lows types use the low style
+        bool   lo   = not a.is_hi and (a.kind <= 2 or a.kind == 8)   // lows of highs/lows types use the low style
         color  lcol = lo ? c.lcol2 : c.lcol
         color  tcol = lo ? c.tcol2 : c.tcol
         string lsty = lo ? c.lsty2 : c.lsty

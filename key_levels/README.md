@@ -1,8 +1,9 @@
 # Key Levels
 
 Marks the highs and lows of previous months, weeks and days, the current
-monthly and weekly opens, and the last monthly close, as horizontal lines, each labelled with the period it
-came from. Labels sit past the current bar so
+monthly, weekly and daily opens, the last monthly and daily closes, and the
+07:00-09:00 premarket high and low, as horizontal lines, each labelled with the
+period it came from. Labels sit past the current bar so
 they can be lined up after Opening Gaps' labels.
 
 ## Levels
@@ -35,6 +36,7 @@ is the Sunday open and the monthly name comes from the trading days in the month
 | Weekly Open | `Weekly Open` | Weekly and lower; monthly too with Show Weekly Open on Monthly Chart (on by default) |
 | Monthly Close | `September 2026 Closing Price` | Every timeframe |
 | Previous Day Close | `Previous Day Close` | Daily and lower |
+| Daily Open | `Daily Open` | Daily and lower; not on range or tick charts |
 
 Each is the opening price of the month or week in progress, with its own on/off.
 Monthly Open has a **Previous** count that adds earlier months (0-5, default 3);
@@ -57,7 +59,14 @@ close: September 2026 on MNQZ2026 closed at 30698.75, while the last 1m candle
 **Previous Day Close** is the last completed trading day's close, one level
 only, with its own line and text settings.
 
-**Close Price** (end of the Opens section) picks the price both closes use:
+**Daily Open** is the current trading day's opening price, one level only, with
+its own line and text settings. It works like Previous Day Close: its line starts
+on the day's first candle and always runs to its label. The price is the open of
+the day's first 1-minute candle (for CME futures the 18:00 New York session open;
+for crypto 00:00 UTC), read from 1-minute data so it is the same on every chart.
+Below 1 minute the chart's own bars are used. Its settings sit after Close Price.
+
+**Close Price** (in the Opens section) picks the price both closes use:
 
 | Close Price | Price | Line starts on |
 |---|---|---|
@@ -68,6 +77,26 @@ The settlement often isn't the last traded price (CME trades on to 17:00), so
 anchoring it to the day's last candle left the line floating beside that
 candle. On daily and higher charts, and for closes older than the loaded
 history, both options use the candle close. For FX the two are the same price.
+
+## Premarket
+
+`Premarket High` and `Premarket Low`: the high and low between 07:00 and 09:00
+New York, one instance, read from 1-minute candles so they are exact even on 2h
+to 4h charts, whose bars don't line up with 07:00 and 09:00 (below 1 minute the
+chart's own bars are used).
+
+- They appear at 07:00 and follow new highs and lows until 09:00, then hold
+  until the next day's 07:00 replaces them.
+- Each line starts on the candle that set its price (the first one, if the price
+  was reached more than once).
+- Takes only count after 09:00. **When Taken** works as for the other highs and
+  lows; with Stop at take the line ends at the candle containing the first
+  1-minute candle that traded through it.
+- High and low each have their own line color, style and width and text color,
+  size and Bold.
+- Shown on 4-hour and lower timeframes; not on daily and higher, range or tick
+  charts.
+- Every market uses New York time, including crypto and forex.
 
 ## How the levels are drawn
 
@@ -150,12 +179,33 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Monthly Close on/off, Previous | on, 3 | Previous 0-5; line Black Dashed 1, text Black Small bold |
 | Previous Day Close on/off | on | Line Black Dashed 2, text Black Small bold |
 | Close Price | Settlement | Settlement or Last Trade, for Monthly Close and Previous Day Close |
+| Daily Open on/off | on | Line Black Dashed 2, text Black Small bold |
+| Premarket High / Low on/off | on | High line and text blue `#2962FF`, low `#801922`; Dashed 1, Small, bold; When Taken Keep |
 
 Inputs are hidden from the chart status line.
 
 ## Validation
 
 On MNQZ2026 (CME_MINI), 2026-10-02:
+
+- **Daily Open and Premarket** (1.15.0, 2026-10-21): expected values computed
+  from each market's raw 1-minute candles. On MNQ, MES, MGC, CL, SI, ZB,
+  BTCUSDT.P and EURUSD:
+  - On 15s, 30s, 1, 2, 3, 4, 5, 10, 15 and 30 minutes, 1h, 2h, 3h and 4h, every
+    price matched, and every line started on the bar containing the expected
+    candle; on 15s that is the first 15-second bar that set the price. Daily Open
+    also matched on daily.
+  - Daily Open hidden on weekly and monthly; Premarket hidden on daily, weekly
+    and monthly; both hidden on a range chart. Tick charts not tested: they need
+    a higher TradingView plan.
+  - Stop at take on MNQ, CL and ZB at 1, 5, 60 and 240 minutes: each taken line
+    ended on the bar containing the first take after 09:00, label above the high
+    and below the low; CL's untaken high kept running. Remove deleted the taken
+    levels and kept CL's untaken high.
+  - Bar Replay on MNQ 1m: at 06:29 the lines showed 10/20's premarket (29620.5 /
+    29478.25, matching its 120 one-minute candles); at 07:29 and 08:58 the range
+    built so far; Daily Open was the 18:00 open (29924.5). Same on CL at 07:29.
+  - Label spacing with the new labels: no two closer than one label spacing.
 
 - **Fractional prices** (1.14.5, 2026-10-21): the format matched TradingView's own
   price formatter on every possible fraction of ZB, ZN, ZF, ZT and corn (484
@@ -288,6 +338,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.15.0 | Daily Open (the trading day's first 1-minute open; daily and lower) and Premarket High / Low (07:00-09:00 New York from 1-minute candles, building from 07:00 and held until the next 07:00, with When Taken; 4h and lower). Neither shows on range or tick charts |
 | 1.14.5 | Label prices on CBOT's fractional markets show as TradingView does: ZB/UB `106'03`, ZN/TN `105'12'5`, ZF `103'30'7`, ZT `101'27'7`, grains `464'2` (was rounded to one decimal, e.g. 106.2) |
 | 1.14.4 | Labels no longer land on each other on coarse-tick markets such as ZB: a label is treated as moved when its slot is off its price by more than 1% of a label height (was half a tick, which on ZB's 1/32 tick is about a whole label) |
 | 1.14.3 | Defaults from the user's chart: Monthly Show Last 6; Monthly and Weekly high/low lines, Weekly Open and Previous Day Close width 2 |

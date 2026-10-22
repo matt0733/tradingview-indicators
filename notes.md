@@ -20,7 +20,7 @@ _(none)_
 
 ## Released
 
-### Key Levels 1.14.5 - `key_levels/` (1.0.0 on 2026-10-02, 1.14.5 on 2026-10-21)
+### Key Levels 1.15.0 - `key_levels/` (1.0.0 on 2026-10-02, 1.15.0 on 2026-10-21)
 
 Previous monthly/weekly/daily highs and lows. See `key_levels/README.md`.
 
@@ -31,6 +31,7 @@ Design decisions (from the interview):
 - Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
 - 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
 - 1.14.4: same spread fix as Opening Gaps 1.9.1. A label counted as unmoved when its slot was within half a tick (tol) of its price; on ZB that is about a label height, so labels overlapped (reproduced on 1.14.3: 11 pairs on ZB 15m/5m/1h). Now judged against thr / 100.
+- 1.15.0: Daily Open and Premarket High/Low, asked for by the user. Interview answers: Daily Open is the 18:00 trading-day open (same day boundary as the daily levels), not midnight or 09:30; Premarket builds from 07:00 and holds until the next 07:00; premarket highs/lows get When Taken; separate High and Low styling. Both read from 1-minute data (the user's request), via one `one_min()` function run in a "1" request, or on the chart's own bars below 1 minute (a 1m request there only updates once a minute). New inputs appended after Close Price so saved charts keep their settings. Tick charts are untestable on the user's plan.
 - 1.14.5: the user wanted label prices to match TradingView. format.mintick rounds fractional ticks (ZB 1/32) to one decimal. Pine can't see TradingView's fractional settings (minmove2), so fmt_px infers them from a power-of-two pricescale: <= 32 is one fraction (32nds two digits, eighths one), above 32 is 32nds plus a truncated digit for the part of a 32nd. Checked against TradingView's formatter on every fraction of ZB/ZN/ZF/ZT/ZC.
 - 1.14.2: weeks straddling two months (several times a year). Monthly H/L on weekly: if the tracked extreme doesn't match, search the month's bars for an exact high/low match, else the latest bar whose range covers the price. Weekly H/L on monthly: month containing the week's open if it traded the price, else the next month. Tested 21 runs, 0 misses.
 - 1.14.1: changed colors could draw old ones, the same palette-slot issue as Opening Gaps 1.8.3, measured on the chart. After changing all 20 colors with a timeframe switch at the same instant, the chart's copy of the palette (`properties().palettes`) kept 1 of 20 old colors (switch to 5m) and 17 of 20 (restore + switch to 1m). Every Cfg color now goes through `live(c) => color.new(c, color.t(c))`, which leaves 0 palette slots (was 21). Verified on all 11 timeframes from 15s to 1h, with none wrong.
