@@ -1,5 +1,5 @@
 //@version=6
-indicator("Macros 1.2.0", shorttitle="Macros", overlay=true,
+indicator("Macros 1.2.1", shorttitle="Macros", overlay=true,
           max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -22,7 +22,7 @@ int    box_height_tks = input.int(40, "Box Height (ticks)", minval=1, group=GEN,
 string box_lbl_pos    = input.string("Top Left", "Box Label Position",
     options=["Top Left","Top Center","Top Right","Center","Bottom Left","Bottom Center","Bottom Right"], group=GEN,
     tooltip="Position of the macro title inside the box. For Envelope mode 'Top Left' usually reads best; for Below/Above 'Center' is cleanest.")
-color  box_col        = input.color(color.new(#FF9800, 80), "Box Color", group=GEN)
+color  box_col        = input.color(color.new(#4CAF50, 80), "Box Color", group=GEN)
 color  box_text_col   = input.color(color.new(#000000, 0), "Box Text", group=GEN)
 int    box_text_sz    = input.int(8, "Box Text Size (px)", minval=6, maxval=72, group=GEN,
     tooltip="Pixel size for the macro title inside the box.")
@@ -230,12 +230,27 @@ if tf_ok and n_def > 0
 
         array.set(prev_in, i, in_now)
 
-// Vertical tracking: expand/slide live boxes as the window's price range develops
+// Vertical tracking: expand/slide live boxes as the window's price range develops.
+// Also re-apply styling every bar so Settings changes (color, text, size, etc.)
+// take effect without needing to remove and re-add the indicator.
 int n_inst = array.size(insts)
 if n_inst > 0 and tf_ok
     for j = 0 to n_inst - 1
         MacroInst m = array.get(insts, j)
         MacroDef  d = array.get(defs, m.def_idx)
+        box.set_bgcolor(m.bx, box_col)
+        box.set_text(m.bx, d.title)
+        box.set_text_color(m.bx, box_text_col)
+        box.set_text_size(m.bx, box_text_sz)
+        box.set_text_halign(m.bx, bx_halign(box_lbl_pos))
+        box.set_text_valign(m.bx, bx_valign(box_lbl_pos))
+        box.set_text_formatting(m.bx, box_text_bold ? text.format_bold : text.format_none)
+        line.set_color(m.ln, ray_col)
+        line.set_width(m.ln, ray_w)
+        line.set_style(m.ln, ls(ray_sty_in))
+        label.set_text(m.mo_lbl, mo_text)
+        label.set_textcolor(m.mo_lbl, mo_text_col)
+        label.set_size(m.mo_lbl, mo_text_sz)
         int ts = d.sh * 60 + 50
         int te = ((d.sh + 1) % 24) * 60 + 10
         bool still_in = te > ts ? (tc >= ts and tc < te) : (tc >= ts or tc < te)
