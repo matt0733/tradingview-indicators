@@ -168,19 +168,19 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Label Offset (bars) | 10 | 0–500 bars past the current bar |
 | Show Price in Label | on | Appends the price in parentheses, as in Sessions, e.g. `July Monthly High (30861.25)` |
 | Label Spacing (% of view) | 2 | About one label's height; labels closer than this are spaced out with leaders |
-| *Type* on/off, Show Last | on; Monthly 6, Weekly 1, Daily 3 | One per type; Show Last 1–12. Weekly also has Show on Monthly Chart (on) |
-| High Line / Low Line | Highs blue `#2962FF`; lows red `#B22833` (Weekly and Daily lows `#801922`); width 2 (Daily 1); Solid (Weekly Dotted) | Color, style, width; set separately for highs and lows of each type |
+| *Type* on/off, Show Last | on; Monthly 3, Weekly 1, Daily 3 | One per type; Show Last 1–12. Weekly also has Show on Monthly Chart (on) |
+| High Line / Low Line | Highs blue `#2962FF`; lows dark red `#801922`; width 2 (Daily 1); Solid (Weekly Dotted) | Color, style, width; set separately for highs and lows of each type |
 | High Text / Low Text | Same colors as the lines, Small, bold | Color, size (Tiny–Large), Bold; set separately for highs and lows of each type |
 | When Taken | Keep for every type | Per type: Keep, Stop at take, Remove |
 | Monthly Open on/off, Previous | on, 3 | Previous 0-5 |
 | Weekly Open on/off, Show Weekly Open on Monthly Chart | on, on | Current week only |
-| Open Line | Black, Dashed; width 1 (Weekly Open 2) | Color, style, width |
+| Open Line | Black, Dashed, width 1 | Color, style, width |
 | Open Text | Black, Small, bold | Color, size (Tiny-Large), Bold |
 | Monthly Close on/off, Previous | on, 3 | Previous 0-5; line Black Dashed 1, text Black Small bold |
-| Previous Day Close on/off | on | Line Black Dashed 2, text Black Small bold |
+| Previous Day Close on/off | on | Line Black Dashed 1, text Black Small bold |
 | Close Price | Settlement | Settlement or Last Trade, for Monthly Close and Previous Day Close |
-| Daily Open on/off | on | Line Black Dashed 2, text Black Small bold |
-| Premarket High / Low on/off | on | High line and text blue `#2962FF`, low `#801922`; Dashed 1, Small, bold; When Taken Keep |
+| Daily Open on/off | on | Line Black Dashed 1, text Black Small bold |
+| Premarket High / Low on/off | on | High and low lines and text red `#F23645`; Solid 1, Small, bold; When Taken Keep |
 
 Inputs are hidden from the chart status line.
 
@@ -338,6 +338,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.15.1 | Defaults from the user's chart: Monthly Show Last 3; Monthly lows `#801922`; Weekly Open, Previous Day Close and Daily Open width 1; Premarket High and Low `#F23645`, Solid |
 | 1.15.0 | Daily Open (the trading day's first 1-minute open; daily and lower) and Premarket High / Low (07:00-09:00 New York from 1-minute candles, building from 07:00 and held until the next 07:00, with When Taken; 4h and lower). Neither shows on range or tick charts |
 | 1.14.5 | Label prices on CBOT's fractional markets show as TradingView does: ZB/UB `106'03`, ZN/TN `105'12'5`, ZF `103'30'7`, ZT `101'27'7`, grains `464'2` (was rounded to one decimal, e.g. 106.2) |
 | 1.14.4 | Labels no longer land on each other on coarse-tick markets such as ZB: a label is treated as moved when its slot is off its price by more than 1% of a label height (was half a tick, which on ZB's 1/32 tick is about a whole label) |
