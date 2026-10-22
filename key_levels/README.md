@@ -157,6 +157,11 @@ Inputs are hidden from the chart status line.
 
 On MNQZ2026 (CME_MINI), 2026-10-02:
 
+- **Fractional prices** (1.14.5, 2026-10-21): the format matched TradingView's own
+  price formatter on every possible fraction of ZB, ZN, ZF, ZT and corn (484
+  prices). On the chart, all 30 labels on each of ZB, UB, ZN, TN, ZF, ZT, ZC, ZS,
+  MNQ, GC and CL showed their level's price exactly as TradingView formats it;
+  decimal markets are unchanged.
 - **Label spacing on coarse ticks** (1.14.4, 2026-10-21): on ZB, 1.14.3 put labels
   closer than one label spacing on 15m, 5m and 1h (11 pairs, closest 0.83 of a
   label). 1.14.4 has none on ZB 1m, 5m, 15m and 1h, ZN 15m, ZF 15m, MNQ 1m and
@@ -277,14 +282,12 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
 - Tested on MNQ, MES, MYM, AAPL, BTCUSD, ETHUSD and EURUSD.
-- On fractional-priced markets such as ZB (1/32 tick), prices in labels are
-  rounded to one decimal (106.1875 shows as 106.2), from Pine's tick-precision
-  format.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.14.5 | Label prices on CBOT's fractional markets show as TradingView does: ZB/UB `106'03`, ZN/TN `105'12'5`, ZF `103'30'7`, ZT `101'27'7`, grains `464'2` (was rounded to one decimal, e.g. 106.2) |
 | 1.14.4 | Labels no longer land on each other on coarse-tick markets such as ZB: a label is treated as moved when its slot is off its price by more than 1% of a label height (was half a tick, which on ZB's 1/32 tick is about a whole label) |
 | 1.14.3 | Defaults from the user's chart: Monthly Show Last 6; Monthly and Weekly high/low lines, Weekly Open and Previous Day Close width 2 |
 | 1.14.2 | Monthly highs/lows on a weekly chart, and weekly highs/lows on a monthly chart, start on a bar that traded the price when a week straddles two months (exact match first, else the latest bar whose range covers it; weekly levels on monthly start on the month after if the week's own month didn't reach the price) |

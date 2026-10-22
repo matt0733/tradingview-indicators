@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.14.4", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.14.5", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -176,6 +176,34 @@ ls(s) =>
         "Dashed" => line.style_dashed
         "Dotted" => line.style_dotted
         =>          line.style_solid
+
+// Price as TradingView shows it. CBOT's fractional markets have a power-of-two
+// price scale and show handle'fraction: 32nds as two digits (ZB 106'03), finer
+// ticks as 32nds plus one digit for the part of a 32nd (ZN 105'12'5, ZF
+// 103'30'7, ZT 101'27'7), and eighths as one digit (corn 464'2). Everything else
+// uses the tick's decimals.
+pad(int n, int w) =>
+    string r = str.tostring(n)
+    while str.length(r) < w
+        r := "0" + r
+    r
+
+fmt_px(float p) =>
+    int ps = syminfo.pricescale
+    if not array.from(4, 8, 16, 32, 64, 128, 256).includes(ps)
+        str.tostring(p, format.mintick)
+    else
+        float a = math.abs(p)
+        int   h = int(math.floor(a + 1e-9))
+        float f = a - h
+        string fr = ""
+        if ps <= 32
+            fr := pad(int(math.round(f * ps)), str.length(str.tostring(ps - 1)))
+        else
+            float t = f * 32
+            int   n = int(math.floor(t + 1e-9))
+            fr := pad(n, 2) + "'" + str.tostring(int(math.floor((t - n) * 10 + 1e-9)))
+        (p < 0 ? "-" : "") + str.tostring(h) + "'" + fr
 
 lbl_sz(s) =>
     switch s
@@ -641,7 +669,7 @@ if barstate.islast
     array<int>   col_w  = array.new<int>()
     for a in all
         string nm   = a.kind == 1 and a.end_t == wk_last ? "Previous Weekly " + (a.is_hi ? "High" : "Low") : a.name
-        string txt  = nm + (show_px ? " (" + str.tostring(a.price, format.mintick) + ")" : "")
+        string txt  = nm + (show_px ? " (" + fmt_px(a.price) + ")" : "")
         Cfg    c    = cfg_of(a.kind)
         bool   lo   = not a.is_hi and a.kind <= 2   // lows of highs/lows types use the low style
         color  lcol = lo ? c.lcol2 : c.lcol
