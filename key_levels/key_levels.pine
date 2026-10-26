@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.15.1", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.15.4", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -200,6 +200,78 @@ const int LEAD_BARS = 3   // length of a leader to a moved label
 
 float tol   = syminfo.mintick / 2
 int   tf_ms = timeframe.in_seconds() * 1000
+
+// Daily Open and Premarket come from 1-minute candles, so they are exact on any
+// chart: a 2h or 4h bar can't place 07:00 and 09:00. Run on 1-minute bars (or the
+// chart's own bars below 1 minute): the trading day's opening trade, and the
+// 07:00-09:00 New York high and low with the first candle after 09:00 that traded
+// through each, and the candle's close time (the chart's "now"). Values persist,
+// so a slower chart reads them as of its bar.
+const string NY       = "America/New_York"
+const int    PM_START = 7 * 3600
+const int    PM_END   = 9 * 3600
+
+one_min() =>
+    var float o_px = na
+    var int   o_t  = na
+    var float h    = na
+    var int   ht   = na
+    var float l    = na
+    var int   lt   = na
+    var int   e    = na    // 09:00 of the latest premarket
+    var int   htk  = na    // first take of the high / low after 09:00
+    var int   ltk  = na
+    if na(time_tradingday[1]) or time_tradingday != time_tradingday[1]
+        o_px := open
+        o_t  := time
+    int sod = hour(time, NY) * 3600 + minute(time, NY) * 60 + second(time, NY)
+    if sod >= PM_START and sod < PM_END
+        if na(e) or time >= e
+            // First candle of a new premarket
+            e   := timestamp(NY, year(time, NY), month(time, NY), dayofmonth(time, NY), 9, 0)
+            h   := high
+            ht  := time
+            l   := low
+            lt  := time
+            htk := na
+            ltk := na
+        else
+            if high > h
+                h  := high
+                ht := time
+            if low < l
+                l  := low
+                lt := time
+    else if not na(e) and time >= e
+        if na(htk) and high >= h
+            htk := time
+        if na(ltk) and low <= l
+            ltk := time
+    [o_px, o_t, h, ht, l, lt, e, htk, ltk, time_close]
+
+[r_opx, r_ot, r_h, r_ht, r_l, r_lt, r_e, r_htk, r_ltk, r_tc] = request.security(syminfo.tickerid, "1", one_min(), lookahead=barmerge.lookahead_off)
+[c_opx, c_ot, c_h, c_ht, c_l, c_lt, c_e, c_htk, c_ltk, c_tc] = one_min()
+bool secs = timeframe.in_seconds() < 60
+
+// Close time of the latest 1-hour candle, for charts above 1 hour (see chart_now)
+h_tc = request.security(syminfo.tickerid, "60", time_close, lookahead=barmerge.lookahead_off)
+
+// "Now" as the chart sees it, for deciding whether a period has closed. In Bar
+// Replay timenow is still the real clock, so on its own it made a replayed day or
+// month look finished and drew its in-progress close/high/low as completed. So it
+// is capped by the latest candle's close: the chart's own bar; the latest 1-minute
+// candle when there is one (1-minute history in replay reaches back about a year);
+// and above 1 hour the latest 1-hour candle, since a daily bar being built in
+// replay closes at the end of its day. Live this is timenow; in the daily break or
+// over a weekend it is the last candle's close, which is the session close.
+chart_now() =>
+    int t  = math.min(timenow, nz(time_close, timenow))
+    int m1 = secs ? c_tc : r_tc
+    if not na(m1)
+        t := math.min(t, m1)
+    if timeframe.in_seconds() > 3600 and not na(h_tc)
+        t := math.min(t, h_tc)
+    t
 
 ls(s) =>
     switch s
@@ -403,7 +475,7 @@ process_on_monthly(Cfg c, array<Level> lv, bool show) =>
                 lv.unshift(l)
                 lv.unshift(h)
         // A week whose session has closed (e.g. over the weekend) counts as completed
-        if not na(ce) and timenow >= ce and not na(ch)
+        if not na(ce) and chart_now() >= ce and not na(ch)
             lv.unshift(Level.new(c.kind, false, cl, month_for(cur_t, cl), ce, na, lvl_name(c.kind, cur_t, cd, false)))
             lv.unshift(Level.new(c.kind, true,  ch, month_for(cur_t, ch), ce, na, lvl_name(c.kind, cur_t, cd, true)))
             while lv.size() > c.keep * 2
@@ -442,7 +514,7 @@ match_bar(float p, int pt, int start, bool hi) =>
     na(exact) ? cover : exact
 
 period_closed(int tclose) =>
-    barstate.islast and not na(tclose) and timenow >= tclose
+    barstate.islast and not na(tclose) and chart_now() >= tclose
 
 rolled_hl(Cfg c, Tracker tr, int cur_t, float h0, float l0, int td0, int tclose) =>
     array<Level> out = array.new<Level>()
@@ -534,53 +606,6 @@ process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int p
             if na(x.take_t) and time >= x.end_t
                 if x.is_hi ? high >= x.price : low <= x.price
                     x.take_t := time
-
-// Daily Open and Premarket come from 1-minute candles, so they are exact on any
-// chart: a 2h or 4h bar can't place 07:00 and 09:00. Run on 1-minute bars (or the
-// chart's own bars below 1 minute): the trading day's opening trade, and the
-// 07:00-09:00 New York high and low with the first candle after 09:00 that traded
-// through each. Values persist, so a slower chart reads them as of its bar.
-const string NY       = "America/New_York"
-const int    PM_START = 7 * 3600
-const int    PM_END   = 9 * 3600
-
-one_min() =>
-    var float o_px = na
-    var int   o_t  = na
-    var float h    = na
-    var int   ht   = na
-    var float l    = na
-    var int   lt   = na
-    var int   e    = na    // 09:00 of the latest premarket
-    var int   htk  = na    // first take of the high / low after 09:00
-    var int   ltk  = na
-    if na(time_tradingday[1]) or time_tradingday != time_tradingday[1]
-        o_px := open
-        o_t  := time
-    int sod = hour(time, NY) * 3600 + minute(time, NY) * 60 + second(time, NY)
-    if sod >= PM_START and sod < PM_END
-        if na(e) or time >= e
-            // First candle of a new premarket
-            e   := timestamp(NY, year(time, NY), month(time, NY), dayofmonth(time, NY), 9, 0)
-            h   := high
-            ht  := time
-            l   := low
-            lt  := time
-            htk := na
-            ltk := na
-        else
-            if high > h
-                h  := high
-                ht := time
-            if low < l
-                l  := low
-                lt := time
-    else if not na(e) and time >= e
-        if na(htk) and high >= h
-            htk := time
-        if na(ltk) and low <= l
-            ltk := time
-    [o_px, o_t, h, ht, l, lt, e, htk, ltk]
 
 // ===========================================================================
 // STATE
@@ -708,9 +733,6 @@ process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd, d_pt)
 bool odd_chart = timeframe.isticks or chart.is_range
 bool do_vis    = do_on and not odd_chart and timeframe.in_seconds() <= 86400
 bool pm_vis    = pm_on and not odd_chart and timeframe.in_seconds() <= 4 * 3600
-[r_opx, r_ot, r_h, r_ht, r_l, r_lt, r_e, r_htk, r_ltk] = request.security(syminfo.tickerid, "1", one_min(), lookahead=barmerge.lookahead_off)
-[c_opx, c_ot, c_h, c_ht, c_l, c_lt, c_e, c_htk, c_ltk] = one_min()
-bool secs = timeframe.in_seconds() < 60
 
 // ===========================================================================
 // DRAWING

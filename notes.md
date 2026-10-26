@@ -20,7 +20,7 @@ _(none)_
 
 ## Released
 
-### Key Levels 1.15.1 - `key_levels/` (1.0.0 on 2026-10-02, 1.15.1 on 2026-10-21)
+### Key Levels 1.15.4 - `key_levels/` (1.0.0 on 2026-10-02, 1.15.4 on 2026-10-26)
 
 Previous monthly/weekly/daily highs and lows. See `key_levels/README.md`.
 
@@ -31,6 +31,7 @@ Design decisions (from the interview):
 - Overlapping labels: 1.0.x spread them above / level / below; user found labels hard to tie to their ray on a daily chart, so 1.1.0 spaces them evenly with leader lines (user asked to be able to back out if it displayed badly; it didn't). Collision threshold is automatic: % of the visible price range via chart.left/right_visible_bar_time (default 2%).
 - 1.1.0 defaults copied from the user's chart: offset 10, prices on, M3/W1/D3, all black Solid 2, Small text.
 - 1.14.4: same spread fix as Opening Gaps 1.9.1. A label counted as unmoved when its slot was within half a tick (tol) of its price; on ZB that is about a label height, so labels overlapped (reproduced on 1.14.3: 11 pairs on ZB 15m/5m/1h). Now judged against thr / 100.
+- 1.15.4: the user saw Previous Day Close and the October 2025 close following price while backtesting in Bar Replay. period_closed used timenow, which in replay is the real clock. Fixes tried: 1.15.2 capped it at the chart bar's time_close (fixed intraday, not a daily chart's part-built day); 1.15.3 switched to the latest 1m candle's time_close (broke intraday too, because 1m data in replay only reaches back about a year and returned na, which fell back to timenow); 1.15.4 takes the minimum of timenow, the chart bar's close, the 1m close when present, and above 1h the 60m close. A probe script showed that on a daily chart in replay every source ends at the day's close (the 60m request even returns later prices), so a part-built first frame can't be detected; the user chose to keep 1.15.4 and document it, since the daily chart steps whole days.
 - 1.15.1: defaults copied from the user's LLM chart, their newest setup (HTF, Trade and LTF had only the first three changes): Monthly Show Last 3, Monthly lows #801922, Weekly Open / Previous Day Close / Daily Open width 1, Premarket High and Low #F23645, Solid.
 - 1.15.0: Daily Open and Premarket High/Low, asked for by the user. Interview answers: Daily Open is the 18:00 trading-day open (same day boundary as the daily levels), not midnight or 09:30; Premarket builds from 07:00 and holds until the next 07:00; premarket highs/lows get When Taken; separate High and Low styling. Both read from 1-minute data (the user's request), via one `one_min()` function run in a "1" request, or on the chart's own bars below 1 minute (a 1m request there only updates once a minute). New inputs appended after Close Price so saved charts keep their settings. Tick charts are untestable on the user's plan.
 - 1.14.5: the user wanted label prices to match TradingView. format.mintick rounds fractional ticks (ZB 1/32) to one decimal. Pine can't see TradingView's fractional settings (minmove2), so fmt_px infers them from a power-of-two pricescale: <= 32 is one fraction (32nds two digits, eighths one), above 32 is 32nds plus a truncated digit for the part of a 32nd. Checked against TradingView's formatter on every fraction of ZB/ZN/ZF/ZT/ZC.

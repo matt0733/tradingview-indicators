@@ -24,6 +24,10 @@ the Weekly Open stays on that week until the next one opens. The same applies in
 the daily break and on holidays. 24/7 markets such as crypto are unaffected:
 their periods only close when the next one starts.
 
+"Session closed" is judged by the chart's own latest candle, not the clock, so
+Bar Replay works too: at a replayed Monday 09:16 the previous day is Friday and
+the month in progress has no closing price yet.
+
 Periods follow TradingView's own bars for the symbol, which is why the weekly date
 is the Sunday open and the monthly name comes from the trading days in the month
 (a monthly bar opening Aug 31 18:00 is still September).
@@ -188,6 +192,20 @@ Inputs are hidden from the chart status line.
 
 On MNQZ2026 (CME_MINI), 2026-10-02:
 
+- **Bar Replay** (1.15.4, 2026-10-26, MNQ1!): before, a replayed day, week or
+  month counted as finished because Key Levels compared it with the real clock,
+  so at Mon 10/27/2025 09:16 Previous Day Close and "October 2025 Closing Price"
+  were the current candle's close (25832.75) and the month's, week's and day's
+  highs so far showed as completed levels. Expected values were then computed
+  from MNQ1!'s daily, weekly and monthly candles for six replay moments (Mon 10/27
+  09:16, Wed 10/15 11:00, Wed 10/15 17:30 in the daily break, Sat 10/25, Fri 10/31
+  17:30 after October's close, Mon 11/3 10:00). On 1m, 5m, 1h and 4h every one
+  matched: Previous Day Close, latest monthly close and high, newest daily
+  high/low and Previous Weekly high/low (e.g. Mon 10/27 09:16: Previous Day Close
+  25509.25 = Fri 10/24, September 2025 the latest close). Daily chart: matched
+  whenever replay showed whole days (Wed 11:00, Wed 17:30, Saturday, Fri 10/31),
+  wrong on the first frame of a replay started mid-day (see Known limits). Live
+  on 15s, 1m, 5m, 1h, 4h and daily: unchanged and correct.
 - **Daily Open and Premarket** (1.15.0, 2026-10-21): expected values computed
   from each market's raw 1-minute candles. On MNQ, MES, MGC, CL, SI, ZB,
   BTCUSDT.P and EURUSD:
@@ -331,6 +349,13 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 - Label Spacing only sees Key Levels' own labels. It can't move them away from
   Opening Gaps' text at a nearby price; Label Offset is the fix for that.
 - Using the visible range makes the script recalculate on every zoom and scroll.
+- Bar Replay on a daily chart: when a replay is started at a time of day, its
+  first frame shows the current day part-built, and Key Levels treats that day as
+  finished (e.g. Previous Day Close is that day's close so far). Pine can't tell
+  that candle from a finished one there: the clock is the real time, the daily
+  candle closes at the end of the day, and lower-timeframe data on a daily chart
+  in replay runs to the end of the day too. Step once (the daily chart steps a
+  whole day) and the levels are right; intraday charts are right throughout.
 - Levels tested on MNQ, MES, MYM, MGC, CL, AAPL, BTCUSD, ETHUSD and EURUSD;
   label spacing and prices also on ZB, UB, ZN, TN, ZF, ZT, ZC, ZS and GC.
 
@@ -338,6 +363,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.15.4 | Bar Replay: a day, week or month counts as finished only once the chart's latest candle (or latest 1-minute candle, or above 1 hour the latest 1-hour candle) reaches its close, never by the real clock, which made in-progress periods show as completed in replay. 1.15.2 and 1.15.3 were intermediate versions of this fix |
 | 1.15.1 | Defaults from the user's chart: Monthly Show Last 3; Monthly lows `#801922`; Weekly Open, Previous Day Close and Daily Open width 1; Premarket High and Low `#F23645`, Solid |
 | 1.15.0 | Daily Open (the trading day's first 1-minute open; daily and lower) and Premarket High / Low (07:00-09:00 New York from 1-minute candles, building from 07:00 and held until the next 07:00, with When Taken; 4h and lower). Neither shows on range or tick charts |
 | 1.14.5 | Label prices on CBOT's fractional markets show as TradingView does: ZB/UB `106'03`, ZN/TN `105'12'5`, ZF `103'30'7`, ZT `101'27'7`, grains `464'2` (was rounded to one decimal, e.g. 106.2) |
