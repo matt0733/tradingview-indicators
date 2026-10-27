@@ -2,7 +2,7 @@
 
 Marks the highs and lows of previous months, weeks and days, the current
 monthly, weekly and daily opens, the last monthly and daily closes, and the
-07:00-09:00 premarket high and low, as horizontal lines, each labelled with the
+07:00-09:00 premarket high and low and the midnight open, as horizontal lines, each labelled with the
 period it came from. Labels sit past the current bar so
 they can be lined up after Opening Gaps' labels.
 
@@ -102,6 +102,16 @@ chart's own bars are used).
   charts.
 - Every market uses New York time, including crypto and forex.
 
+## Midnight Open
+
+`Midnight Open`: the open of today's 00:00 New York candle, one instance. The
+price comes from 1-minute data on every timeframe (the chart's own bars below 1
+minute); the line starts on the candle containing 00:00 and always runs to its
+label. At the next 00:00 it moves to the new candle. Its own line color, style
+and width and text color, size and Bold, in a Midnight Open section at the
+bottom. Shown on 4-hour and lower timeframes; not on daily and higher, range or
+tick charts.
+
 ## How the levels are drawn
 
 - Each line starts at the candle that set the price. If that candle is older than
@@ -184,6 +194,7 @@ squeezes the gap and the labels can overlap; zooming in widens it.
 | Previous Day Close on/off | on | Line Black Dashed 1, text Black Small bold |
 | Close Price | Settlement | Settlement or Last Trade, for Monthly Close and Previous Day Close |
 | Daily Open on/off | on | Line Black Dashed 1, text Black Small bold |
+| Midnight Open on/off | on | Line Black Dashed 1, text Black Small bold |
 | Premarket High / Low on/off | on | High and low lines and text red `#F23645`; Solid 1, Small, bold; When Taken Keep |
 
 Inputs are hidden from the chart status line.
@@ -192,6 +203,12 @@ Inputs are hidden from the chart status line.
 
 On MNQZ2026 (CME_MINI), 2026-10-02:
 
+- **Midnight Open** (1.16.0, 2026-10-26): the label price matched the 00:00 New
+  York 1-minute candle's open on MNQ, MES, MGC, CL, SI, ZB, BTCUSDT.P and EURUSD
+  on 15s, 30s, 1, 2, 3, 4, 5, 10, 15 and 30 minutes, 1h and 4h; hidden on daily,
+  weekly and monthly. Bar Replay across midnight: on MNQ and MGC 1m the ray moved
+  to the new open at 00:00, starting on the 00:00 candle, with one Midnight Open
+  throughout; on MNQ 5m and BTC 15m it moved one bar late (see Known limits).
 - **Bar Replay** (1.15.4, 2026-10-26, MNQ1!): before, a replayed day, week or
   month counted as finished because Key Levels compared it with the real clock,
   so at Mon 10/27/2025 09:16 Previous Day Close and "October 2025 Closing Price"
@@ -356,6 +373,9 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
   candle closes at the end of the day, and lower-timeframe data on a daily chart
   in replay runs to the end of the day too. Step once (the daily chart steps a
   whole day) and the levels are right; intraday charts are right throughout.
+- In Bar Replay on timeframes above 1 minute, Midnight Open (and Daily Open at
+  18:00) moves to the new price one bar late: replay delivers the 1-minute data
+  for its newest bar with the next step. On 1m it moves on the 00:00 candle.
 - Levels tested on MNQ, MES, MYM, MGC, CL, AAPL, BTCUSD, ETHUSD and EURUSD;
   label spacing and prices also on ZB, UB, ZN, TN, ZF, ZT, ZC, ZS and GC.
 
@@ -363,6 +383,7 @@ On MNQZ2026 (CME_MINI), 2026-10-02:
 
 | Version | Change |
 |---|---|
+| 1.16.0 | Midnight Open: the open of today's 00:00 New York 1-minute candle, one instance, with its own line and text settings; 4h and lower |
 | 1.15.4 | Bar Replay: a day, week or month counts as finished only once the chart's latest candle (or latest 1-minute candle, or above 1 hour the latest 1-hour candle) reaches its close, never by the real clock, which made in-progress periods show as completed in replay. 1.15.2 and 1.15.3 were intermediate versions of this fix |
 | 1.15.1 | Defaults from the user's chart: Monthly Show Last 3; Monthly lows `#801922`; Weekly Open, Previous Day Close and Daily Open width 1; Premarket High and Low `#F23645`, Solid |
 | 1.15.0 | Daily Open (the trading day's first 1-minute open; daily and lower) and Premarket High / Low (07:00-09:00 New York from 1-minute candles, building from 07:00 and held until the next 07:00, with When Taken; 4h and lower). Neither shows on range or tick charts |

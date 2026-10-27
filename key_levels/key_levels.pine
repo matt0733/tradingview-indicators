@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels 1.15.4", shorttitle="Key Levels", overlay=true,
+indicator("Key Levels 1.16.0", shorttitle="Key Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // ===========================================================================
@@ -149,12 +149,22 @@ bool   pm_tb2   = input.bool(true, "Bold", group=GP, display=display.none, inlin
 string pm_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GP, display=display.none,
     tooltip="What happens once price trades through the premarket high or low after 09:00 (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for the high, below it for the low. Remove: the line and label are deleted.")
 
+string GN = "Midnight Open"
+bool   mn_on   = input.bool(true, "Midnight Open", group=GN, display=display.none,
+    tooltip="The open of today's 00:00 New York candle, from 1-minute data. The line starts on that candle and always runs to its label. Shown on 4-hour and lower timeframes, not on daily and higher, range or tick charts.")
+color  mn_lcol = input.color(#000000, "Line", group=GN, display=display.none, inline="mn1")
+string mn_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GN, display=display.none, inline="mn1")
+int    mn_lw   = input.int(1, "", minval=1, maxval=10, group=GN, display=display.none, inline="mn1")
+color  mn_tcol = input.color(#000000, "Text", group=GN, display=display.none, inline="mn2")
+string mn_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GN, display=display.none, inline="mn2")
+bool   mn_tb   = input.bool(true, "Bold", group=GN, display=display.none, inline="mn2")
+
 // ===========================================================================
 // TYPES
 // ===========================================================================
 type Cfg
     int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open, 5 monthly close, 6 previous day close,
-                    // 7 daily open, 8 premarket high/low
+                    // 7 daily open, 8 premarket high/low, 9 midnight open
     string tf
     bool   on
     int    keep
@@ -221,10 +231,16 @@ one_min() =>
     var int   e    = na    // 09:00 of the latest premarket
     var int   htk  = na    // first take of the high / low after 09:00
     var int   ltk  = na
+    var float n_px = na    // open of the latest 00:00 New York candle
+    var int   n_t  = na
     if na(time_tradingday[1]) or time_tradingday != time_tradingday[1]
         o_px := open
         o_t  := time
     int sod = hour(time, NY) * 3600 + minute(time, NY) * 60 + second(time, NY)
+    // First candle of a New York day that trades in the 00:00 minute
+    if sod < 60 and (na(time[1]) or dayofmonth(time, NY) != dayofmonth(time[1], NY))
+        n_px := open
+        n_t  := time
     if sod >= PM_START and sod < PM_END
         if na(e) or time >= e
             // First candle of a new premarket
@@ -247,10 +263,10 @@ one_min() =>
             htk := time
         if na(ltk) and low <= l
             ltk := time
-    [o_px, o_t, h, ht, l, lt, e, htk, ltk, time_close]
+    [o_px, o_t, h, ht, l, lt, e, htk, ltk, time_close, n_px, n_t]
 
-[r_opx, r_ot, r_h, r_ht, r_l, r_lt, r_e, r_htk, r_ltk, r_tc] = request.security(syminfo.tickerid, "1", one_min(), lookahead=barmerge.lookahead_off)
-[c_opx, c_ot, c_h, c_ht, c_l, c_lt, c_e, c_htk, c_ltk, c_tc] = one_min()
+[r_opx, r_ot, r_h, r_ht, r_l, r_lt, r_e, r_htk, r_ltk, r_tc, r_npx, r_nt] = request.security(syminfo.tickerid, "1", one_min(), lookahead=barmerge.lookahead_off)
+[c_opx, c_ot, c_h, c_ht, c_l, c_lt, c_e, c_htk, c_ltk, c_tc, c_npx, c_nt] = one_min()
 bool secs = timeframe.in_seconds() < 60
 
 // Close time of the latest 1-hour candle, for charts above 1 hour (see chart_now)
@@ -625,6 +641,7 @@ Cfg wo_cfg = Cfg.new(4, "W", wo_on, 1, live(wo_lcol), wo_lsty, wo_lw, live(wo_tc
 Cfg mc_cfg = Cfg.new(5, "M", mc_on, mc_prev + 1, live(mc_lcol), mc_lsty, mc_lw, live(mc_tcol), mc_tsz, "Keep", na, na, na, na, na, mc_tb)
 Cfg pc_cfg = Cfg.new(6, "D", pc_on, 1, live(pc_lcol), pc_lsty, pc_lw, live(pc_tcol), pc_tsz, "Keep", na, na, na, na, na, pc_tb)
 Cfg do_cfg = Cfg.new(7, "D", do_on, 1, live(do_lcol), do_lsty, do_lw, live(do_tcol), do_tsz, "Keep", na, na, na, na, na, do_tb)
+Cfg mn_cfg = Cfg.new(9, "D", mn_on, 1, live(mn_lcol), mn_lsty, mn_lw, live(mn_tcol), mn_tsz, "Keep", na, na, na, na, na, mn_tb)
 Cfg pm_cfg = Cfg.new(8, "D", pm_on, 1, live(pm_lcol), pm_lsty, pm_lw, live(pm_tcol), pm_tsz, pm_take, live(pm_lcol2), pm_lsty2, pm_lw2, live(pm_tcol2), pm_tsz2, pm_tb, pm_tb2)
 
 var array<Level> m_lv = array.new<Level>()
@@ -687,7 +704,8 @@ cfg_of(int kind) =>
         5 => mc_cfg
         6 => pc_cfg
         7 => do_cfg
-        =>   pm_cfg
+        8 => pm_cfg
+        =>   mn_cfg
 
 collect(array<Level> dst, array<Level> src) =>
     for x in src
@@ -733,6 +751,7 @@ process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd, d_pt)
 bool odd_chart = timeframe.isticks or chart.is_range
 bool do_vis    = do_on and not odd_chart and timeframe.in_seconds() <= 86400
 bool pm_vis    = pm_on and not odd_chart and timeframe.in_seconds() <= 4 * 3600
+bool mn_vis    = mn_on and not odd_chart and timeframe.in_seconds() <= 4 * 3600
 
 // ===========================================================================
 // DRAWING
@@ -777,6 +796,11 @@ if barstate.islast
         pm_show.push(Level.new(8, true,  pm_h, secs ? c_ht : r_ht, pm_e, secs ? c_htk : r_htk, "Premarket High"))
         pm_show.push(Level.new(8, false, pm_l, secs ? c_lt : r_lt, pm_e, secs ? c_ltk : r_ltk, "Premarket Low"))
     collect(all, pm_show)
+    array<Level> mn_show = array.new<Level>()
+    float mn_px = secs ? c_npx : r_npx
+    if mn_vis and not na(mn_px)
+        mn_show.push(Level.new(9, true, mn_px, secs ? c_nt : r_nt, na, na, "Midnight Open"))
+    collect(all, mn_show)
 
     // Past the current bar, positions are counted in bars (xloc.bar_index): a time
     // offset would collapse into the next session open whenever it lands in a market
