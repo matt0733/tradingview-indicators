@@ -151,3 +151,5 @@ Cause: the 60m NWOG/NDOG backfill request had calc_bars_count=2000. On a 60m cha
 | Options in Replay | CL 60m, 123 runs | Combined clean; original Opening Gaps in memory error from the start (#9), so gaps not comparable there |
 
 Test-method fault found: loading older bars left the chart view scrolled into the future with autoscale off, which made pixel spacing readings wrong; view now reset before spacing tests.
+
+Line starts re-run, Nov 6, older bars requested with requestMoreData (works with the tab hidden; scroll loading does not): 10 charts, 0 differences. CL, NG, MNQ 30m loaded back to Feb 2025, so all 12 months' line starts were compared on candles. On 5m to 15m TradingView returned no more bars after about 20,300 (back to Jan to Jul 2026); lines older than that are off the loaded history and could only be compared as off-chart.
