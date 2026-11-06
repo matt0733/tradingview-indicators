@@ -1,0 +1,1657 @@
+//@version=6
+indicator("Key Levels + Gaps 1.0.8", shorttitle="Key Levels + Gaps", overlay=true,
+          max_lines_count=500, max_labels_count=500)
+
+// Key Levels and Opening Gaps in one script. Two scripts can't see each other's
+// labels, so they wrote over each other; here every label goes through one spacing
+// pass in one column.
+
+// ===========================================================================
+// INPUTS - GENERAL
+// ===========================================================================
+string GEN = "General"
+bool   kl_on    = input.bool(true, "Key Levels", group=GEN, display=display.none,
+    tooltip="Everything in the Monthly, Weekly, Daily, Opens, Premarket and Midnight Open sections.")
+bool   og_on    = input.bool(true, "Opening Gaps", group=GEN, display=display.none,
+    tooltip="Everything in the NWOG, NDOG and RTH Gap sections.")
+int    lbl_off  = input.int(10, "Label Offset (bars)", minval=0, maxval=500, group=GEN, display=display.none,
+    tooltip="How far past the current bar the labels sit, for every level and gap. Untaken lines run to their label.")
+bool   show_px  = input.bool(true, "Show Price in Label", group=GEN, display=display.none,
+    tooltip="Key Levels' labels only.")
+bool   spread_on = input.bool(true, "Spread Overlapping Labels", group=GEN, display=display.none,
+    tooltip="When labels sit closer than the spacing below, space them out evenly around their prices, each joined to its own line by a short leader. Turn off to leave every label level with its line.")
+float  lbl_gap  = input.float(2.0, "Label Spacing (% of view)", minval=0, maxval=20, step=0.5, group=GEN, display=display.none,
+    tooltip="Roughly the height of one label, as a share of the chart's visible price range. Labels closer together than this are spaced out evenly around their prices. The visible range is re-measured as you zoom and scroll. Raise it if labels still touch, lower it if they spread out when they don't need to.")
+int    max_move = input.int(0, "Max Label Move (label heights)", minval=0, maxval=20, group=GEN, display=display.none,
+    tooltip="0 = no limit. A label that would have to move further than this many label heights stays on its own line instead, even if it then touches another label.")
+bool   crowd_off = input.bool(false, "Skip Spread When Crowded", group=GEN, display=display.none,
+    tooltip="When more labels are in view than fit at the Label Spacing, leave every label on its own line instead of spreading them.")
+
+// ===========================================================================
+// INPUTS - LEVELS
+// ===========================================================================
+string GM = "Monthly"
+bool   m_on   = input.bool(true, "Monthly", group=GM, display=display.none, inline="m0")
+int    m_keep = input.int(3, "Show Last:", minval=1, maxval=12, group=GM, display=display.none, inline="m0",
+    tooltip="Highs and lows of the last completed months, labelled by month and year, e.g. 'September 2026 Monthly High'. Shown on every timeframe up to monthly.")
+color  m_lcol = input.color(#2962FF, "High Line", group=GM, display=display.none, inline="m1")
+string m_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m1")
+int    m_lw   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m1")
+color  m_tcol = input.color(#2962FF, "High Text", group=GM, display=display.none, inline="m2")
+string m_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m2")
+bool   m_tb   = input.bool(true, "Bold", group=GM, display=display.none, inline="m2")
+color  m_lcol2 = input.color(#801922, "Low Line", group=GM, display=display.none, inline="m3")
+string m_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GM, display=display.none, inline="m3")
+int    m_lw2   = input.int(2, "", minval=1, maxval=10, group=GM, display=display.none, inline="m3")
+color  m_tcol2 = input.color(#801922, "Low Text", group=GM, display=display.none, inline="m4")
+string m_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m4")
+bool   m_tb2   = input.bool(true, "Bold", group=GM, display=display.none, inline="m4")
+string m_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GM, display=display.none,
+    tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
+
+string GW = "Weekly"
+bool   w_on   = input.bool(true, "Weekly", group=GW, display=display.none, inline="w0")
+int    w_keep = input.int(1, "Show Last:", minval=1, maxval=12, group=GW, display=display.none, inline="w0",
+    tooltip="Highs and lows of the last completed weeks, labelled 'Previous Weekly High' / 'Previous Weekly Low' for the last completed week; older weeks add the date the week opened (Sunday evening for CME futures), e.g. '09/27 Previous Weekly High'. Shown on every timeframe up to weekly.")
+color  w_lcol = input.color(#2962FF, "High Line", group=GW, display=display.none, inline="w1")
+string w_lsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w1")
+int    w_lw   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w1")
+color  w_tcol = input.color(#2962FF, "High Text", group=GW, display=display.none, inline="w2")
+string w_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w2")
+bool   w_tb   = input.bool(true, "Bold", group=GW, display=display.none, inline="w2")
+color  w_lcol2 = input.color(#801922, "Low Line", group=GW, display=display.none, inline="w3")
+string w_lsty2 = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GW, display=display.none, inline="w3")
+int    w_lw2   = input.int(2, "", minval=1, maxval=10, group=GW, display=display.none, inline="w3")
+color  w_tcol2 = input.color(#801922, "Low Text", group=GW, display=display.none, inline="w4")
+string w_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w4")
+bool   w_tb2   = input.bool(true, "Bold", group=GW, display=display.none, inline="w4")
+string w_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GW, display=display.none,
+    tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
+bool   w_on_m = input.bool(true, "Show on Monthly Chart", group=GW, display=display.none,
+    tooltip="Also draw the previous weekly highs and lows on a monthly chart. Levels and takes come from the weekly candles, so with Stop at take a line ends at the monthly candle containing the week that took it.")
+
+string GD = "Daily"
+bool   d_on   = input.bool(true, "Daily", group=GD, display=display.none, inline="d0")
+int    d_keep = input.int(3, "Show Last:", minval=1, maxval=12, group=GD, display=display.none, inline="d0",
+    tooltip="Highs and lows of the last completed trading days, labelled with the trading date, e.g. 'Mon 09/28 Daily High'. For CME futures the session that opens Sunday 18:00 New York is Monday's. Shown on every timeframe up to daily.")
+color  d_lcol = input.color(#2962FF, "High Line", group=GD, display=display.none, inline="d1")
+string d_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d1")
+int    d_lw   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d1")
+color  d_tcol = input.color(#2962FF, "High Text", group=GD, display=display.none, inline="d2")
+string d_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d2")
+bool   d_tb   = input.bool(true, "Bold", group=GD, display=display.none, inline="d2")
+color  d_lcol2 = input.color(#801922, "Low Line", group=GD, display=display.none, inline="d3")
+string d_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GD, display=display.none, inline="d3")
+int    d_lw2   = input.int(1, "", minval=1, maxval=10, group=GD, display=display.none, inline="d3")
+color  d_tcol2 = input.color(#801922, "Low Text", group=GD, display=display.none, inline="d4")
+string d_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d4")
+bool   d_tb2   = input.bool(true, "Bold", group=GD, display=display.none, inline="d4")
+string d_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GD, display=display.none,
+    tooltip="What happens once price trades through one of these levels (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for highs, below it for lows. Remove: the line and label are deleted.")
+
+// ===========================================================================
+// INPUTS - OPENS
+// ===========================================================================
+string GO = "Opens"
+bool   mo_on   = input.bool(true, "Monthly Open", group=GO, display=display.none, inline="mo0")
+int    mo_prev = input.int(3, "Previous:", minval=0, maxval=12, group=GO, display=display.none, inline="mo0",
+    tooltip="The current month's opening price, plus up to 12 previous months, labelled by month and year, e.g. 'October 2026 Opening Price'. A futures month starts at its first session, so October opens Sep 30 18:00 New York. Shown on every timeframe. Opens always run to their label, even after price trades through them.")
+color  mo_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="mo1")
+string mo_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="mo1")
+int    mo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="mo1")
+color  mo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="mo2")
+string mo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="mo2")
+bool   mo_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="mo2")
+
+bool   wo_on   = input.bool(true, "Weekly Open", group=GO, display=display.none,
+    tooltip="The current week's opening price, labelled 'Weekly Open'. For CME futures the week opens Sunday 18:00 New York. The line starts on the week's first candle. Shown on weekly and lower timeframes. Always runs to its label, even after price trades through it.")
+color  wo_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="wo1")
+string wo_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="wo1")
+int    wo_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="wo1")
+color  wo_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="wo2")
+string wo_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="wo2")
+bool   wo_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="wo2")
+bool   wo_on_m = input.bool(true, "Show Weekly Open on Monthly Chart", group=GO, display=display.none,
+    tooltip="Also draw the current Weekly Open on a monthly chart. The line starts on the month containing the week's open.")
+
+bool   mc_on   = input.bool(true, "Monthly Close", group=GO, display=display.none, inline="mc0")
+int    mc_prev = input.int(3, "Previous:", minval=0, maxval=12, group=GO, display=display.none, inline="mc0",
+    tooltip="The last completed month's closing price, plus up to 12 earlier months, labelled by month and year, e.g. 'September 2026 Closing Price'. The line starts on the month's last candle. Shown on every timeframe. Closes always run to their label, even after price trades through them.")
+color  mc_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="mc1")
+string mc_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="mc1")
+int    mc_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="mc1")
+color  mc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="mc2")
+string mc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="mc2")
+bool   mc_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="mc2")
+
+bool   pc_on   = input.bool(true, "Previous Day Close", group=GO, display=display.none,
+    tooltip="The last completed trading day's closing price (the daily candle's close; for CME futures that is the settlement price). The line starts on that day's last candle. Shown on daily and lower timeframes. Always runs to its label, even after price trades through it.")
+color  pc_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="pc1")
+string pc_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="pc1")
+int    pc_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="pc1")
+color  pc_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="pc2")
+string pc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="pc2")
+bool   pc_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="pc2")
+string cl_md   = input.string("Settlement", "Close Price", options=["Settlement","Last Trade"], group=GO, display=display.none,
+    tooltip="Which price Monthly Close and Previous Day Close use. Settlement: the daily/monthly candle's close (for CME futures the settlement price, set around 16:00 New York); the line starts on the last candle of the period that traded through it, or the closest one if none did. Last Trade: the close of the period's last candle, where the line starts. On daily and higher charts, and for closes older than the loaded history, both use the candle close.")
+
+bool   do_on   = input.bool(true, "Daily Open", group=GO, display=display.none,
+    tooltip="The current trading day's opening price, from its first 1-minute candle (for CME futures the session opens 18:00 New York). The line starts on that candle. Shown on daily and lower timeframes, not on range or tick charts. Always runs to its label, even after price trades through it.")
+color  do_lcol = input.color(#000000, "Line", group=GO, display=display.none, inline="do1")
+string do_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GO, display=display.none, inline="do1")
+int    do_lw   = input.int(1, "", minval=1, maxval=10, group=GO, display=display.none, inline="do1")
+color  do_tcol = input.color(#000000, "Text", group=GO, display=display.none, inline="do2")
+string do_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GO, display=display.none, inline="do2")
+bool   do_tb   = input.bool(true, "Bold", group=GO, display=display.none, inline="do2")
+
+string GP = "Premarket"
+bool   pm_on   = input.bool(true, "Premarket High / Low", group=GP, display=display.none,
+    tooltip="The high and low between 07:00 and 09:00 New York, from 1-minute candles. They appear at 07:00 and follow new highs and lows until 09:00, then hold until the next day's 07:00. Lines start on the candle that set each price. Shown on 4-hour and lower timeframes, not on daily and higher, range or tick charts.")
+color  pm_lcol = input.color(#F23645, "High Line", group=GP, display=display.none, inline="pm1")
+string pm_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GP, display=display.none, inline="pm1")
+int    pm_lw   = input.int(1, "", minval=1, maxval=10, group=GP, display=display.none, inline="pm1")
+color  pm_tcol = input.color(#F23645, "High Text", group=GP, display=display.none, inline="pm2")
+string pm_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GP, display=display.none, inline="pm2")
+bool   pm_tb   = input.bool(true, "Bold", group=GP, display=display.none, inline="pm2")
+color  pm_lcol2 = input.color(#F23645, "Low Line", group=GP, display=display.none, inline="pm3")
+string pm_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GP, display=display.none, inline="pm3")
+int    pm_lw2   = input.int(1, "", minval=1, maxval=10, group=GP, display=display.none, inline="pm3")
+color  pm_tcol2 = input.color(#F23645, "Low Text", group=GP, display=display.none, inline="pm4")
+string pm_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GP, display=display.none, inline="pm4")
+bool   pm_tb2   = input.bool(true, "Bold", group=GP, display=display.none, inline="pm4")
+string pm_take = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GP, display=display.none,
+    tooltip="What happens once price trades through the premarket high or low after 09:00 (a wick touch counts). Keep: the line runs on to its label. Stop at take: the line ends at the candle that took it and the label moves to the middle of the line - above it for the high, below it for the low. Remove: the line and label are deleted.")
+
+string GN = "Midnight Open"
+bool   mn_on   = input.bool(true, "Midnight Open", group=GN, display=display.none,
+    tooltip="The open of today's 00:00 New York candle, from 1-minute data. The line starts on that candle and always runs to its label. Shown on 4-hour and lower timeframes, not on daily and higher, range or tick charts.")
+color  mn_lcol = input.color(#000000, "Line", group=GN, display=display.none, inline="mn1")
+string mn_lsty = input.string("Dashed", "", options=["Solid","Dashed","Dotted"], group=GN, display=display.none, inline="mn1")
+int    mn_lw   = input.int(1, "", minval=1, maxval=10, group=GN, display=display.none, inline="mn1")
+color  mn_tcol = input.color(#000000, "Text", group=GN, display=display.none, inline="mn2")
+string mn_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GN, display=display.none, inline="mn2")
+bool   mn_tb   = input.bool(true, "Bold", group=GN, display=display.none, inline="mn2")
+
+// ===========================================================================
+// INPUTS - NWOG
+// ===========================================================================
+string GNW = "『 NWOG 』"
+bool   nwc_on   = input.bool(true, "Current ▸", group=GNW, display=display.none, inline="nwc0", tooltip="New Week Opening Gap: Friday's 16:59 close to Sunday's 18:00 open (New York time). Quarter and mid levels are measured from the open toward the prior close, so 25% means the gap is a quarter filled.")
+color  nwc_lcol = input.color(#673AB7, "Line ▸", group=GNW, display=display.none, inline="nwc1")
+string nwc_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc1")
+int    nwc_lw   = input.int(2, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc1")
+color  nwc_tcol = input.color(#673AB7, "Text ▸", group=GNW, display=display.none, inline="nwc2")
+string nwc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GNW, display=display.none, inline="nwc2")
+string nwc_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GNW, display=display.none, inline="nwc2")
+bool   nwc_date = input.bool(true, "Date", group=GNW, display=display.none, inline="nwc2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NWOG High 09/13'.")
+bool   nwc_bold = input.bool(true, "Bold", group=GNW, display=display.none, inline="nwc2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   nwc_mid  = input.bool(true, "Mid Line ▸", group=GNW, display=display.none, inline="nwc3")
+string nwc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc3")
+int    nwc_mw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc3")
+bool   nwc_mbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwc3")
+bool   nwc_mlbl = input.bool(true, "Label", group=GNW, display=display.none, inline="nwc3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   nwc_qtr  = input.bool(false, "Quarters ▸", group=GNW, display=display.none, inline="nwc4")
+string nwc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwc4")
+int    nwc_qw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwc4")
+bool   nwc_qbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwc4")
+bool   nwc_qlbl = input.bool(true, "Label", group=GNW, display=display.none, inline="nwc4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+bool   nwp_on   = input.bool(true, "Previous ▸", group=GNW, display=display.none, inline="nwp0")
+int    nwp_keep = input.int(5, "Show Last:", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp0",
+    tooltip="How many NWOG gaps before the current one to draw, each in the Previous styling below. The current gap is controlled by its own checkbox above.")
+color  nwp_lcol = input.color(#8A8D97, "Line ▸", group=GNW, display=display.none, inline="nwp1")
+string nwp_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp1")
+int    nwp_lw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp1")
+color  nwp_tcol = input.color(#8A8D97, "Text ▸", group=GNW, display=display.none, inline="nwp2")
+string nwp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GNW, display=display.none, inline="nwp2")
+string nwp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GNW, display=display.none, inline="nwp2")
+bool   nwp_date = input.bool(true, "Date", group=GNW, display=display.none, inline="nwp2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NWOG High 09/13'.")
+bool   nwp_bold = input.bool(true, "Bold", group=GNW, display=display.none, inline="nwp2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   nwp_mid  = input.bool(true, "Mid Line ▸", group=GNW, display=display.none, inline="nwp3")
+string nwp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp3")
+int    nwp_mw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp3")
+bool   nwp_mbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwp3")
+bool   nwp_mlbl = input.bool(true, "Label", group=GNW, display=display.none, inline="nwp3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   nwp_qtr  = input.bool(false, "Quarters ▸", group=GNW, display=display.none, inline="nwp4")
+string nwp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nwp4")
+int    nwp_qw   = input.int(1, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nwp4")
+bool   nwp_qbold = input.bool(false, "Bold", group=GNW, display=display.none, inline="nwp4")
+bool   nwp_qlbl = input.bool(false, "Label", group=GNW, display=display.none, inline="nwp4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+// ===========================================================================
+// INPUTS - NDOG
+// ===========================================================================
+string GND = "『 NDOG 』"
+bool   ndc_on   = input.bool(true, "Current ▸", group=GND, display=display.none, inline="ndc0", tooltip="New Day Opening Gap: the 16:59 close to the 18:00 open, Monday through Thursday (New York time). Quarter and mid levels are measured from the open toward the prior close.")
+color  ndc_lcol = input.color(#2962FF, "Line ▸", group=GND, display=display.none, inline="ndc1")
+string ndc_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc1")
+int    ndc_lw   = input.int(2, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc1")
+color  ndc_tcol = input.color(#2962FF, "Text ▸", group=GND, display=display.none, inline="ndc2")
+string ndc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GND, display=display.none, inline="ndc2")
+string ndc_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GND, display=display.none, inline="ndc2")
+bool   ndc_date = input.bool(true, "Date", group=GND, display=display.none, inline="ndc2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NDOG High 09/13'.")
+bool   ndc_bold = input.bool(true, "Bold", group=GND, display=display.none, inline="ndc2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   ndc_mid  = input.bool(true, "Mid Line ▸", group=GND, display=display.none, inline="ndc3")
+string ndc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc3")
+int    ndc_mw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc3")
+bool   ndc_mbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndc3")
+bool   ndc_mlbl = input.bool(true, "Label", group=GND, display=display.none, inline="ndc3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   ndc_qtr  = input.bool(false, "Quarters ▸", group=GND, display=display.none, inline="ndc4")
+string ndc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndc4")
+int    ndc_qw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndc4")
+bool   ndc_qbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndc4")
+bool   ndc_qlbl = input.bool(true, "Label", group=GND, display=display.none, inline="ndc4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+bool   ndp_on   = input.bool(false, "Previous ▸", group=GND, display=display.none, inline="ndp0")
+int    ndp_keep = input.int(5, "Show Last:", minval=1, maxval=10, group=GND, display=display.none, inline="ndp0",
+    tooltip="How many NDOG gaps before the current one to draw, each in the Previous styling below. The current gap is controlled by its own checkbox above.")
+color  ndp_lcol = input.color(#6A6D78, "Line ▸", group=GND, display=display.none, inline="ndp1")
+string ndp_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp1")
+int    ndp_lw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp1")
+color  ndp_tcol = input.color(#6A6D78, "Text ▸", group=GND, display=display.none, inline="ndp2")
+string ndp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GND, display=display.none, inline="ndp2")
+string ndp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GND, display=display.none, inline="ndp2")
+bool   ndp_date = input.bool(true, "Date", group=GND, display=display.none, inline="ndp2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'NDOG High 09/13'.")
+bool   ndp_bold = input.bool(true, "Bold", group=GND, display=display.none, inline="ndp2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   ndp_mid  = input.bool(true, "Mid Line ▸", group=GND, display=display.none, inline="ndp3")
+string ndp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp3")
+int    ndp_mw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp3")
+bool   ndp_mbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndp3")
+bool   ndp_mlbl = input.bool(true, "Label", group=GND, display=display.none, inline="ndp3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   ndp_qtr  = input.bool(false, "Quarters ▸", group=GND, display=display.none, inline="ndp4")
+string ndp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="ndp4")
+int    ndp_qw   = input.int(1, "", minval=1, maxval=10, group=GND, display=display.none, inline="ndp4")
+bool   ndp_qbold = input.bool(false, "Bold", group=GND, display=display.none, inline="ndp4")
+bool   ndp_qlbl = input.bool(false, "Label", group=GND, display=display.none, inline="ndp4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+// ===========================================================================
+// INPUTS - RTH GAP
+// ===========================================================================
+string GRT = "『 RTH GAP 』"
+bool   rtc_on   = input.bool(true, "Current ▸", group=GRT, display=display.none, inline="rtc0", tooltip="Regular Trading Hours Opening Range Gap: the regular session's close to the next regular open, Monday through Friday (New York time) - for Equity Index the 16:14 close to the next 09:30 open. The session, and whether the close is the last trade or the settlement, are set by Market and Close Price at the bottom of this section. Quarter and mid levels are measured from the open toward the prior close. Futures holidays (e.g. Labor Day) are skipped, so the next day's gap runs from the last real session's close. When the chart's bars land exactly on the open and close (e.g. 1, 3, 5, 15m for Equity Index) the gap is read from them; on every other intraday timeframe the prices come from the largest timeframe at or below the chart's own that does, which gives identical prices.")
+color  rtc_lcol = input.color(#F23645, "Line ▸", group=GRT, display=display.none, inline="rtc1")
+string rtc_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc1")
+int    rtc_lw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc1")
+color  rtc_tcol = input.color(#F23645, "Text ▸", group=GRT, display=display.none, inline="rtc2")
+string rtc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GRT, display=display.none, inline="rtc2")
+string rtc_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GRT, display=display.none, inline="rtc2")
+bool   rtc_date = input.bool(true, "Date", group=GRT, display=display.none, inline="rtc2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'RTH High 09/13'.")
+bool   rtc_bold = input.bool(true, "Bold", group=GRT, display=display.none, inline="rtc2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   rtc_mid  = input.bool(true, "Mid Line ▸", group=GRT, display=display.none, inline="rtc3")
+string rtc_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc3")
+int    rtc_mw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc3")
+bool   rtc_mbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtc3")
+bool   rtc_mlbl = input.bool(true, "Label", group=GRT, display=display.none, inline="rtc3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   rtc_qtr  = input.bool(true, "Quarters ▸", group=GRT, display=display.none, inline="rtc4")
+string rtc_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtc4")
+int    rtc_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtc4")
+bool   rtc_qbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtc4")
+bool   rtc_qlbl = input.bool(true, "Label", group=GRT, display=display.none, inline="rtc4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+bool   rtp_on   = input.bool(false, "Previous ▸", group=GRT, display=display.none, inline="rtp0")
+int    rtp_keep = input.int(2, "Show Last:", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp0",
+    tooltip="How many RTH gaps before the current one to draw, each in the Previous styling below. The current gap is controlled by its own checkbox above.")
+color  rtp_lcol = input.color(#4A4D57, "Line ▸", group=GRT, display=display.none, inline="rtp1")
+string rtp_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp1")
+int    rtp_lw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp1")
+color  rtp_tcol = input.color(#4A4D57, "Text ▸", group=GRT, display=display.none, inline="rtp2")
+string rtp_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GRT, display=display.none, inline="rtp2")
+string rtp_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GRT, display=display.none, inline="rtp2")
+bool   rtp_date = input.bool(true, "Date", group=GRT, display=display.none, inline="rtp2",
+    tooltip="Append the date of the gap's open to every label of these gaps, as MM/DD — e.g. 'RTH High 09/13'.")
+bool   rtp_bold = input.bool(true, "Bold", group=GRT, display=display.none, inline="rtp2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   rtp_mid  = input.bool(true, "Mid Line ▸", group=GRT, display=display.none, inline="rtp3")
+string rtp_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp3")
+int    rtp_mw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp3")
+bool   rtp_mbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtp3")
+bool   rtp_mlbl = input.bool(false, "Label", group=GRT, display=display.none, inline="rtp3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   rtp_qtr  = input.bool(true, "Quarters ▸", group=GRT, display=display.none, inline="rtp4")
+string rtp_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GRT, display=display.none, inline="rtp4")
+int    rtp_qw   = input.int(1, "", minval=1, maxval=10, group=GRT, display=display.none, inline="rtp4")
+bool   rtp_qbold = input.bool(false, "Bold", group=GRT, display=display.none, inline="rtp4")
+bool   rtp_qlbl = input.bool(false, "Label", group=GRT, display=display.none, inline="rtp4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+string rt_mkt = input.string("Auto", "Market", options=["Auto","Equity Index","Treasuries","Crude Oil","Natural Gas","Gold","Silver","Copper","Custom"],
+    group=GRT, display=display.none,
+    tooltip="Sets the regular session the RTH gap runs between (New York time): Equity Index 09:30-16:15, Treasuries 08:20-15:00, Crude Oil and Natural Gas 09:00-14:30, Gold 08:20-13:30, Silver 08:25-13:25, Copper 08:10-13:00 (CME's floor hours; each close is where that market's settlement window ends). Auto picks from the chart's own symbol: ZT, ZF, ZN, TN, ZB, TWE, UB = Treasuries; CL, MCL, QM = Crude Oil; NG, MNG, QG = Natural Gas; GC, MGC, QO, 1OZ = Gold; SI, SIL, QI, SIC = Silver; HG, MHG, QC = Copper; anything else = Equity Index.")
+string rt_hrs = input.session("0930-1615", "Custom Hours", group=GRT, display=display.none,
+    tooltip="Used when Market is Custom: the regular session's open and close, New York time, within one day.")
+string rt_px  = input.string("Auto", "Close Price", options=["Auto","Settlement","Last Trade"], group=GRT, display=display.none,
+    tooltip="What the gap is measured from. Last Trade: the last trade before the session close (e.g. 16:14 for Equity Index). Settlement: CME's daily settlement price, which can differ from the last trade by a few ticks; its line starts on the latest candle before the close that traded that price. Auto: Last Trade for Equity Index and Custom, Settlement for every other market. 1OZ and SIC always use Last Trade: they trade around the clock and their daily close is the 17:00 trade, not the settlement.")
+
+
+// ===========================================================================
+// TYPES
+// ===========================================================================
+type Cfg
+    int    kind     // 0 monthly, 1 weekly, 2 daily, 3 monthly open, 4 weekly open, 5 monthly close, 6 previous day close,
+                    // 7 daily open, 8 premarket high/low, 9 midnight open
+    string tf
+    bool   on
+    int    keep
+    color  lcol
+    string lsty
+    int    lw
+    color  tcol
+    string tsz
+    string take     // Keep, Stop at take, Remove
+    color  lcol2    // low style; opens and the close use the high style only
+    string lsty2
+    int    lw2
+    color  tcol2
+    string tsz2
+    bool   bold     // bold text: highs (and opens/close), then lows
+    bool   bold2
+
+type Level
+    int    kind
+    bool   is_hi
+    float  price
+    int    x1       // bar that set the price, or the period's open if that bar isn't loaded
+    int    end_t    // open of the following period; takes count from here
+    int    take_t   // first touch, na while untaken
+    string name
+
+// Running high/low of the period in progress, measured on chart bars
+type Tracker
+    int   cur_t
+    float hi
+    int   hi_t
+    float lo
+    int   lo_t
+    bool  full     // tracked from the period's first bar
+
+type GapCfg
+    string name
+    bool   on
+    int    keep
+    bool   date
+    color  lcol
+    string lsty
+    int    lw
+    color  tcol
+    string tsz
+    string tpos
+    bool   bold   // bold High/Low labels
+    bool   mid
+    string msty
+    int    mw
+    bool   mbold  // bold 50% label
+    bool   mlbl   // show the 50% label
+    bool   qtr
+    string qsty
+    int    qw
+    bool   qbold  // bold 25%/75% labels
+    bool   qlbl   // show the 25%/75% labels
+
+type Gap
+    float         pc     // prior close
+    int           pc_t
+    float         op     // open
+    int           op_t
+    int           pc_x   // chart bar holding pc_t / op_t, where the lines start
+    int           op_x
+    array<line>   lines  // up to the current bar, placed by time
+    array<line>   futs   // past the current bar, placed by bar count
+    array<label>  labels
+    array<color>  cols   // per level, so a leader can match its line
+    array<string> stys
+    array<int>    wids
+    array<float>  prices // per level: a line past the 500-line limit is deleted and can't be read back
+
+// ===========================================================================
+// HELPERS
+// ===========================================================================
+const int SEARCH_BARS = 4999   // how far back a search looks for a candle; max_bars_back allows 5000
+const int LEAD_BARS = 3   // length of a leader to a moved label
+
+float tol   = syminfo.mintick / 2
+int   tf_ms = timeframe.in_seconds() * 1000
+
+// Daily Open and Premarket come from 1-minute candles, so they are exact on any
+// chart: a 2h or 4h bar can't place 07:00 and 09:00. Run on 1-minute bars (or the
+// chart's own bars below 1 minute): the trading day's opening trade, and the
+// 07:00-09:00 New York high and low with the first candle after 09:00 that traded
+// through each, and the candle's close time (the chart's "now"). Values persist,
+// so a slower chart reads them as of its bar.
+const string NY       = "America/New_York"
+const int    PM_START = 7 * 3600
+const int    PM_END   = 9 * 3600
+
+one_min() =>
+    var float o_px = na
+    var int   o_t  = na
+    var float h    = na
+    var int   ht   = na
+    var float l    = na
+    var int   lt   = na
+    var int   e    = na    // 09:00 of the latest premarket
+    var int   htk  = na    // first take of the high / low after 09:00
+    var int   ltk  = na
+    var float n_px = na    // open of the latest 00:00 New York candle
+    var int   n_t  = na
+    if na(time_tradingday[1]) or time_tradingday != time_tradingday[1]
+        o_px := open
+        o_t  := time
+    int sod = hour(time, NY) * 3600 + minute(time, NY) * 60 + second(time, NY)
+    // First candle of a New York day that trades in the 00:00 minute
+    if sod < 60 and (na(time[1]) or dayofmonth(time, NY) != dayofmonth(time[1], NY))
+        n_px := open
+        n_t  := time
+    if sod >= PM_START and sod < PM_END
+        if na(e) or time >= e
+            // First candle of a new premarket
+            e   := timestamp(NY, year(time, NY), month(time, NY), dayofmonth(time, NY), 9, 0)
+            h   := high
+            ht  := time
+            l   := low
+            lt  := time
+            htk := na
+            ltk := na
+        else
+            if high > h
+                h  := high
+                ht := time
+            if low < l
+                l  := low
+                lt := time
+    else if not na(e) and time >= e
+        if na(htk) and high >= h
+            htk := time
+        if na(ltk) and low <= l
+            ltk := time
+    [o_px, o_t, h, ht, l, lt, e, htk, ltk, time_close, n_px, n_t]
+
+bool secs = timeframe.in_seconds() < 60
+// Requested only where it is used. As a plain global request, a 1m chart got only
+// about two months of the monthly and weekly candles the levels are rebuilt from.
+[r_opx, r_ot, r_h, r_ht, r_l, r_lt, r_e, r_htk, r_ltk, r_tc, r_npx, r_nt] = if not secs
+    request.security(syminfo.tickerid, "1", one_min(), lookahead=barmerge.lookahead_off)
+else
+    [float(na), int(na), float(na), int(na), float(na), int(na), int(na), int(na), int(na), int(na), float(na), int(na)]
+[c_opx, c_ot, c_h, c_ht, c_l, c_lt, c_e, c_htk, c_ltk, c_tc, c_npx, c_nt] = one_min()
+
+// Close time of the latest 1-hour candle, for charts above 1 hour (see chart_now)
+h_tc = timeframe.in_seconds() > 3600 ? request.security(syminfo.tickerid, "60", time_close, lookahead=barmerge.lookahead_off) : na
+
+// "Now" as the chart sees it, for deciding whether a period has closed. In Bar
+// Replay timenow is still the real clock, so on its own it made a replayed day or
+// month look finished and drew its in-progress close/high/low as completed. So it
+// is capped by the latest candle's close: the chart's own bar; the latest 1-minute
+// candle when there is one (1-minute history in replay reaches back about a year);
+// and above 1 hour the latest 1-hour candle, since a daily bar being built in
+// replay closes at the end of its day. Live this is timenow; in the daily break or
+// over a weekend it is the last candle's close, which is the session close.
+chart_now() =>
+    int t  = math.min(timenow, nz(time_close, timenow))
+    int m1 = secs ? c_tc : r_tc
+    if not na(m1)
+        t := math.min(t, m1)
+    if timeframe.in_seconds() > 3600 and not na(h_tc)
+        t := math.min(t, h_tc)
+    t
+
+ls(s) =>
+    switch s
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+        =>          line.style_solid
+
+// Price as TradingView shows it. CBOT's fractional markets have a power-of-two
+// price scale and show handle'fraction: 32nds as two digits (ZB 106'03), finer
+// ticks as 32nds plus one digit for the part of a 32nd (ZN 105'12'5, ZF
+// 103'30'7, ZT 101'27'7), and eighths as one digit (corn 464'2). Everything else
+// uses the tick's decimals.
+pad(int n, int w) =>
+    string r = str.tostring(n)
+    while str.length(r) < w
+        r := "0" + r
+    r
+
+fmt_px(float p) =>
+    int ps = syminfo.pricescale
+    if not array.from(4, 8, 16, 32, 64, 128, 256).includes(ps)
+        str.tostring(p, format.mintick)
+    else
+        float a = math.abs(p)
+        int   h = int(math.floor(a + 1e-9))
+        float f = a - h
+        string fr = ""
+        if ps <= 32
+            fr := pad(int(math.round(f * ps)), str.length(str.tostring(ps - 1)))
+        else
+            float t = f * 32
+            int   n = int(math.floor(t + 1e-9))
+            fr := pad(n, 2) + "'" + str.tostring(int(math.floor((t - n) * 10 + 1e-9)))
+        (p < 0 ? "-" : "") + str.tostring(h) + "'" + fr
+
+lbl_sz(s) =>
+    switch s
+        "Tiny"   => size.tiny
+        "Normal" => size.normal
+        "Large"  => size.large
+        =>          size.small
+
+// A level is drawn when its period is at least as long as the chart's bars
+tf_vis(string tf) =>
+    timeframe.in_seconds() <= timeframe.in_seconds(tf)
+
+// Monthly and daily names come from the trading day (UTC midnight), weekly from the
+// week's open in exchange time, so the Sunday-evening futures open reads as Sunday.
+lvl_name(int kind, int t, int td, bool is_hi) =>
+    string hl = is_hi ? "High" : "Low"
+    switch kind
+        0 => str.format_time(td, "MMMM yyyy", "UTC") + " Monthly " + hl
+        1 => str.format_time(t, "MM/dd", syminfo.timezone) + " Previous Weekly " + hl
+        2 => str.format_time(td, "EEE MM/dd", "UTC") + " Daily " + hl
+        3 => str.format_time(td, "MMMM yyyy", "UTC") + " Opening Price"
+        5 => str.format_time(td, "MMMM yyyy", "UTC") + " Closing Price"
+        6 => "Previous Day Close"
+        =>   "Weekly Open"
+
+// Evaluated on the higher timeframe. These arrays are only read on the chart's first
+// bar, so they are built only for the latest periods; older ones share one array of
+// na. A chart starting earlier than that rolls through more than n periods, replacing
+// anything rebuilt. Building them on every bar ran out of memory in Bar Replay on
+// markets with long daily history (CL, GC, ZB).
+htf_recent(int n) => bar_index >= last_bar_index - n - 2
+
+// Evaluated on the higher timeframe: the last n completed periods (index 0 = most recent).
+htf_hist(int n) =>
+    var array<float> nf = array.new<float>(n, na)
+    var array<int>   ni = array.new<int>(n, na)
+    array<float> hs = nf
+    array<float> lo = nf
+    array<int>   ts = ni
+    array<int>   ds = ni
+    if htf_recent(n)
+        hs := array.new<float>()
+        lo := array.new<float>()
+        ts := array.new<int>()
+        ds := array.new<int>()
+        for i = 1 to n
+            hs.push(high[i])
+            lo.push(low[i])
+            ts.push(time[i])
+            ds.push(time_tradingday[i])
+    [hs, lo, ts, ds]
+
+// Evaluated on the higher timeframe: opens of the periods before the current one.
+htf_opens(int n) =>
+    var array<float> nf = array.new<float>(n, na)
+    var array<int>   ni = array.new<int>(n, na)
+    array<float> os = nf
+    array<int>   ts = ni
+    array<int>   ds = ni
+    if htf_recent(n)
+        os := array.new<float>()
+        ts := array.new<int>()
+        ds := array.new<int>()
+        for i = 1 to n
+            os.push(open[i])
+            ts.push(time[i])
+            ds.push(time_tradingday[i])
+    [os, ts, ds]
+
+// Keeps the current period's open plus c.keep - 1 previous ones, newest first. Opens
+// have no takes: their lines always run to the label. cur_t / cur_o / cur_d are the
+// open time, open price and trading day of the period in progress.
+process_open(Cfg c, array<Level> lv, int cur_t, float cur_o, int cur_d) =>
+    if c.on and tf_vis(c.tf) and not na(cur_t) and not na(cur_o)
+        if lv.size() == 0
+            // First bar: previous opens come from the higher timeframe's history
+            if c.keep > 1
+                [os, ts, ds] = request.security(syminfo.tickerid, c.tf, htf_opens(c.keep - 1), lookahead=barmerge.lookahead_on)
+                for k = c.keep - 2 to 0
+                    if not na(os.get(k))
+                        lv.unshift(Level.new(c.kind, true, os.get(k), ts.get(k), na, na, lvl_name(c.kind, ts.get(k), ds.get(k), true)))
+            lv.unshift(Level.new(c.kind, true, cur_o, cur_t, na, na, lvl_name(c.kind, cur_t, cur_d, true)))
+        else if cur_t != lv.first().x1
+            // A new period opened: drop the oldest beyond the count, add the new open
+            while lv.size() > c.keep - 1
+                lv.pop()
+            lv.unshift(Level.new(c.kind, true, cur_o, cur_t, na, na, lvl_name(c.kind, cur_t, cur_d, true)))
+
+// Evaluated on the higher timeframe: closes of completed periods (index 0 = most recent).
+htf_closes(int n) =>
+    var array<float> nf = array.new<float>(n, na)
+    var array<int>   ni = array.new<int>(n, na)
+    array<float> cs = nf
+    array<int>   ds = ni
+    array<int>   es = ni
+    if htf_recent(n)
+        cs := array.new<float>()
+        ds := array.new<int>()
+        es := array.new<int>()
+        for i = 1 to n
+            cs.push(close[i])
+            ds.push(time_tradingday[i])
+            es.push(time_close[i])
+    [cs, ds, es]
+
+// Keeps the last completed period's close plus c.keep - 1 earlier ones, newest first.
+// Lines start on the period's last chart bar (the bar before the new period opened);
+// closes rebuilt on the first bar start at the period's last bar by time instead,
+// which is usually off the left edge. end_t holds the open of the period that
+// followed, to spot the next rollover. Closes have no takes.
+max_bars_back(time, SEARCH_BARS + 1)
+max_bars_back(high, SEARCH_BARS + 1)
+max_bars_back(low, SEARCH_BARS + 1)
+
+// Latest bar of the period starting at pt (searching back from `start` bars ago, at
+// most SEARCH_BARS) whose range contains price p; if none does, the one that came
+// closest. Lets a settlement close start on a candle that actually traded there.
+touch_bar(float p, int pt, int start) =>
+    int   best_t = time[start]
+    float best_d = na
+    int   hit_t  = na
+    for i = start to SEARCH_BARS
+        if na(time[i]) or time[i] < pt
+            break
+        if low[i] <= p and p <= high[i]
+            hit_t := time[i]
+            break
+        float d = p > high[i] ? p - high[i] : low[i] - p
+        if na(best_d) or d < best_d
+            best_d := d
+            best_t := time[i]
+    na(hit_t) ? best_t : hit_t
+
+// Close of the period that just ended, per the Close Price setting: the candle close
+// anchored on a bar that touched it, or the last bar's close (intraday charts only).
+process_close(Cfg c, array<Level> lv, int cur_t, float pc, int pd, int pt) =>
+    var bool init = false
+    int  prev_t = time[1]
+    bool last   = cl_md == "Last Trade" and timeframe.in_seconds() < 86400
+    if c.on and tf_vis(c.tf) and not na(cur_t)
+        if not init
+            init := true
+            [cs, ds, es] = request.security(syminfo.tickerid, c.tf, htf_closes(c.keep), lookahead=barmerge.lookahead_on)
+            for k = c.keep - 1 to 0
+                if not na(cs.get(k))
+                    int key = k > 0 ? es.get(k - 1) : cur_t
+                    lv.unshift(Level.new(c.kind, true, cs.get(k), es.get(k) - tf_ms, key, na, lvl_name(c.kind, na, ds.get(k), true)))
+        else if (lv.size() == 0 or cur_t != lv.first().end_t) and not na(pc)
+            while lv.size() > c.keep - 1
+                lv.pop()
+            float px = last ? close[1] : pc
+            int   x  = last ? prev_t : touch_bar(pc, pt, 1)
+            lv.unshift(Level.new(c.kind, true, px, x, cur_t, na, lvl_name(c.kind, na, pd, true)))
+
+// Weekly levels on a monthly chart: a monthly bar spans several weeks, so the levels
+// are rebuilt on the last bar from the weekly candles, takes included. The weekly
+// timeframe is lower than the chart's here, and only lookahead_off returns the latest
+// week inside the monthly bar (lookahead_on returns its first week).
+// On a monthly chart, the bar a weekly level should start on: the month containing
+// the week's open if that bar traded the price, otherwise the month after (a week
+// straddling two months can set its high or low in the second one).
+month_for(int t, float p) =>
+    int r = t
+    for i = 0 to SEARCH_BARS
+        if na(time[i])
+            break
+        if time[i] <= t
+            r := low[i] <= p and p <= high[i] or i == 0 ? time[i] : time[i - 1]
+            break
+    r
+
+process_on_monthly(Cfg c, array<Level> lv, bool show) =>
+    if c.on and show and barstate.islast
+        lv.clear()
+        [cur_t, ch, cl, ce, cd] = request.security(syminfo.tickerid, c.tf, [time, high, low, time_close, time_tradingday], lookahead=barmerge.lookahead_off)
+        [hs, lo, ts, ds] = request.security(syminfo.tickerid, c.tf, htf_hist(c.keep), lookahead=barmerge.lookahead_off)
+        for k = c.keep - 1 to 0
+            if not na(hs.get(k))
+                int   t = ts.get(k)
+                int   e = k > 0 ? ts.get(k - 1) : cur_t
+                Level h = Level.new(c.kind, true,  hs.get(k), month_for(t, hs.get(k)), e, na, lvl_name(c.kind, t, ds.get(k), true))
+                Level l = Level.new(c.kind, false, lo.get(k), month_for(t, lo.get(k)), e, na, lvl_name(c.kind, t, ds.get(k), false))
+                if k > 0
+                    for j = k - 1 to 0
+                        if na(h.take_t) and hs.get(j) >= h.price
+                            h.take_t := ts.get(j)
+                        if na(l.take_t) and lo.get(j) <= l.price
+                            l.take_t := ts.get(j)
+                if na(h.take_t) and ch >= h.price
+                    h.take_t := cur_t
+                if na(l.take_t) and cl <= l.price
+                    l.take_t := cur_t
+                lv.unshift(l)
+                lv.unshift(h)
+        // A week whose session has closed (e.g. over the weekend) counts as completed
+        if not na(ce) and chart_now() >= ce and not na(ch)
+            lv.unshift(Level.new(c.kind, false, cl, month_for(cur_t, cl), ce, na, lvl_name(c.kind, cur_t, cd, false)))
+            lv.unshift(Level.new(c.kind, true,  ch, month_for(cur_t, ch), ce, na, lvl_name(c.kind, cur_t, cd, true)))
+            while lv.size() > c.keep * 2
+                lv.pop()
+
+// Weekly Open on a monthly chart: the weekly timeframe is lower than the chart's, so
+// it is read on the last bar with lookahead_off, which returns the latest week.
+process_open_on_monthly(Cfg c, array<Level> lv, bool show) =>
+    if c.on and show and barstate.islast
+        lv.clear()
+        [t, o] = request.security(syminfo.tickerid, c.tf, [time, open], lookahead=barmerge.lookahead_off)
+        if not na(o)
+            lv.push(Level.new(c.kind, true, o, t, na, na, lvl_name(c.kind, t, na, true)))
+
+// TradingView keeps a day/week/month "in progress" until the next one opens. Once
+// its session has closed (weekends, the daily break, holidays) it is treated as
+// completed: these build its levels on the last bar for display only, so nothing is
+// stored twice when the next period opens. 24/7 markets never get here: their
+// period closes the moment the next one starts.
+// The bar of the period starting at pt (searching back from `start` bars ago, at
+// most SEARCH_BARS) to start a level at price p on, or na: the earliest bar whose
+// high (or low) equals p, else the latest bar whose range contains p. Used when the
+// bar with the period's running extreme doesn't match the higher-timeframe price:
+// a weekly bar that straddles two months carries the next month's high/low, and
+// the month's own extreme can sit inside such a week without being its extreme.
+match_bar(float p, int pt, int start, bool hi) =>
+    int exact = na
+    int cover = na
+    for i = start to SEARCH_BARS
+        if na(time[i]) or time[i] < pt
+            break
+        if math.abs((hi ? high[i] : low[i]) - p) < tol
+            exact := time[i]
+        if na(cover) and low[i] - tol <= p and p <= high[i] + tol
+            cover := time[i]
+    na(exact) ? cover : exact
+
+period_closed(int tclose) =>
+    barstate.islast and not na(tclose) and chart_now() >= tclose
+
+rolled_hl(Cfg c, Tracker tr, int cur_t, float h0, float l0, int td0, int tclose) =>
+    array<Level> out = array.new<Level>()
+    if c.on and tf_vis(c.tf) and not na(cur_t) and not na(h0) and period_closed(tclose)
+        bool seen = tr.cur_t == cur_t
+        bool nest = tr.full and not (timeframe.isweekly and c.kind == 0)
+        int  hx   = seen and (nest or math.abs(tr.hi - h0) < tol) ? tr.hi_t : nz(match_bar(h0, cur_t, 0, true), cur_t)
+        int  lx   = seen and (nest or math.abs(tr.lo - l0) < tol) ? tr.lo_t : nz(match_bar(l0, cur_t, 0, false), cur_t)
+        out.push(Level.new(c.kind, true,  h0, hx, tclose, na, lvl_name(c.kind, cur_t, td0, true)))
+        out.push(Level.new(c.kind, false, l0, lx, tclose, na, lvl_name(c.kind, cur_t, td0, false)))
+    out
+
+rolled_close(Cfg c, int cur_t, float c0, int td0, int tclose) =>
+    array<Level> out = array.new<Level>()
+    if c.on and tf_vis(c.tf) and not na(cur_t) and not na(c0) and period_closed(tclose)
+        bool last = cl_md == "Last Trade" and timeframe.in_seconds() < 86400
+        out.push(Level.new(c.kind, true, last ? close : c0, last ? time : touch_bar(c0, cur_t, 0), tclose, na,
+                           lvl_name(c.kind, na, td0, true)))
+    out
+
+// Levels to draw for one type: a just-closed period first, then the stored ones,
+// up to n in all.
+with_rolled(array<Level> rolled, array<Level> lv, int n) =>
+    array<Level> out = array.copy(rolled)
+    for x in lv
+        if out.size() >= n
+            break
+        out.push(x)
+    out
+
+// Adds completed periods, tracks the period in progress and marks takes. cur_t is the
+// open of the period in progress; hp/lp/pt/pd describe the last completed period.
+process(Cfg c, array<Level> lv, Tracker tr, int cur_t, float hp, float lp, int pt, int pd) =>
+    if c.on and tf_vis(c.tf) and not na(cur_t)
+        if na(tr.cur_t)
+            // First bar: rebuild completed periods from the higher timeframe. The bars
+            // that set these prices aren't loaded, so lines start at each period's open.
+            // Requested only here: returning the arrays on every bar is too slow.
+            [hs, lo, ts, ds] = request.security(syminfo.tickerid, c.tf, htf_hist(c.keep), lookahead=barmerge.lookahead_on)
+            for k = c.keep - 1 to 0
+                if not na(hs.get(k))
+                    int   t   = ts.get(k)
+                    int   td  = ds.get(k)
+                    int   e_t = k > 0 ? ts.get(k - 1) : cur_t
+                    Level h   = Level.new(c.kind, true,  hs.get(k), t, e_t, na, lvl_name(c.kind, t, td, true))
+                    Level l   = Level.new(c.kind, false, lo.get(k), t, e_t, na, lvl_name(c.kind, t, td, false))
+                    if k > 0
+                        for j = k - 1 to 0
+                            if na(h.take_t) and hs.get(j) >= h.price
+                                h.take_t := ts.get(j)
+                            if na(l.take_t) and lo.get(j) <= l.price
+                                l.take_t := ts.get(j)
+                    lv.unshift(l)
+                    lv.unshift(h)
+        else if cur_t != tr.cur_t and not na(hp)
+            // A period just closed. Anchor at the bar that set each price. If the whole
+            // period is loaded and the chart's bars fit inside it, that is the chart's
+            // own high/low bar even when the higher-timeframe candle differs by a few
+            // ticks (TradingView's FX daily and intraday feeds can). Weekly bars can
+            // straddle two months, so there a monthly level needs a matching price:
+            // the period's bar with exactly that high/low. Otherwise fall back to
+            // the period's open.
+            bool seen = pt == tr.cur_t
+            bool nest = tr.full and not (timeframe.isweekly and c.kind == 0)
+            int  hx   = seen and (nest or math.abs(tr.hi - hp) < tol) ? tr.hi_t : nz(match_bar(hp, pt, 1, true), pt)
+            int  lx   = seen and (nest or math.abs(tr.lo - lp) < tol) ? tr.lo_t : nz(match_bar(lp, pt, 1, false), pt)
+            lv.unshift(Level.new(c.kind, false, lp, lx, cur_t, na, lvl_name(c.kind, pt, pd, false)))
+            lv.unshift(Level.new(c.kind, true,  hp, hx, cur_t, na, lvl_name(c.kind, pt, pd, true)))
+            while lv.size() > c.keep * 2
+                lv.pop()
+        // na(tr.cur_t) is needed: any comparison with na is false in Pine
+        if na(tr.cur_t) or cur_t != tr.cur_t
+            tr.full  := not na(tr.cur_t)
+            tr.cur_t := cur_t
+            tr.hi    := high
+            tr.hi_t  := time
+            tr.lo    := low
+            tr.lo_t  := time
+        else
+            if high > tr.hi
+                tr.hi   := high
+                tr.hi_t := time
+            if low < tr.lo
+                tr.lo   := low
+                tr.lo_t := time
+        for x in lv
+            if na(x.take_t) and time >= x.end_t
+                if x.is_hi ? high >= x.price : low <= x.price
+                    x.take_t := time
+
+const string TZ = "America/New_York"
+
+const int S_HALT      = 17 * 3600
+const int S_REOPEN    = 18 * 3600
+
+// Market for the RTH gap, from the chart's own symbol root when set to Auto
+auto_market(string r) =>
+    if array.from("ZT", "ZF", "ZN", "TN", "ZB", "TWE", "UB").includes(r)
+        "Treasuries"
+    else if array.from("CL", "MCL", "QM").includes(r)
+        "Crude Oil"
+    else if array.from("NG", "MNG", "QG").includes(r)
+        "Natural Gas"
+    else if array.from("GC", "MGC", "QO", "1OZ").includes(r)
+        "Gold"
+    else if array.from("SI", "SIL", "QI", "SIC").includes(r)
+        "Silver"
+    else if array.from("HG", "MHG", "QC").includes(r)
+        "Copper"
+    else
+        "Equity Index"
+
+// Seconds since midnight of an "HHMM" time
+hhmm_sec(string s) =>
+    int(str.tonumber(str.substring(s, 0, 2))) * 3600 + int(str.tonumber(str.substring(s, 2, 4))) * 60
+
+string RT_MKT = rt_mkt == "Auto" ? auto_market(syminfo.root) : rt_mkt
+// CME's floor hours, New York time. Each close is where the market's daily
+// settlement window ends (e.g. Gold settles 13:29-13:30).
+string RT_HRS = switch RT_MKT
+    "Treasuries"  => "0820-1500"
+    "Crude Oil"   => "0900-1430"
+    "Natural Gas" => "0900-1430"
+    "Gold"        => "0820-1330"
+    "Silver"      => "0825-1325"
+    "Copper"      => "0810-1300"
+    "Custom"      => rt_hrs
+    =>               "0930-1615"
+int  S_RTH_OPEN  = hhmm_sec(str.substring(RT_HRS, 0, 4))
+int  S_RTH_CLOSE = hhmm_sec(str.substring(RT_HRS, 5, 9))
+// 1OZ and SIC trade around the clock; their daily close is the 17:00 trade, so
+// it can't stand in for the settlement.
+bool RT_SETTLE   = (rt_px == "Settlement" or (rt_px == "Auto" and RT_MKT != "Equity Index" and RT_MKT != "Custom"))
+     and not array.from("1OZ", "SIC").includes(syminfo.root)
+
+// The trading date a bar belongs to, against the calendar date it trades on.
+// CME folds a holiday's Globex trading into the next trading date, so a holiday
+// morning's bars carry the next day's date and have no regular session.
+ymd(int t, string tz) =>
+    year(t, tz) * 10000 + month(t, tz) * 100 + dayofmonth(t, tz)
+own_trading_day() =>
+    ymd(time_tradingday, "UTC") == ymd(time, TZ)
+
+// True on the bar that opens a weekday's regular session: the one holding the
+// open time, or for a thinly traded contract (e.g. QI, QC) with no trade then,
+// its first bar after it. Once a day: open_day is the last date it fired on.
+opens_session(int sod_, int dow_, int tfs, int open_day) =>
+    bool weekday = dow_ >= dayofweek.monday and dow_ <= dayofweek.friday
+    bool holds   = sod_ <= S_RTH_OPEN and S_RTH_OPEN < sod_ + tfs
+    bool after   = sod_ > S_RTH_OPEN and sod_ < S_RTH_CLOSE
+    weekday and (holds or after) and ymd(time, TZ) != open_day
+
+lbl_sty(pos) =>
+    switch pos
+        "Top"    => label.style_label_lower_left
+        "Bottom" => label.style_label_upper_left
+        =>          label.style_label_left
+
+f_mmdd(t) =>
+    m = month(t, TZ)
+    d = dayofmonth(t, TZ)
+    (m < 10 ? "0" : "") + str.tostring(m) + "/" + (d < 10 ? "0" : "") + str.tostring(d)
+
+// Past the current bar, positions are counted in bars (xloc.bar_index): a time
+// would collapse into the next session open whenever it lands in a market break
+// (the 17:00 halt, weekends), squashing Extend Right and turning leaders vertical.
+// Up to the current bar lines stay time-based, so a level can start any distance
+// back. Each level is therefore drawn in two parts that meet at the current bar.
+draw_level(Gap g, GapCfg c, int x1, float y, string sty, int w, string txt, bool bold) =>
+    g.lines.push(line.new(x1, y, time, y, xloc=xloc.bar_time, color=c.lcol, style=ls(sty), width=w))
+    g.futs.push(line.new(bar_index, y, bar_index + lbl_off, y, xloc=xloc.bar_index, color=c.lcol, style=ls(sty), width=w))
+    g.cols.push(c.lcol)
+    g.prices.push(y)
+    g.stys.push(sty)
+    g.wids.push(w)
+    g.labels.push(label.new(bar_index + lbl_off, y, txt, xloc=xloc.bar_index, style=lbl_sty(c.tpos),
+                            color=color.new(color.white, 100), textcolor=c.tcol,
+                            size=lbl_sz(c.tsz), textalign=text.align_left,
+                            text_formatting=bold ? text.format_bold : text.format_none))
+
+// Latest chart bar at or before t_end, within the day before it, that traded
+// p. Settlement is an average over its window, so it can sit off the last
+// candle; t_end itself when no bar in reach did.
+touch_t(float p, int t_end) =>
+    int r = na
+    for i = 0 to SEARCH_BARS
+        if na(time[i]) or time[i] < t_end - 86400000
+            break
+        if time[i] <= t_end and low[i] - tol <= p and p <= high[i] + tol
+            r := time[i]
+            break
+    nz(r, t_end)
+
+// Open time of the chart bar holding t. xloc.bar_time puts a time that falls
+// inside a bar (e.g. 09:30 on 1h, a 16:59 backfill close on 15m) on the NEXT
+// bar, so line starts are snapped first. t itself when no bar in reach holds it.
+snap_t(int t) =>
+    int r = t
+    for i = 0 to SEARCH_BARS
+        if na(time[i])
+            break
+        if time[i] <= t
+            r := time[i]
+            break
+    r
+
+// Draws one gap in the given styling: High/Low from where each price was set,
+// mid/quarters from the open. Percent levels run from the open toward the prior
+// close (25% = a quarter filled). Labels carry the open's date when asked for.
+draw_gap(Gap g, GapCfg c) =>
+    string dt = c.date ? " " + f_mmdd(g.op_t) : ""
+    bool gap_dn = g.pc >= g.op
+    draw_level(g, c, gap_dn ? g.pc_x : g.op_x, math.max(g.pc, g.op), c.lsty, c.lw, c.name + " High" + dt, c.bold)
+    draw_level(g, c, gap_dn ? g.op_x : g.pc_x, math.min(g.pc, g.op), c.lsty, c.lw, c.name + " Low" + dt, c.bold)
+    float span = g.pc - g.op
+    if c.qtr
+        draw_level(g, c, g.op_x, g.op + span * 0.25, c.qsty, c.qw, c.qlbl ? c.name + " 25%" + dt : "", c.qbold)
+        draw_level(g, c, g.op_x, g.op + span * 0.75, c.qsty, c.qw, c.qlbl ? c.name + " 75%" + dt : "", c.qbold)
+    if c.mid
+        draw_level(g, c, g.op_x, g.op + span * 0.5, c.msty, c.mw, c.mlbl ? c.name + " 50%" + dt : "", c.mbold)
+
+clear_gap(Gap g) =>
+    for l in g.lines
+        l.delete()
+    for l in g.futs
+        l.delete()
+    for lb in g.labels
+        lb.delete()
+    g.lines.clear()
+    g.futs.clear()
+    g.labels.clear()
+    g.cols.clear()
+    g.prices.clear()
+    g.stys.clear()
+    g.wids.clear()
+
+// Redraws a whole store: the newest gap in the Current styling, the ones behind
+// it in the Previous styling, and trims records past what Previous asks for.
+// Each switch stands alone, so Previous on with Current off hides only the newest.
+redraw(array<Gap> store, GapCfg cur, GapCfg prv) =>
+    int keep_n = (prv.on ? prv.keep : 0) + 1
+    while store.size() > keep_n
+        clear_gap(store.shift())
+    int n = store.size()
+    if n > 0
+        for i = 0 to n - 1
+            Gap g = store.get(i)
+            clear_gap(g)
+            int age = n - 1 - i        // 0 = current, 1+ = previous
+            if age == 0
+                if cur.on
+                    draw_gap(g, cur)
+            else if prv.on
+                draw_gap(g, prv)
+
+add_gap(array<Gap> store, GapCfg cur, GapCfg prv, float pc, int pc_t, float op, int op_t) =>
+    store.push(Gap.new(pc, pc_t, op, op_t, snap_t(pc_t), snap_t(op_t), array.new<line>(), array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>(), array.new<float>()))
+    redraw(store, cur, prv)
+
+extend_all(array<Gap> store) =>
+    for g in store
+        int n = g.lines.size()
+        if n > 0
+            for i = 0 to n - 1
+                line  l  = g.lines.get(i)
+                line  f  = g.futs.get(i)
+                label lb = g.labels.get(i)
+                l.set_x2(time)
+                f.set_x1(bar_index)
+                f.set_x2(bar_index + lbl_off)
+                lb.set_x(bar_index + lbl_off)
+                lb.set_y(g.prices.get(i))
+
+// Adds every labelled level of a store to the label column. At equal prices gaps go
+// below Key Levels' labels (kind 10 in the sort key).
+collect_gaps(array<Gap> store, array<label> lbs, array<line> lns, array<float> ys, array<float> ks,
+             array<color> cs, array<string> ss, array<int> ws) =>
+    for g in store
+        int n = g.labels.size()
+        if n > 0
+            for i = 0 to n - 1
+                if g.labels.get(i).get_text() == ""
+                    continue
+                float y = g.prices.get(i)
+                lbs.push(g.labels.get(i))
+                lns.push(g.futs.get(i))
+                ys.push(y)
+                ks.push(y - 10 * tol / 4)
+                cs.push(g.cols.get(i))
+                ss.push(g.stys.get(i))
+                ws.push(g.wids.get(i))
+
+// The RTH gap as seen on a lower series, for chart timeframes that cannot
+// resolve the session open and close exactly. Returns the current gap. All
+// values persist, so they survive being aggregated onto a slower chart bar; the
+// chart side acts when they change.
+rth_state() =>
+    var float pc       = na    // last trade before the close of the last real session
+    var int   pc_t     = na
+    var float day_c    = na    // running last trade before the close today
+    var int   day_c_t  = na
+    var bool  day_ok   = false // today's open is on its own trading date
+    var int   open_day = 0
+    var int   cur_op_t = 0
+    var float cur_op   = na
+    var float cur_pc   = na
+    var int   cur_pc_t = 0
+    int tfs  = timeframe.in_seconds()
+    int sod2 = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+    int dow2 = dayofweek(time, TZ)
+    if opens_session(sod2, dow2, tfs, open_day)
+        open_day := ymd(time, TZ)
+        if day_ok
+            pc   := day_c
+            pc_t := day_c_t
+        day_ok := own_trading_day()
+        if day_ok and not na(pc)
+            cur_op_t := time
+            cur_op   := open
+            cur_pc   := pc
+            cur_pc_t := pc_t
+    if day_ok and dow2 >= dayofweek.monday and dow2 <= dayofweek.friday and sod2 >= S_RTH_OPEN and sod2 < S_RTH_CLOSE
+        day_c   := close
+        day_c_t := time
+    [cur_op_t, cur_op, cur_pc, cur_pc_t]
+
+// ---------------------------------------------------------------------------
+// Backfill. A 1m chart only loads a few weeks of bars, but a request.security
+// context runs over its own, longer history. These scanners run inside such a
+// context and return the most recent gaps as a flat array of
+// [open time, open, prior close, prior close time] per gap, oldest first.
+// Their prices are the same trades the chart would use: a 60m bar closing at the
+// 17:00 halt closes on the 16:59 trade and the 18:00 bar opens on the 18:00
+// trade; a 15m bar closes at 16:15 on the 16:14 trade and opens at 09:30.
+// ---------------------------------------------------------------------------
+// A scan's result is only read at the end of history, and copying it on every bar
+// used up Pine's memory (CL on 3h and 4h), so only the latest bars return a copy.
+latest(array<float> a) =>
+    array<float> r = na
+    if bar_index >= last_bar_index - 500
+        r := a.copy()
+    r
+
+eve_scan(bool weekly) =>
+    var float pc   = na
+    var int   pc_t = na
+    var array<float> g = array.new<float>()
+    int tfs = timeframe.in_seconds()
+    int s   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+    int d   = dayofweek(time, TZ)
+    if s <= S_REOPEN and S_REOPEN < s + tfs and not na(pc) and pc != open
+        bool day_ok = weekly ? d == dayofweek.sunday : d >= dayofweek.monday and d <= dayofweek.thursday
+        if day_ok
+            g.push(time), g.push(open), g.push(pc), g.push(pc_t)
+            while g.size() > 44
+                g.shift()
+    if s < S_HALT
+        pc   := close
+        pc_t := time_close - 60000    // last minute of the bar, e.g. 16:59
+    latest(g)
+
+rth_scan() =>
+    var float pc      = na
+    var int   pc_t    = na
+    var float day_c   = na
+    var int   day_c_t = na
+    var bool  day_ok  = false
+    var int   open_day = 0
+    var array<float> g = array.new<float>()
+    int tfs = timeframe.in_seconds()
+    int s   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+    int d   = dayofweek(time, TZ)
+    if opens_session(s, d, tfs, open_day)
+        open_day := ymd(time, TZ)
+        if day_ok
+            pc   := day_c
+            pc_t := day_c_t
+        day_ok := own_trading_day()
+        if day_ok and not na(pc)
+            g.push(time), g.push(open), g.push(pc), g.push(pc_t)
+            while g.size() > 48       // one spare, for a gap Settlement drops
+                g.shift()
+    if day_ok and d >= dayofweek.monday and d <= dayofweek.friday and s >= S_RTH_OPEN and s < S_RTH_CLOSE
+        day_c   := close
+        day_c_t := time_close - 60000 // last minute of the bar, e.g. 16:14
+    latest(g)
+
+// Adds backfilled gaps the chart's own bars could not reach, skipping any it
+// already found (matched on open time), and keeps the store in time order.
+merge_backfill(array<Gap> store, GapCfg cur, GapCfg prv, array<float> bf) =>
+    int n = na(bf) ? 0 : bf.size() / 4
+    int added = 0
+    if n > 0
+        for i = 0 to n - 1
+            int  opt = int(bf.get(i * 4))
+            int  pos = 0
+            bool dup = false
+            int  m   = store.size()
+            if m > 0
+                for j = 0 to m - 1
+                    int t = store.get(j).op_t
+                    if t == opt
+                        dup := true
+                    if t < opt
+                        pos := j + 1
+            if not dup
+                int pct = int(bf.get(i * 4 + 3))
+                store.insert(pos, Gap.new(bf.get(i * 4 + 2), pct, bf.get(i * 4 + 1), opt, snap_t(pct), snap_t(opt),
+                                          array.new<line>(), array.new<line>(), array.new<label>(), array.new<color>(), array.new<string>(), array.new<int>(), array.new<float>()))
+                added += 1
+        redraw(store, cur, prv)
+
+// Daily [open time, close] pairs, oldest first. For CME futures a daily close is
+// the settlement price.
+d_scan() =>
+    var array<float> a = array.new<float>()
+    a.push(time), a.push(close)
+    while a.size() > 32
+        a.shift()
+    a.copy()
+
+// Settlement of the trading day holding time t, or na when it isn't in d
+settle_of(array<float> d, int t) =>
+    float r = na
+    int n = na(d) ? 0 : d.size() / 2
+    if n > 0
+        for i = n - 1 to 0
+            if d.get(i * 2) <= t
+                r := d.get(i * 2 + 1)
+                break
+    r
+
+
+// ===========================================================================
+// STATE
+// ===========================================================================
+// Built every bar (not var). Colors go through live(): a drawing colored straight
+// from an input.color is drawn from a TradingView palette slot, and that slot kept
+// the old color after the input changed (1.14.0: the input held the new color,
+// the drawings still showed the old one). A rebuilt color is sent with the drawing
+// itself, so there is no slot to go stale. Same fix as Opening Gaps 1.8.3.
+live(color c) => color.new(c, color.t(c))
+
+Cfg m_cfg  = Cfg.new(0, "M", kl_on and m_on, m_keep, live(m_lcol), m_lsty, m_lw, live(m_tcol), m_tsz, m_take, live(m_lcol2), m_lsty2, m_lw2, live(m_tcol2), m_tsz2, m_tb, m_tb2)
+Cfg w_cfg  = Cfg.new(1, "W", kl_on and w_on, w_keep, live(w_lcol), w_lsty, w_lw, live(w_tcol), w_tsz, w_take, live(w_lcol2), w_lsty2, w_lw2, live(w_tcol2), w_tsz2, w_tb, w_tb2)
+Cfg d_cfg  = Cfg.new(2, "D", kl_on and d_on, d_keep, live(d_lcol), d_lsty, d_lw, live(d_tcol), d_tsz, d_take, live(d_lcol2), d_lsty2, d_lw2, live(d_tcol2), d_tsz2, d_tb, d_tb2)
+Cfg mo_cfg = Cfg.new(3, "M", kl_on and mo_on, mo_prev + 1, live(mo_lcol), mo_lsty, mo_lw, live(mo_tcol), mo_tsz, "Keep", na, na, na, na, na, mo_tb)
+Cfg wo_cfg = Cfg.new(4, "W", kl_on and wo_on, 1, live(wo_lcol), wo_lsty, wo_lw, live(wo_tcol), wo_tsz, "Keep", na, na, na, na, na, wo_tb)
+Cfg mc_cfg = Cfg.new(5, "M", kl_on and mc_on, mc_prev + 1, live(mc_lcol), mc_lsty, mc_lw, live(mc_tcol), mc_tsz, "Keep", na, na, na, na, na, mc_tb)
+Cfg pc_cfg = Cfg.new(6, "D", kl_on and pc_on, 1, live(pc_lcol), pc_lsty, pc_lw, live(pc_tcol), pc_tsz, "Keep", na, na, na, na, na, pc_tb)
+Cfg do_cfg = Cfg.new(7, "D", kl_on and do_on, 1, live(do_lcol), do_lsty, do_lw, live(do_tcol), do_tsz, "Keep", na, na, na, na, na, do_tb)
+Cfg mn_cfg = Cfg.new(9, "D", kl_on and mn_on, 1, live(mn_lcol), mn_lsty, mn_lw, live(mn_tcol), mn_tsz, "Keep", na, na, na, na, na, mn_tb)
+Cfg pm_cfg = Cfg.new(8, "D", kl_on and pm_on, 1, live(pm_lcol), pm_lsty, pm_lw, live(pm_tcol), pm_tsz, pm_take, live(pm_lcol2), pm_lsty2, pm_lw2, live(pm_tcol2), pm_tsz2, pm_tb, pm_tb2)
+
+var array<Level> m_lv = array.new<Level>()
+var array<Level> w_lv = array.new<Level>()
+var array<Level> d_lv = array.new<Level>()
+var array<Level> mo_lv = array.new<Level>()
+var array<Level> wo_lv = array.new<Level>()
+var array<Level> mc_lv = array.new<Level>()
+var array<Level> pc_lv = array.new<Level>()
+
+var Tracker m_tr = Tracker.new()
+var Tracker w_tr = Tracker.new()
+var Tracker d_tr = Tracker.new()
+
+var array<line>  lns = array.new<line>()
+var array<label> lbs = array.new<label>()
+
+// Open time of every chart bar, to snap higher-timeframe times onto the bar that
+// contains them. With xloc.bar_time TradingView puts a time that falls inside a bar
+// on the NEXT bar, e.g. a week inside a monthly candle would start a month late.
+var array<int> bar_ts = array.new<int>()
+bar_ts.push(time)
+if bar_ts.size() > 90000
+    bar_ts.shift()
+
+snap(int t) =>
+    int n = bar_ts.size()
+    int r = t
+    if not na(t) and n > 0 and t >= bar_ts.first() and t < bar_ts.last()
+        int lo = 0
+        int hi = n - 1
+        while lo < hi
+            int mid = int(math.ceil((lo + hi) / 2.0))
+            if bar_ts.get(mid) <= t
+                lo := mid
+            else
+                hi := mid - 1
+        // A time in a gap between bars (e.g. a weekend, or a minute with no trades)
+        // belongs to the next bar, not the one before the gap
+        // (daily and lower; weekly/monthly bars vary in length and have no such gaps)
+        r := tf_ms <= 86400000 and t >= bar_ts.get(lo) + tf_ms and lo < n - 1 ? bar_ts.get(lo + 1) : bar_ts.get(lo)
+    else if not na(t) and n > 0 and t >= bar_ts.last()
+        r := bar_ts.last()
+    r
+
+// High and low of the bars in view; the script recalculates when the view changes
+var float vis_hi = na
+var float vis_lo = na
+if time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
+    vis_hi := na(vis_hi) ? high : math.max(vis_hi, high)
+    vis_lo := na(vis_lo) ? low  : math.min(vis_lo, low)
+
+cfg_of(int kind) =>
+    switch kind
+        0 => m_cfg
+        1 => w_cfg
+        2 => d_cfg
+        3 => mo_cfg
+        4 => wo_cfg
+        5 => mc_cfg
+        6 => pc_cfg
+        7 => do_cfg
+        8 => pm_cfg
+        =>   mn_cfg
+
+collect(array<Level> dst, array<Level> src) =>
+    for x in src
+        if not (cfg_of(x.kind).take == "Remove" and not na(x.take_t))
+            dst.push(x)
+
+GapCfg nwc = GapCfg.new("NWOG", og_on and nwc_on, 1,        nwc_date, live(nwc_lcol), nwc_lsty, nwc_lw, live(nwc_tcol), nwc_tsz, nwc_tpos, nwc_bold, nwc_mid, nwc_msty, nwc_mw, nwc_mbold, nwc_mlbl, nwc_qtr, nwc_qsty, nwc_qw, nwc_qbold, nwc_qlbl)
+GapCfg nwp = GapCfg.new("NWOG", og_on and nwp_on, nwp_keep, nwp_date, live(nwp_lcol), nwp_lsty, nwp_lw, live(nwp_tcol), nwp_tsz, nwp_tpos, nwp_bold, nwp_mid, nwp_msty, nwp_mw, nwp_mbold, nwp_mlbl, nwp_qtr, nwp_qsty, nwp_qw, nwp_qbold, nwp_qlbl)
+GapCfg ndc = GapCfg.new("NDOG", og_on and ndc_on, 1,        ndc_date, live(ndc_lcol), ndc_lsty, ndc_lw, live(ndc_tcol), ndc_tsz, ndc_tpos, ndc_bold, ndc_mid, ndc_msty, ndc_mw, ndc_mbold, ndc_mlbl, ndc_qtr, ndc_qsty, ndc_qw, ndc_qbold, ndc_qlbl)
+GapCfg ndp = GapCfg.new("NDOG", og_on and ndp_on, ndp_keep, ndp_date, live(ndp_lcol), ndp_lsty, ndp_lw, live(ndp_tcol), ndp_tsz, ndp_tpos, ndp_bold, ndp_mid, ndp_msty, ndp_mw, ndp_mbold, ndp_mlbl, ndp_qtr, ndp_qsty, ndp_qw, ndp_qbold, ndp_qlbl)
+GapCfg rtc = GapCfg.new("RTH",  og_on and rtc_on, 1,        rtc_date, live(rtc_lcol), rtc_lsty, rtc_lw, live(rtc_tcol), rtc_tsz, rtc_tpos, rtc_bold, rtc_mid, rtc_msty, rtc_mw, rtc_mbold, rtc_mlbl, rtc_qtr, rtc_qsty, rtc_qw, rtc_qbold, rtc_qlbl)
+GapCfg rtp = GapCfg.new("RTH",  og_on and rtp_on, rtp_keep, rtp_date, live(rtp_lcol), rtp_lsty, rtp_lw, live(rtp_tcol), rtp_tsz, rtp_tpos, rtp_bold, rtp_mid, rtp_msty, rtp_mw, rtp_mbold, rtp_mlbl, rtp_qtr, rtp_qsty, rtp_qw, rtp_qbold, rtp_qlbl)
+
+var array<Gap> nw_gaps = array.new<Gap>()
+var array<Gap> nd_gaps = array.new<Gap>()
+var array<Gap> rt_gaps = array.new<Gap>()
+
+var float eve_close   = na    // last bar starting before 17:00
+var int   eve_close_t = na
+
+// RTH close is only carried forward from a real session. A holiday's Globex
+// session (Labor Day, Presidents Day, ...) still prints bars at the open, but they
+// belong to the next trading date, so the day is skipped and its trades ignored.
+var float rth_close   = na    // last trade before the close of the last real session
+var int   rth_close_t = na
+var float day_close   = na    // running last trade before the close today
+var int   day_close_t = na
+var bool  day_real    = false // today's open is on its own trading date
+var int   rth_day     = 0     // date of the last session open taken
+
+
+// ===========================================================================
+// PROCESSING
+// ===========================================================================
+// Hidden types request the chart's own timeframe, since a lower one isn't allowed
+string m_req = tf_vis("M") ? "M" : timeframe.period
+bool   w_monthly = w_on_m and timeframe.ismonthly   // weekly levels drawn on a monthly chart
+string w_req = tf_vis("W") ? "W" : timeframe.period
+string d_req = tf_vis("D") ? "D" : timeframe.period
+
+// Open of the period in progress, and the last completed period
+htf_last() =>
+    [time, high[1], low[1], time[1], time_tradingday[1]]
+
+[m_t, m_h, m_l, m_pt, m_pd] = request.security(syminfo.tickerid, m_req, htf_last(), lookahead=barmerge.lookahead_on)
+[w_t, w_h, w_l, w_pt, w_pd] = request.security(syminfo.tickerid, w_req, htf_last(), lookahead=barmerge.lookahead_on)
+[d_t, d_h, d_l, d_pt, d_pd] = request.security(syminfo.tickerid, d_req, htf_last(), lookahead=barmerge.lookahead_on)
+d_c1 = request.security(syminfo.tickerid, d_req, close[1], lookahead=barmerge.lookahead_on)
+[m_h0, m_l0, m_d0, m_o0, m_c1] = request.security(syminfo.tickerid, m_req, [high, low, time_tradingday, open, close[1]], lookahead=barmerge.lookahead_on)
+[w_o0, w_d0] = request.security(syminfo.tickerid, w_req, [open, time_tradingday], lookahead=barmerge.lookahead_on)
+// The period in progress as it stands (final once its session has closed)
+[m_c0, m_tc] = request.security(syminfo.tickerid, m_req, [close, time_close], lookahead=barmerge.lookahead_on)
+[w_h0, w_l0, w_tc] = request.security(syminfo.tickerid, w_req, [high, low, time_close], lookahead=barmerge.lookahead_on)
+[d_h0, d_l0, d_c0, d_tc, d_d0] = request.security(syminfo.tickerid, d_req, [high, low, close, time_close, time_tradingday], lookahead=barmerge.lookahead_on)
+
+process(m_cfg, m_lv, m_tr, m_t, m_h, m_l, m_pt, m_pd)
+process(w_cfg, w_lv, w_tr, w_t, w_h, w_l, w_pt, w_pd)
+process_on_monthly(w_cfg, w_lv, w_monthly)
+process(d_cfg, d_lv, d_tr, d_t, d_h, d_l, d_pt, d_pd)
+process_open(mo_cfg, mo_lv, m_t, m_o0, m_d0)
+process_open(wo_cfg, wo_lv, w_t, w_o0, w_d0)
+process_open_on_monthly(wo_cfg, wo_lv, wo_on_m and timeframe.ismonthly)
+process_close(mc_cfg, mc_lv, m_t, m_c1, m_pd, m_pt)
+process_close(pc_cfg, pc_lv, d_t, d_c1, d_pd, d_pt)
+
+// Daily Open and Premarket, from 1-minute candles. Below 1 minute the chart's own
+// bars are used, since a 1-minute request there would only update once a minute.
+bool odd_chart = timeframe.isticks or chart.is_range
+bool do_vis    = kl_on and do_on and not odd_chart and timeframe.in_seconds() <= 86400
+bool pm_vis    = kl_on and pm_on and not odd_chart and timeframe.in_seconds() <= 4 * 3600
+bool mn_vis    = kl_on and mn_on and not odd_chart and timeframe.in_seconds() <= 4 * 3600
+
+int  tf_sec = timeframe.in_seconds()
+bool tf_ok  = tf_sec < 86400
+
+gcd(int a, int b) =>
+    int x = a
+    int y = b
+    while y != 0
+        int t = x % y
+        x := y
+        y := t
+    x
+
+// Largest bar size, at most max_sec, whose bars land exactly on the session
+// open and close ("1" always does).
+src_tf(int step, int max_sec) =>
+    string r = "1"
+    for m in array.from(30, 15, 10, 5, 3, 2)
+        if m * 60 <= max_sec and step % (m * 60) == 0
+            r := str.tostring(m)
+            break
+    r
+
+int  rth_step   = gcd(S_RTH_OPEN, S_RTH_CLOSE)        // 900 (15m) for 09:30 and 16:15
+bool rth_native = tf_ok and rth_step % tf_sec == 0     // chart resolves open and close exactly
+
+// Source timeframe for charts whose own bars cannot place the open and close:
+// the largest size that lands on both and is no larger than the chart's own, so
+// its bars have already closed inside the chart bar and nothing is drawn late.
+string rth_src = src_tf(rth_step, tf_sec)
+
+// Read unconditionally: request.* must sit in the global scope. Only used when
+// the chart's own bars cannot place the boundaries.
+[h_op_t, h_op, h_pc, h_pc_t] = request.security(syminfo.tickerid, rth_src, rth_state(),
+     lookahead=barmerge.lookahead_off)
+
+// Backfill sources: 60m for NWOG/NDOG (their 17:00 and 18:00 boundaries are
+// hourly bar edges), up to 30m for RTH (15m for 09:30 and 16:15; 60m would
+// straddle them).
+const int SCAN_BARS = 2000    // 60m: about 17 weeks
+// RTH: 16 sessions of 23 hours, enough for 10 previous gaps, the current one and a
+// spare, with holidays, at 5m (silver). Custom hours finer than 5m reach back less far.
+const int RT_SCAN_BARS = 5000
+array<float> nw_bf = request.security(syminfo.tickerid, "60", eve_scan(true),  lookahead=barmerge.lookahead_off, calc_bars_count=SCAN_BARS)
+array<float> nd_bf = request.security(syminfo.tickerid, "60", eve_scan(false), lookahead=barmerge.lookahead_off, calc_bars_count=SCAN_BARS)
+array<float> rt_bf = request.security(syminfo.tickerid, src_tf(rth_step, 1800), rth_scan(), lookahead=barmerge.lookahead_off, calc_bars_count=RT_SCAN_BARS)
+
+// Daily settlements, for Close Price = Settlement. Without lookahead a past bar
+// sees only finished days, so a gap never reads a settlement not yet published.
+array<float> d_bf = request.security(syminfo.tickerid, "D", d_scan(), lookahead=barmerge.lookahead_off, calc_bars_count=4000)
+
+// The prior close the RTH gap runs from: the last trade, or that day's settlement
+// on the latest candle before the close that traded it.
+rth_from(float pc, int pc_t) =>
+    float s = RT_SETTLE ? settle_of(d_bf, pc_t) : na
+    float p = pc
+    int   t = pc_t
+    if not na(s) and s != pc
+        p := s
+        t := touch_t(s, pc_t)
+    [p, t]
+
+add_rth(float pc, int pc_t, float op, int op_t) =>
+    [p, t] = rth_from(pc, pc_t)
+    if p != op
+        add_gap(rt_gaps, rtc, rtp, p, t, op, op_t)
+
+// Backfilled RTH gaps with their prior close set the same way, minus any whose
+// prior close equals the open
+rth_bf(array<float> bf) =>
+    array<float> r = array.new<float>()
+    int n = na(bf) ? 0 : bf.size() / 4
+    if n > 0
+        for i = 0 to n - 1
+            [p, t] = rth_from(bf.get(i * 4 + 2), int(bf.get(i * 4 + 3)))
+            if p != bf.get(i * 4 + 1)
+                r.push(bf.get(i * 4)), r.push(bf.get(i * 4 + 1)), r.push(p), r.push(t)
+    r
+
+int  sod   = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+int  dow   = dayofweek(time, TZ)
+
+// True only on the bar whose span contains the given second of the day
+contains(int s) =>
+    sod <= s and s < sod + tf_sec
+
+if tf_ok
+    // 18:00 reopen - Sunday is NWOG, Monday-Thursday is NDOG
+    if contains(S_REOPEN) and not na(eve_close) and eve_close != open
+        if dow == dayofweek.sunday
+            add_gap(nw_gaps, nwc, nwp, eve_close, eve_close_t, open, time)
+        else if dow >= dayofweek.monday and dow <= dayofweek.thursday
+            add_gap(nd_gaps, ndc, ndp, eve_close, eve_close_t, open, time)
+    if sod < S_HALT
+        eve_close   := close
+        eve_close_t := time
+
+if rth_native
+    // Session open, Monday-Friday, straight from the chart's own bars
+    if opens_session(sod, dow, tf_sec, rth_day)
+        rth_day := ymd(time, TZ)
+        if day_real
+            rth_close   := day_close
+            rth_close_t := day_close_t
+        day_real := own_trading_day()
+        if day_real and not na(rth_close)
+            add_rth(rth_close, rth_close_t, open, time)
+    // Weekdays only: contracts that trade 24/7 (1OZ, SIC) have no weekend session
+    if day_real and dow >= dayofweek.monday and dow <= dayofweek.friday and sod >= S_RTH_OPEN and sod < S_RTH_CLOSE
+        day_close   := close
+        day_close_t := time
+else if tf_ok
+    // e.g. 2m, 10m, 30m, 1h, 4h for 09:30 - the gap comes from rth_src, whose bars
+    // close inside the chart bar, so it appears with the chart bar holding the open.
+    if h_op_t != 0 and h_op_t != nz(h_op_t[1], 0)
+        add_rth(h_pc, h_pc_t, h_op, h_op_t)
+
+// Once history has loaded, fill in gaps from before the chart's first bar. Gaps
+// that form after this keep coming from the chart's own bars, so the current
+// gap still appears the moment it opens.
+if barstate.islastconfirmedhistory and tf_ok
+    merge_backfill(nw_gaps, nwc, nwp, nw_bf)
+    merge_backfill(nd_gaps, ndc, ndp, nd_bf)
+    merge_backfill(rt_gaps, rtc, rtp, rth_bf(rt_bf))
+
+// ===========================================================================
+// DRAWING
+// ===========================================================================
+// Redrawn from scratch on the last bar. Every level gets its own line and label,
+// even when several share a price.
+if barstate.islast
+    for l in lns
+        l.delete()
+    for lb in lbs
+        lb.delete()
+    lns.clear()
+    lbs.clear()
+    extend_all(nw_gaps)
+    extend_all(nd_gaps)
+    extend_all(rt_gaps)
+
+    array<Level> m_show  = with_rolled(rolled_hl(m_cfg, m_tr, m_t, m_h0, m_l0, m_d0, m_tc), m_lv, m_cfg.keep * 2)
+    array<Level> w_show  = w_monthly ? w_lv : with_rolled(rolled_hl(w_cfg, w_tr, w_t, w_h0, w_l0, w_d0, w_tc), w_lv, w_cfg.keep * 2)
+    array<Level> d_show  = with_rolled(rolled_hl(d_cfg, d_tr, d_t, d_h0, d_l0, d_d0, d_tc), d_lv, d_cfg.keep * 2)
+    array<Level> mc_show = with_rolled(rolled_close(mc_cfg, m_t, m_c0, m_d0, m_tc), mc_lv, mc_cfg.keep)
+    array<Level> pc_show = with_rolled(rolled_close(pc_cfg, d_t, d_c0, d_d0, d_tc), pc_lv, pc_cfg.keep)
+
+    array<Level> all = array.new<Level>()
+    // The last completed week is labelled without its date; older weeks keep it.
+    // Its high and low share end_t (the open of the week after).
+    int wk_last = w_show.size() > 0 ? w_show.first().end_t : na
+    collect(all, m_show)
+    collect(all, w_show)
+    collect(all, d_show)
+    collect(all, mo_lv)
+    collect(all, wo_lv)
+    collect(all, mc_show)
+    collect(all, pc_show)
+    array<Level> do_show = array.new<Level>()
+    float do_px = secs ? c_opx : r_opx
+    if do_vis and not na(do_px)
+        do_show.push(Level.new(7, true, do_px, secs ? c_ot : r_ot, na, na, "Daily Open"))
+    collect(all, do_show)
+    array<Level> pm_show = array.new<Level>()
+    float pm_h = secs ? c_h : r_h
+    float pm_l = secs ? c_l : r_l
+    if pm_vis and not na(pm_h)
+        int pm_e = secs ? c_e : r_e
+        pm_show.push(Level.new(8, true,  pm_h, secs ? c_ht : r_ht, pm_e, secs ? c_htk : r_htk, "Premarket High"))
+        pm_show.push(Level.new(8, false, pm_l, secs ? c_lt : r_lt, pm_e, secs ? c_ltk : r_ltk, "Premarket Low"))
+    collect(all, pm_show)
+    array<Level> mn_show = array.new<Level>()
+    float mn_px = secs ? c_npx : r_npx
+    if mn_vis and not na(mn_px)
+        mn_show.push(Level.new(9, true, mn_px, secs ? c_nt : r_nt, na, na, "Midnight Open"))
+    collect(all, mn_show)
+
+    // Past the current bar, positions are counted in bars (xloc.bar_index): a time
+    // offset would collapse into the next session open whenever it lands in a market
+    // break (weekends, the daily halt). Up to the current bar lines stay time-based,
+    // so a level can start any distance back. An untaken line is therefore drawn in
+    // two parts that meet at the current bar.
+    int x_lbl = bar_index + lbl_off
+    int x_ldr = bar_index + math.max(lbl_off - LEAD_BARS, 0)   // where a leader starts
+    array<label> col    = array.new<label>()   // labels sitting at x_lbl
+    array<line>  col_ln = array.new<line>()
+    array<float> col_y  = array.new<float>()
+    array<float> col_k  = array.new<float>()
+    array<color> col_c  = array.new<color>()
+    array<string> col_s = array.new<string>()   // line style and width, reused by leaders
+    array<int>   col_w  = array.new<int>()
+    for a in all
+        string nm   = a.kind == 1 and a.end_t == wk_last ? "Previous Weekly " + (a.is_hi ? "High" : "Low") : a.name
+        string txt  = nm + (show_px ? " (" + fmt_px(a.price) + ")" : "")
+        Cfg    c    = cfg_of(a.kind)
+        bool   lo   = not a.is_hi and (a.kind <= 2 or a.kind == 8)   // lows of highs/lows types use the low style
+        color  lcol = lo ? c.lcol2 : c.lcol
+        color  tcol = lo ? c.tcol2 : c.tcol
+        string lsty = lo ? c.lsty2 : c.lsty
+        int    lw   = lo ? c.lw2 : c.lw
+        bool   stop = c.take == "Stop at take" and not na(a.take_t)
+        int    x1   = snap(a.x1)
+        int    x2   = stop ? snap(a.take_t) : time
+        string sty  = stop ? (a.is_hi ? label.style_label_down : label.style_label_up) : label.style_label_left
+        line   ln   = line.new(x1, a.price, x2, a.price, xloc=xloc.bar_time,
+                               color=lcol, style=ls(lsty), width=lw)
+        line   fut  = stop ? na : line.new(bar_index, a.price, x_lbl, a.price, xloc=xloc.bar_index,
+                                           color=lcol, style=ls(lsty), width=lw)
+        label  lb   = stop ? label.new(int((x1 + x2) / 2), a.price, txt, xloc=xloc.bar_time, style=sty,
+                                       color=color.new(color.white, 100), textcolor=tcol,
+                                       size=lbl_sz(lo ? c.tsz2 : c.tsz), textalign=text.align_left,
+                                       text_formatting=(lo ? c.bold2 : c.bold) ? text.format_bold : text.format_none)
+                       : label.new(x_lbl, a.price, txt, xloc=xloc.bar_index, style=sty,
+                                color=color.new(color.white, 100), textcolor=tcol,
+                                size=lbl_sz(lo ? c.tsz2 : c.tsz), textalign=text.align_left,
+                                text_formatting=(lo ? c.bold2 : c.bold) ? text.format_bold : text.format_none)
+        lns.push(ln)
+        lbs.push(lb)
+        if not stop
+            lns.push(fut)
+            col.push(lb)
+            col_ln.push(fut)
+            col_y.push(a.price)
+            col_k.push(a.price - a.kind * tol / 4)   // ties: longer period on top
+            col_c.push(lcol)
+            col_s.push(lsty)
+            col_w.push(lw)
+
+    // Labels closer than one label height (thr) are spaced out evenly around their
+    // prices, highest at the top. Each moved label gets a short leader from the end
+    // of its line, which then stops LEAD_BARS short of the label. Labels with room
+    // stay on their line. Works top-down in blocks: a label that overlaps the block
+    // above joins it, and the block is re-centred on its members' prices (which can
+    // make it overlap the next block up, so merging repeats).
+    collect_gaps(nw_gaps, col, col_ln, col_y, col_k, col_c, col_s, col_w)
+    collect_gaps(nd_gaps, col, col_ln, col_y, col_k, col_c, col_s, col_w)
+    collect_gaps(rt_gaps, col, col_ln, col_y, col_k, col_c, col_s, col_w)
+    float thr = math.max(nz(vis_hi - vis_lo) * lbl_gap / 100, tol)
+    int   n   = col.size()
+    // Crowded: more labels in view than fit one label height apart
+    int n_vis = 0
+    for y in col_y
+        if y >= vis_lo and y <= vis_hi
+            n_vis += 1
+    bool crowded = crowd_off and n_vis * thr > nz(vis_hi - vis_lo)
+    if n > 1 and spread_on and not crowded
+        array<int>   ord   = col_k.sort_indices(order.descending)
+        array<float> b_top = array.new<float>()   // y of each block's first label
+        array<float> b_sum = array.new<float>()   // sum of its members' prices
+        array<int>   b_len = array.new<int>()
+        for i = 0 to n - 1
+            float p = col_y.get(ord.get(i))
+            b_top.push(p)
+            b_sum.push(p)
+            b_len.push(1)
+            while b_top.size() > 1
+                int   m      = b_top.size()
+                float above  = b_top.get(m - 2) - (b_len.get(m - 2) - 1) * thr   // lowest y of block above
+                if b_top.get(m - 1) > above - thr
+                    float sum = b_sum.get(m - 2) + b_sum.get(m - 1)
+                    int   len = b_len.get(m - 2) + b_len.get(m - 1)
+                    b_top.pop()
+                    b_sum.pop()
+                    b_len.pop()
+                    b_top.set(m - 2, sum / len + (len - 1) * thr / 2)
+                    b_sum.set(m - 2, sum)
+                    b_len.set(m - 2, len)
+                else
+                    break
+        int k = 0
+        for b = 0 to b_top.size() - 1
+            for r = 0 to b_len.get(b) - 1
+                int   idx = ord.get(k)
+                float y   = b_top.get(b) - r * thr
+                float p   = col_y.get(idx)
+                // "Moved" is judged against the label height, not the tick: on a
+                // coarse tick (ZB's 1/32) half a tick can be a whole label, and a
+                // label left on its price then sits on its neighbour.
+                // Past the move limit a label stays on its own line
+                bool too_far = max_move > 0 and math.abs(y - p) > max_move * thr + tol
+                if math.abs(y - p) > thr / 100 and not too_far
+                    line ln = col_ln.get(idx)
+                    ln.set_x2(x_ldr)
+                    col.get(idx).set_y(y)
+                    lns.push(line.new(x_ldr, p, x_lbl, y, xloc=xloc.bar_index,
+                                      color=col_c.get(idx), style=ls(col_s.get(idx)), width=col_w.get(idx)))
+                k += 1
