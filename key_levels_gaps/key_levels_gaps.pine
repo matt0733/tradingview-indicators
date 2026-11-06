@@ -1,5 +1,5 @@
 //@version=6
-indicator("Key Levels + Gaps 1.0.8", shorttitle="Key Levels + Gaps", overlay=true,
+indicator("Key Levels + Gaps 1.0.9", shorttitle="Key Levels + Gaps", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Key Levels and Opening Gaps in one script. Two scripts can't see each other's
@@ -1411,9 +1411,15 @@ const int SCAN_BARS = 2000    // 60m: about 17 weeks
 // RTH: 16 sessions of 23 hours, enough for 10 previous gaps, the current one and a
 // spare, with holidays, at 5m (silver). Custom hours finer than 5m reach back less far.
 const int RT_SCAN_BARS = 5000
-array<float> nw_bf = request.security(syminfo.tickerid, "60", eve_scan(true),  lookahead=barmerge.lookahead_off, calc_bars_count=SCAN_BARS)
-array<float> nd_bf = request.security(syminfo.tickerid, "60", eve_scan(false), lookahead=barmerge.lookahead_off, calc_bars_count=SCAN_BARS)
-array<float> rt_bf = request.security(syminfo.tickerid, src_tf(rth_step, 1800), rth_scan(), lookahead=barmerge.lookahead_off, calc_bars_count=RT_SCAN_BARS)
+// A bar limit on a request for the chart's own timeframe also limits the script's
+// own history (on a 60m chart, monthly levels older than 2000 bars lost their
+// start bars), so those requests run without one.
+string rt_tf = src_tf(rth_step, 1800)
+bool   own60 = timeframe.period == "60"
+bool   ownrt = timeframe.period == rt_tf
+array<float> nw_bf = own60 ? request.security(syminfo.tickerid, "60", eve_scan(true),  lookahead=barmerge.lookahead_off) : request.security(syminfo.tickerid, "60", eve_scan(true),  lookahead=barmerge.lookahead_off, calc_bars_count=SCAN_BARS)
+array<float> nd_bf = own60 ? request.security(syminfo.tickerid, "60", eve_scan(false), lookahead=barmerge.lookahead_off) : request.security(syminfo.tickerid, "60", eve_scan(false), lookahead=barmerge.lookahead_off, calc_bars_count=SCAN_BARS)
+array<float> rt_bf = ownrt ? request.security(syminfo.tickerid, rt_tf, rth_scan(), lookahead=barmerge.lookahead_off) : request.security(syminfo.tickerid, rt_tf, rth_scan(), lookahead=barmerge.lookahead_off, calc_bars_count=RT_SCAN_BARS)
 
 // Daily settlements, for Close Price = Settlement. Without lookahead a past bar
 // sees only finished days, so a gap never reads a settlement not yet published.

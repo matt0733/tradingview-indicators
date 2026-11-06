@@ -1,6 +1,6 @@
 # Key Levels + Gaps: test and issue log
 
-Version under test: 1.0.7 (1.0.6 results below unless marked). Started 2026-11-03. Status changes only after a test on the LLM tab.
+Version under test: 1.0.9 (earlier sections cover 1.0.6 to 1.0.8) (1.0.6 results below unless marked). Started 2026-11-03. Status changes only after a test on the LLM tab.
 
 ## Open
 
@@ -16,6 +16,7 @@ Version under test: 1.0.7 (1.0.6 results below unless marked). Started 2026-11-0
 | 7 | Why a plain global lower-timeframe request cuts monthly and weekly history on 1m. The fix was found by testing. | 1.0.6 | Cause unknown. The fix is confirmed by count only so far. |
 | 11 | Blank price on oldest NWOG labels on 6 reads (MES 2, MGC 1, EURUSD 30S and 2, MNQ 5 and CL 5 in Replay). Originals have the price. | 1.0.7 | All 6 cleared on repeat. Probably read mid-redraw, not proven. Watch for repeats. |
 | 12 | CL 3h in Replay: combined in error state once at +20, test settings. Error text not captured. | 1.0.7 | Did not repeat: five 20-step repeats and three 200-step runs clean. Error monitor saw no combined error in the later runs. |
+| 16 | CL 60m: monthly close line started 2h late. | 1.0.8 | Fixed in 1.0.9, see below. |
 | 13 | Replay, 60m chart: Midnight Open updated at the 07:00 bar, not 00:00. Original Key Levels does the same. | 1.0.7, Key Levels 1.16.0 | Seen once in smoke test. Timing stage measures it on 1m to 4h. |
 | 17 | ES 1M in Replay (as of 2025-06-30), Opening Gaps off: combined Weekly Open 5964.00 (week of June 1), original Key Levels 6223.25 (week of June 29, correct). Reproduced 2 of 2. | 1.0.8, Key Levels 1.16.0 | Not combined-only: toggling Daily (a setting both have) makes the original show 5964 too. Any recalculation during Replay on 1M gives the stale week; Opening Gaps off only differed because the original wasn't recalculated. Same code in both. Same family as #14. |
 | 18 | Original Opening Gaps on EURUSD 2h, 3h, 4h at max: older NWOGs dated on weekdays (01/21 Wed, 06/23 Tue, 09/22 Tue), fewer NDOGs. Combined shows consecutive Sundays; the 6 latest match exactly. | Opening Gaps 1.9.1 | Original's fault. User decision whether to fix the original. |
@@ -134,3 +135,19 @@ Still open: #16 CL 60m line start, #13 Midnight Open Replay delay, #14 monthly R
 | Options in Replay | 15 more charts, 1,845 runs | 14 clean; ES 1M: #17 |
 
 Test-method faults found and fixed today: Replay step loop waited at the end of data and left loops running (1W/1D start dates too late); 150 ms waits throttled to 1 s in a hidden tab; gap checker assumed the CME 18:00 open for EURUSD and BTC.
+
+## 1.0.9, Nov 6: fix for #16 (CL 60m line start)
+
+Cause: the 60m NWOG/NDOG backfill request had calc_bars_count=2000. On a 60m chart that is the chart's own timeframe, and the script then calculated on only about the last 2000 bars, so every monthly level older than that (June 2026 and before on CL) started at the month's open or last bar instead of its own candle. 2h and 30m were unaffected (44 and 48 lines matched). Fix: requests on the chart's own timeframe (60m backfill, and the RTH backfill on its own timeframe) run without a bar limit.
+
+| Test | Scope | Result |
+|---|---|---|
+| Key Levels line starts, older bars loaded | 12 markets on 60m; RTH backfill timeframes (CL, NG 30m; MNQ, EURUSD, BTC 15m; GC, ZN 10m; SI 5m); CL 2h, 4h | 22 charts, 0 differences. On 5m to 30m only bars back to Jan to Aug 2026 load, older lines compared as off-chart only |
+| Values and spacing, defaults | 238 charts | 0 errors, 0 missing, 0 price differences, 0 stacked, 0 under-spacing, min 17.8 px; extras only on 1m (original Key Levels shortfall, #6) |
+| Values and spacing, everything at max | 238 charts | Same; EURUSD 2h to 4h missing = original Opening Gaps #18. MNQ 15s showed 45 under-spaced once; 4 repeats clean (read during layout) |
+| Gap prices vs candles | 14 markets | 265 correct, 0 wrong; 3 on 10/27 (MES, ES, YM) not checkable, prior day not loaded |
+| Replay match, 300 steps | CL, MNQ, EURUSD 60m; CL 30m; MNQ 15m; GC, ZN 10m; SI 5m | 0 differences; original Opening Gaps memory error on CL 60 (#9) |
+| Functional options | CL 60m, MNQ 15m, GC 10m, 369 runs | 0 errors, 0 differences (line starts included) |
+| Options in Replay | CL 60m, 123 runs | Combined clean; original Opening Gaps in memory error from the start (#9), so gaps not comparable there |
+
+Test-method fault found: loading older bars left the chart view scrolled into the future with autoscale off, which made pixel spacing readings wrong; view now reset before spacing tests.
