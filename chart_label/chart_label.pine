@@ -1,13 +1,5 @@
 //@version=6
-indicator("Chart Label 1.2", shorttitle="Label", overlay=true)
-
-// ===========================================================================
-// INPUTS - CONTENT
-// ===========================================================================
-string GC = "Content"
-string line3_mode = input.string("Live", "Line 3",
-    options=["Live","Backtesting","Paper Trading"], group=GC)
-string line4_text = input.string("Trade Info Here", "Line 4", group=GC)
+indicator("Chart Label 1.5", shorttitle="Label", overlay=true)
 
 // ===========================================================================
 // INPUTS - POSITION & SIZE
@@ -22,11 +14,13 @@ string size_in = input.string("Medium", "Size",
 // INPUTS - COLORS
 // ===========================================================================
 string GCOL = "Colors"
-color bg_col    = input.color(color.white,  "Background",             group=GCOL)
-color line1_col = input.color(color.red,   "Line 1 (Ticker / TF)",   group=GCOL)
-color line2_col = input.color(color.black,  "Line 2 (Day / Date)",    group=GCOL)
-color line3_col = input.color(#3498DB,      "Line 3 (Mode)",          group=GCOL)
-color line4_col = input.color(color.black,  "Line 4",                 group=GCOL)
+color bg_col     = input.color(color.white, "Background",          group=GCOL)
+color line1_col  = input.color(color.red,   "Line 1 (Ticker)",     group=GCOL, inline="l1")
+bool  line1_bold = input.bool(true,         "Bold",                group=GCOL, inline="l1")
+color line2_col  = input.color(color.black, "Line 2 (Timeframe)",  group=GCOL, inline="l2")
+bool  line2_bold = input.bool(true,         "Bold",                group=GCOL, inline="l2")
+color line3_col  = input.color(color.black, "Line 3 (Day / Date)", group=GCOL, inline="l3")
+bool  line3_bold = input.bool(true,         "Bold",                group=GCOL, inline="l3")
 
 // ===========================================================================
 // INPUTS - BORDER
@@ -75,6 +69,9 @@ sizeOf(string s) =>
         "Large"  => size.large
         => size.normal
 
+fmtOf(bool b) =>
+    b ? text.format_bold : text.format_none
+
 // ===========================================================================
 // RENDER
 // ===========================================================================
@@ -89,22 +86,22 @@ if barstate.islast
     dt     = str.format_time(time, "MM/dd/yy", tz)
     tf_str = tfString()
 
-    line1 = syminfo.ticker + " " + tf_str
-    line2 = dow + " " + dt
+    line1 = syminfo.ticker
+    line2 = tf_str
+    line3 = dow + " " + dt
 
     txt_size = sizeOf(size_in)
     frame_w  = show_border ? border_w : 0
 
-    t := table.new(posOf(pos_in), 1, 4,
+    t := table.new(posOf(pos_in), 1, 3,
          bgcolor      = bg_col,
          border_width = 0,
          frame_width  = frame_w,
          frame_color  = border_col)
 
-    table.cell(t, 0, 0, line1,      text_color=line1_col, text_size=txt_size, bgcolor=bg_col)
-    table.cell(t, 0, 1, line2,      text_color=line2_col, text_size=txt_size, bgcolor=bg_col)
-    table.cell(t, 0, 2, line3_mode, text_color=line3_col, text_size=txt_size, bgcolor=bg_col)
-    table.cell(t, 0, 3, line4_text, text_color=line4_col, text_size=txt_size, bgcolor=bg_col)
+    table.cell(t, 0, 0, line1, text_color=line1_col, text_size=txt_size, bgcolor=bg_col, text_formatting=fmtOf(line1_bold))
+    table.cell(t, 0, 1, line2, text_color=line2_col, text_size=txt_size, bgcolor=bg_col, text_formatting=fmtOf(line2_bold))
+    table.cell(t, 0, 2, line3, text_color=line3_col, text_size=txt_size, bgcolor=bg_col, text_formatting=fmtOf(line3_bold))
 
 // Force overlay onto main pane (Pine puts table-only scripts in their own pane otherwise)
 plot(na, display=display.none, editable=false)

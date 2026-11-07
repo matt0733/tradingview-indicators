@@ -133,9 +133,12 @@ Boxes over the 24 hourly :50–:10 macro windows with an M.O. (macro open) line.
 
 Asia, London, NY AM, Lunch and NY PM boxes with high/low level lines that stop, or disappear, once taken. See `sessions/README.md`.
 
-### Chart Label 1.2 — `chart_label/` (2026-08-26)
+### Chart Label 1.5 — `chart_label/` (2026-11-06)
 
-Four-line table with ticker/timeframe, day/date, trading mode and free text, for screenshots. See `chart_label/README.md`.
+Three-line table with ticker, timeframe and day/date, for screenshots. See `chart_label/README.md`.
+- 1.3: user moved the timeframe to its own line and dropped the trading-mode and free-text lines.
+- 1.4: Bold per line via table.cell text_formatting (Pine v6). The color + Bold inline rows give compiler warning CW10026 (alignment only).
+- 1.5: defaults taken from the Label on the user's LLM layout: only change was Bold on for all three lines.
 
 ## References / inspiration
 

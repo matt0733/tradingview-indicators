@@ -11,7 +11,7 @@ trading. All times are New York unless noted.
 | [Opening Gaps](opening_gaps/) | 1.9.1 | New Week, New Day and RTH opening gaps with mid and quarter levels; RTH per market (equities, Treasuries, energy, metals) |
 | [Sessions](sessions/) | 1.10.0 | Asia, London, NY AM, Lunch and NY PM session boxes with high/low level lines |
 | [Macros](macros/) | 1.2.0 | Boxes over the hourly :50–:10 macro windows with a line at each macro's open |
-| [Chart Label](chart_label/) | 1.2 | A small table showing ticker, timeframe, date and trading mode, for screenshots |
+| [Chart Label](chart_label/) | 1.5 | A small table showing ticker, timeframe and date, for screenshots |
 
 Each folder has a README covering its settings and behaviour.
 
