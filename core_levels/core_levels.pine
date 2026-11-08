@@ -1,5 +1,5 @@
 //@version=6
-indicator("Core Levels 1.1.1", shorttitle="Core Levels", overlay=true,
+indicator("Core Levels 1.2.0", shorttitle="Core Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Marks the current set of reference levels for Bar Replay and live charts:
@@ -196,11 +196,67 @@ string rt_px   = input.string("Auto", "Close Price", options=["Auto","Settlement
     tooltip="What the gap is measured from. Last Trade: the last trade before the session close (e.g. 16:14 for Equity Index). Settlement: the daily settlement price; its line starts on the latest candle before the close that traded that price. Auto: Last Trade for Equity Index and Custom, Settlement for every other market. 1OZ and SIC always use Last Trade.")
 
 // ===========================================================================
+// INPUTS - NWOG / NDOG
+// ===========================================================================
+string GNW = "NWOG"
+bool   nw_on   = input.bool(true, "New Week Opening Gap", group=GNW, display=display.none,
+    tooltip="Friday's 16:59 close to Sunday's 18:00 open (New York time). Quarter and mid levels are measured from the open toward the prior close, so 25% means the gap is a quarter filled. The gap stays until the next one opens; it has no takes. Shown on 4-hour and lower charts.")
+color  nw_lcol = input.color(#673AB7, "Line", group=GNW, display=display.none, inline="nw1")
+string nw_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nw1")
+int    nw_lw   = input.int(2, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nw1")
+color  nw_tcol = input.color(#673AB7, "Text", group=GNW, display=display.none, inline="nw2")
+string nw_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GNW, display=display.none, inline="nw2")
+string nw_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GNW, display=display.none, inline="nw2")
+bool   nw_date = input.bool(true, "Date", group=GNW, display=display.none, inline="nw2",
+    tooltip="Append the date of the gap's open to every label, as MM/DD - e.g. 'NWOG High 11/08'.")
+bool   nw_tb   = input.bool(true, "Bold", group=GNW, display=display.none, inline="nw2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   nw_mid  = input.bool(true, "Mid Line", group=GNW, display=display.none, inline="nw3")
+string nw_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nw3")
+int    nw_mw   = input.int(2, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nw3")
+bool   nw_mb   = input.bool(true, "Bold", group=GNW, display=display.none, inline="nw3")
+bool   nw_mlbl = input.bool(true, "Label", group=GNW, display=display.none, inline="nw3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   nw_qtr  = input.bool(true, "Quarters", group=GNW, display=display.none, inline="nw4")
+string nw_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GNW, display=display.none, inline="nw4")
+int    nw_qw   = input.int(2, "", minval=1, maxval=10, group=GNW, display=display.none, inline="nw4")
+bool   nw_qb   = input.bool(true, "Bold", group=GNW, display=display.none, inline="nw4")
+bool   nw_qlbl = input.bool(true, "Label", group=GNW, display=display.none, inline="nw4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+string GND = "NDOG"
+bool   nd_on   = input.bool(true, "New Day Opening Gap", group=GND, display=display.none,
+    tooltip="The 16:59 close to the 18:00 open, Monday through Thursday (New York time). Sunday's open is the NWOG, so the latest NDOG (Thursday's) stays through Monday's session. Quarter and mid levels are measured from the open toward the prior close, so 25% means the gap is a quarter filled. The gap stays until the next one opens; it has no takes. Shown on 4-hour and lower charts.")
+color  nd_lcol = input.color(#2962FF, "Line", group=GND, display=display.none, inline="nd1")
+string nd_lsty = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="nd1")
+int    nd_lw   = input.int(2, "", minval=1, maxval=10, group=GND, display=display.none, inline="nd1")
+color  nd_tcol = input.color(#2962FF, "Text", group=GND, display=display.none, inline="nd2")
+string nd_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GND, display=display.none, inline="nd2")
+string nd_tpos = input.string("Middle", "", options=["Top","Middle","Bottom"], group=GND, display=display.none, inline="nd2")
+bool   nd_date = input.bool(true, "Date", group=GND, display=display.none, inline="nd2",
+    tooltip="Append the date of the gap's open to every label, as MM/DD - e.g. 'NDOG High 11/09'.")
+bool   nd_tb   = input.bool(true, "Bold", group=GND, display=display.none, inline="nd2",
+    tooltip="Bold the High and Low labels. The 50% and quarter labels have their own Bold on the Mid Line and Quarters rows.")
+bool   nd_mid  = input.bool(true, "Mid Line", group=GND, display=display.none, inline="nd3")
+string nd_msty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="nd3")
+int    nd_mw   = input.int(2, "", minval=1, maxval=10, group=GND, display=display.none, inline="nd3")
+bool   nd_mb   = input.bool(true, "Bold", group=GND, display=display.none, inline="nd3")
+bool   nd_mlbl = input.bool(true, "Label", group=GND, display=display.none, inline="nd3",
+    tooltip="Show the 50% label. Off draws the mid line without any text.")
+bool   nd_qtr  = input.bool(true, "Quarters", group=GND, display=display.none, inline="nd4")
+string nd_qsty = input.string("Dotted", "", options=["Solid","Dashed","Dotted"], group=GND, display=display.none, inline="nd4")
+int    nd_qw   = input.int(2, "", minval=1, maxval=10, group=GND, display=display.none, inline="nd4")
+bool   nd_qb   = input.bool(true, "Bold", group=GND, display=display.none, inline="nd4")
+bool   nd_qlbl = input.bool(true, "Label", group=GND, display=display.none, inline="nd4",
+    tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+// ===========================================================================
 // TYPES
 // ===========================================================================
 // Kinds, longest period first (ties in the label column put the longer one on top):
 // 0 month, 1 week, 2 day, 3 day close, 4 Asia, 5 London, 6 midnight, 7 premarket,
-// 8 RTH gap high/low, 9 RTH 50%, 10 RTH 25%/75%
+// 8 RTH gap high/low, 9 RTH 50%, 10 RTH 25%/75%, 11-13 the same for the NWOG,
+// 14-16 for the NDOG
 type Cfg
     color  lcol
     string lsty
@@ -283,6 +339,9 @@ tf_vis(string tf) =>
 
 // Session levels need bars that line up with the session times
 bool intra_ok = (timeframe.isminutes or timeframe.isseconds) and timeframe.in_seconds() <= 3600
+// NWOG/NDOG: intraday bars break at the 17:00 halt and restart at 18:00, so up to
+// 4 hours the last bar before the halt closes on the 16:59 trade
+bool gap_ok   = (timeframe.isminutes or timeframe.isseconds) and timeframe.in_seconds() <= 14400
 
 const int SEARCH_BARS = 4999   // how far back a search looks for a candle; max_bars_back allows 5000
 max_bars_back(time, SEARCH_BARS + 1)
@@ -467,8 +526,27 @@ const int S_RL = 15
 const int S_R50 = 16
 const int S_R25 = 17
 const int S_R75 = 18
+const int S_NW  = 19   // NWOG: high, low, 50%, 25%, 75% in slots 19-23
+const int S_ND  = 24   // NDOG: slots 24-28
 
-var array<Level> lv = array.new<Level>(19)
+var array<Level> lv = array.new<Level>(29)
+
+// One gap's five levels in slots s..s+4, kinds k..k+2 (edges, 50%, quarters).
+// High and Low start where each price was set; 50% and quarters from the open,
+// measured toward the prior close. A gap of zero clears the slots.
+set_gap(int s, int k, string nm, float pc, int pc_t, float op, int op_t, bool date, bool mlbl, bool qlbl) =>
+    for i = s to s + 4
+        lv.set(i, na)
+    if pc != op
+        string dt  = date ? " " + f_mmdd(op_t) : ""
+        bool   dn  = pc >= op   // gap down: the prior close is the high
+        float  spn = pc - op
+        lv.set(s,     Level.new(k,     true,  math.max(pc, op), dn ? pc_t : op_t, na, false, nm + " High" + dt))
+        lv.set(s + 1, Level.new(k,     false, math.min(pc, op), dn ? op_t : pc_t, na, false, nm + " Low" + dt))
+        lv.set(s + 2, Level.new(k + 1, true,  op + spn * 0.5,   op_t, na, false, mlbl ? nm + " 50%" + dt : ""))
+        lv.set(s + 3, Level.new(k + 2, true,  op + spn * 0.25,  op_t, na, false, qlbl ? nm + " 25%" + dt : ""))
+        lv.set(s + 4, Level.new(k + 2, true,  op + spn * 0.75,  op_t, na, false, qlbl ? nm + " 75%" + dt : ""))
+    true
 var int first_t = time
 
 var Tracker m_tr = Tracker.new()
@@ -586,21 +664,28 @@ if intra_ok and not na(g_op_t) and g_op_t != nz(g_op_t[1])
     if RT_SETTLE and not na(d_cp) and d_cp != g_pc
         p  := d_cp
         pt := touch_t(d_cp, g_pc_t)
-    int ot = snap_t(g_op_t)
-    for s = S_RH to S_R75
-        lv.set(s, na)
-    if p != g_op
-        string dt  = rt_date ? " " + f_mmdd(g_op_t) : ""
-        bool   dn  = p >= g_op   // gap down: the prior close is the high
-        float  spn = p - g_op
-        lv.set(S_RH,  Level.new(8,  true,  math.max(p, g_op), dn ? pt : ot, na, false, "RTH High" + dt))
-        lv.set(S_RL,  Level.new(8,  false, math.min(p, g_op), dn ? ot : pt, na, false, "RTH Low" + dt))
-        lv.set(S_R50, Level.new(9,  true,  g_op + spn * 0.5,  ot, na, false, rt_mlbl ? "RTH 50%" + dt : ""))
-        lv.set(S_R25, Level.new(10, true,  g_op + spn * 0.25, ot, na, false, rt_qlbl ? "RTH 25%" + dt : ""))
-        lv.set(S_R75, Level.new(10, true,  g_op + spn * 0.75, ot, na, false, rt_qlbl ? "RTH 75%" + dt : ""))
+    set_gap(S_RH, 8, "RTH", p, pt, g_op, snap_t(g_op_t), rt_date, rt_mlbl, rt_qlbl)
+
+// NWOG / NDOG: the last trade before the 17:00 halt to the 18:00 reopen, from the
+// chart's own bars. Sunday's reopen is the NWOG, Monday to Thursday the NDOG.
+const int S_HALT   = 17 * 3600
+const int S_REOPEN = 18 * 3600
+var float eve_close   = na    // close of the latest bar starting before 17:00
+var int   eve_close_t = na
+if gap_ok
+    int sod = hour(time, TZ) * 3600 + minute(time, TZ) * 60 + second(time, TZ)
+    int dow = dayofweek(time, TZ)
+    if sod <= S_REOPEN and S_REOPEN < sod + timeframe.in_seconds() and not na(eve_close)
+        if dow == dayofweek.sunday
+            set_gap(S_NW, 11, "NWOG", eve_close, eve_close_t, open, time, nw_date, nw_mlbl, nw_qlbl)
+        else if dow >= dayofweek.monday and dow <= dayofweek.thursday
+            set_gap(S_ND, 14, "NDOG", eve_close, eve_close_t, open, time, nd_date, nd_mlbl, nd_qlbl)
+    if sod < S_HALT
+        eve_close   := close
+        eve_close_t := time
 
 // Takes: a wick through the level on any candle after it was set. Closes, opens
-// and the RTH gap have no takes.
+// and the gaps have no takes.
 for x in lv
     if not na(x)
         if x.kind != 3 and x.kind != 6 and x.kind < 8 and not x.live and na(x.take_t)
@@ -630,6 +715,12 @@ cfg_of(int kind) =>
         8 => Cfg.new(rt_lcol, rt_lsty, rt_lw, rt_tcol, rt_tsz, rt_tb, rt_lcol, rt_lsty, rt_lw, rt_tcol, rt_tsz, rt_tb, "Keep")
         9 => Cfg.new(rt_lcol, rt_msty, rt_mw, rt_tcol, rt_tsz, rt_mb, rt_lcol, rt_msty, rt_mw, rt_tcol, rt_tsz, rt_mb, "Keep")
         10 => Cfg.new(rt_lcol, rt_qsty, rt_qw, rt_tcol, rt_tsz, rt_qb, rt_lcol, rt_qsty, rt_qw, rt_tcol, rt_tsz, rt_qb, "Keep")
+        11 => Cfg.new(nw_lcol, nw_lsty, nw_lw, nw_tcol, nw_tsz, nw_tb, nw_lcol, nw_lsty, nw_lw, nw_tcol, nw_tsz, nw_tb, "Keep")
+        12 => Cfg.new(nw_lcol, nw_msty, nw_mw, nw_tcol, nw_tsz, nw_mb, nw_lcol, nw_msty, nw_mw, nw_tcol, nw_tsz, nw_mb, "Keep")
+        13 => Cfg.new(nw_lcol, nw_qsty, nw_qw, nw_tcol, nw_tsz, nw_qb, nw_lcol, nw_qsty, nw_qw, nw_tcol, nw_tsz, nw_qb, "Keep")
+        14 => Cfg.new(nd_lcol, nd_lsty, nd_lw, nd_tcol, nd_tsz, nd_tb, nd_lcol, nd_lsty, nd_lw, nd_tcol, nd_tsz, nd_tb, "Keep")
+        15 => Cfg.new(nd_lcol, nd_msty, nd_mw, nd_tcol, nd_tsz, nd_mb, nd_lcol, nd_msty, nd_mw, nd_tcol, nd_tsz, nd_mb, "Keep")
+        16 => Cfg.new(nd_lcol, nd_qsty, nd_qw, nd_tcol, nd_tsz, nd_qb, nd_lcol, nd_qsty, nd_qw, nd_tcol, nd_tsz, nd_qb, "Keep")
         =>   Cfg.new(pm_lcol, pm_lsty, pm_lw, pm_tcol, pm_tsz, pm_tb, pm_lcol2, pm_lsty2, pm_lw2, pm_tcol2, pm_tsz2, pm_tb2, pm_take)
 
 kind_on(int kind) =>
@@ -644,7 +735,17 @@ kind_on(int kind) =>
         7 => pm_on and intra_ok
         8 => rt_on and intra_ok
         9 => rt_on and rt_mid and intra_ok
-        =>   rt_on and rt_qtr and intra_ok
+        10 => rt_on and rt_qtr and intra_ok
+        11 => nw_on and gap_ok
+        12 => nw_on and nw_mid and gap_ok
+        13 => nw_on and nw_qtr and gap_ok
+        14 => nd_on and gap_ok
+        15 => nd_on and nd_mid and gap_ok
+        =>   nd_on and nd_qtr and gap_ok
+
+// Label position of a gap's labels
+gap_tpos(int kind) =>
+    kind >= 14 ? nd_tpos : kind >= 11 ? nw_tpos : rt_tpos
 
 var array<line>  lns = array.new<line>()
 var array<label> lbs = array.new<label>()
@@ -674,7 +775,7 @@ if barstate.islast
             Cfg  c    = cfg_of(a.kind)
             bool tkn  = not na(a.take_t)
             if not (tkn and c.take == "Remove")
-                bool   lo   = not a.is_hi and a.kind != 8
+                bool   lo   = not a.is_hi and a.kind < 8   // gap lows use the gap's one style
                 color  lcol = lo ? c.lcol2 : c.lcol
                 color  tcol = lo ? c.tcol2 : c.tcol
                 string lsty = lo ? c.lsty2 : c.lsty
@@ -698,7 +799,7 @@ if barstate.islast
                     lns.push(fut)
                 if not stop and txt != ""
                     line  fut = lns.last()
-                    label lb  = label.new(x_lbl, a.price, txt, xloc=xloc.bar_index, style=a.kind >= 8 ? lbl_sty(rt_tpos) : label.style_label_left,
+                    label lb  = label.new(x_lbl, a.price, txt, xloc=xloc.bar_index, style=a.kind >= 8 ? lbl_sty(gap_tpos(a.kind)) : label.style_label_left,
                                           color=color.new(color.white, 100), textcolor=tcol,
                                           size=lbl_sz(tsz), textalign=text.align_left,
                                           text_formatting=bold ? text.format_bold : text.format_none)
@@ -706,7 +807,7 @@ if barstate.islast
                     col.push(lb)
                     col_ln.push(fut)
                     col_y.push(a.price)
-                    col_k.push(a.price - a.kind * tol / 8)   // ties: longer period on top
+                    col_k.push(a.price - a.kind * tol / 40)   // ties: longer period on top
                     col_c.push(lcol)
                     col_s.push(lsty)
                     col_w.push(lw)

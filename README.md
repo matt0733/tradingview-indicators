@@ -8,7 +8,7 @@ trading. All times are New York unless noted.
 |---|---|---|
 | [SMT Divergence](smt_divergence/) | 2.0.0 | Marks SMT divergence between the chart and one or two comparison markets (ES, YM by default) |
 | [Key Levels](key_levels/) | 1.16.0 | Previous monthly, weekly and daily highs and lows, monthly, weekly, daily and midnight opens, monthly and previous-day closes, and the 07:00-09:00 premarket high and low, labelled by period |
-| [Core Levels](core_levels/) | 1.1.1 | A simplified, current-only set: previous month, week and day highs and lows, previous day close, Asia and London highs and lows, midnight open, premarket high and low, and the RTH opening range gap; built for live trading and Bar Replay |
+| [Core Levels](core_levels/) | 1.2.0 | A simplified, current-only set: previous month, week and day highs and lows, previous day close, Asia and London highs and lows, midnight open, premarket high and low, the RTH opening range gap, and the current NWOG and NDOG; built for live trading and Bar Replay |
 | [Opening Gaps](opening_gaps/) | 1.9.1 | New Week, New Day and RTH opening gaps with mid and quarter levels; RTH per market (equities, Treasuries, energy, metals) |
 | [Sessions](sessions/) | 1.10.0 | Asia, London, NY AM, Lunch and NY PM session boxes with high/low level lines |
 | [Macros](macros/) | 1.2.0 | Boxes over the hourly :50–:10 macro windows with a line at each macro's open |

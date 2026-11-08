@@ -19,6 +19,8 @@ come from the higher-timeframe candle of the bar before.
 | Midnight Open | `Midnight Open` | Open of today's 00:00 candle | 1 hour and lower |
 | Premarket High / Low | `Premarket High` | 07:00-09:00 high and low | 1 hour and lower |
 | RTH ORG | `RTH High 11/06`, `RTH 50% 11/06` | Regular session close to the next regular open, with 50%, 25% and 75% lines | 1 hour and lower |
+| NWOG | `NWOG High 11/08`, `NWOG 50% 11/08` | Friday's 16:59 close to Sunday's 18:00 open, with 50%, 25% and 75% lines | 4 hours and lower |
+| NDOG | `NDOG High 11/05`, `NDOG 50% 11/05` | The 16:59 close to the 18:00 open, Monday to Thursday, with 50%, 25% and 75% lines | 4 hours and lower |
 
 All times are New York. With **Show Price in Label** on, the price follows in
 brackets, e.g. `Previous Day High (28668.75)`.
@@ -37,6 +39,9 @@ brackets, e.g. `Previous Day High (28668.75)`.
   then holds until the next day's 07:00. It can only be taken after 09:00.
 - **RTH ORG:** appears on the candle holding the regular open and stays until
   the next session opens.
+- **NWOG:** appears on Sunday's 18:00 candle and stays until the next Sunday.
+- **NDOG:** appears on the 18:00 candle Monday to Thursday. Sunday's open is
+  the NWOG, so Thursday's NDOG stays through Monday's session.
 
 ### Where lines start
 
@@ -57,7 +62,7 @@ high/low group has a **When Taken** setting:
 | Stop at take | The line ends at the candle that took it; the label moves to the middle of the line, above it for highs and below it for lows |
 | Remove | The line and label are deleted |
 
-Previous Day Close, Midnight Open and the RTH ORG have no takes; their lines
+Previous Day Close, Midnight Open and the gaps (RTH ORG, NWOG, NDOG) have no takes; their lines
 always run to their labels.
 
 ## RTH ORG
@@ -88,12 +93,22 @@ Equity Index), the gap is read from the chart. On other timeframes up to 1 hour
 (e.g. 30m and 1h) the prices come from the largest lower timeframe that does, and
 give the same values.
 
+## NWOG and NDOG
+
+The last trade before the 17:00 halt to the 18:00 reopen, read from the chart's
+own bars. Sunday's reopen is the New Week Opening Gap; Monday to Thursday it is
+the New Day Opening Gap. The High and Low are the two prices, whichever is
+higher, and the 50%, 25% and 75% lines are measured from the open toward the
+prior close, as for the RTH ORG. If the close and open are the same price, no
+gap is drawn. Bars break at the halt, so the prices are exact on every intraday
+timeframe up to 4 hours.
+
 ## Labels
 
 Labels sit in one column past the current bar. Labels closer together than
 **Label Spacing** are spread out evenly around their prices, each joined to its
-line by a short leader. The RTH ORG labels can sit above, on or below their lines
-(Top, Middle, Bottom). The 50% and quarter labels can be turned off, leaving the
+line by a short leader. Gap labels (RTH ORG, NWOG, NDOG) can sit above, on or below their
+lines (Top, Middle, Bottom). The 50% and quarter labels can be turned off, leaving the
 line only.
 
 ## Settings
@@ -109,9 +124,11 @@ line only.
 | Midnight Open | On; line and text (black, Dashed, 1) |
 | Premarket | On; High and Low styling (red, Solid, 1); When Taken (Keep) |
 | RTH ORG | On; line (red, Solid, 2); text (Small, Middle, Date on, Bold); Mid Line (Dotted, 2, Bold, label on); Quarters (Dotted, 2, Bold, labels on); Market (Auto); Custom Hours (09:30-16:15); Close Price (Auto) |
+| NWOG | On; line (purple, Solid, 2); text (Small, Middle, Date on, Bold); Mid Line (Dotted, 2, Bold, label on); Quarters (Dotted, 2, Bold, labels on) |
+| NDOG | Same as NWOG, in blue |
 
 Default colors follow Key Levels + Gaps and Sessions. Premarket and RTH ORG share
-the same red by default.
+the same red by default, and the NDOG uses the same blue as the previous highs.
 
 ## Limits
 
@@ -119,13 +136,14 @@ the same red by default.
   finished only when the next one opens. Over a weekend the previous day is
   still Thursday until Sunday's 18:00 open. Bar Replay is not affected.
 - **Session levels need intraday bars:** Asia, London, Midnight Open,
-  Premarket and the RTH ORG show on 1-hour and lower charts only, not on
-  range or tick charts.
+  Premarket and the RTH ORG show on 1-hour and lower charts only, and the
+  NWOG and NDOG on 4-hour and lower; none of them on range or tick charts.
 
 ## Changes
 
 | Version | Change |
 |---|---|
+| 1.2.0 | Current NWOG and NDOG |
 | 1.1.1 | Defaults: Previous Day High / Low width 2; RTH ORG width 2, Date on, Mid Line and Quarters width 2 and Bold |
 | 1.1.0 | RTH ORG; a settlement Previous Day Close starts on a candle that traded it |
 | 1.0.2 | Renamed from Backtesting to Core Levels |
