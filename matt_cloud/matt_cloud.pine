@@ -1,14 +1,14 @@
 //@version=6
-indicator("Matt Cloud 1.0.1", shorttitle="Matt Cloud", overlay=true)
+indicator("Matt Cloud 1.0.2", shorttitle="Matt Cloud", overlay=true)
 
 // Three moving averages of the source with two clouds between them:
 // a fast 4 EMA (Short), a 20 EMA (Lead) and a 20 SMA (K). Each line is colored
 // by its own slope. The Short/Lead cloud shows trend direction (bull while Short
 // is above Lead); the K/Lead cloud uses the same bull/bear state.
 
-shortLen = input.int(4,  "Short EMA length")
-leadLen  = input.int(20, "Lead EMA length")
-kLen     = input.int(20, "K SMA length")
+shortLen = input.int(4,  "Short EMA length", minval=1)
+leadLen  = input.int(20, "Lead EMA length",  minval=1)
+kLen     = input.int(20, "K SMA length",     minval=1)
 src      = input.source(close, "Source")
 
 bullLine   = input.color(color.new(#008000, 50), "Line up")

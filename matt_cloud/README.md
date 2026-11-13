@@ -21,9 +21,9 @@ A trend cloud built from three moving averages, drawn on the price chart.
 
 | Setting | Default | Notes |
 |---|---|---|
-| Short EMA length | 4 | |
-| Lead EMA length | 20 | |
-| K SMA length | 20 | |
+| Short EMA length | 4 | Minimum 1 |
+| Lead EMA length | 20 | Minimum 1 |
+| K SMA length | 20 | Minimum 1 |
 | Source | close | |
 | Line up / Line down | Green / red, 50% transparent | Line colors by slope |
 | Cloud bull / Cloud bear | Teal / red, 80% transparent | Main cloud |
@@ -41,6 +41,8 @@ condition.
 
 ## Changes
 
+- 1.0.2: The three length settings have a minimum of 1. A length of 0 used
+  to stop the indicator with a runtime error.
 - 1.0.1: Plot, cloud and variable names use the MC prefix instead of BT;
   alert messages read "Matt Cloud turned bullish/bearish".
 - 1.0.0: First release. Renamed from BT Cloud Clone; short title Matt Cloud.
