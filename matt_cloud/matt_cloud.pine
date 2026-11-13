@@ -1,0 +1,39 @@
+//@version=6
+indicator("Matt Cloud 1.0.0", shorttitle="Matt Cloud", overlay=true)
+
+// Three moving averages of the source with two clouds between them:
+// a fast 4 EMA (Short), a 20 EMA (Lead) and a 20 SMA (K). Each line is colored
+// by its own slope. The Short/Lead cloud shows trend direction (bull while Short
+// is above Lead); the K/Lead cloud uses the same bull/bear state.
+
+shortLen = input.int(4,  "Short EMA length")
+leadLen  = input.int(20, "Lead EMA length")
+kLen     = input.int(20, "K SMA length")
+src      = input.source(close, "Source")
+
+bullLine   = input.color(color.new(#008000, 50), "Line up")
+bearLine   = input.color(color.new(#FF0000, 50), "Line down")
+bullCloud  = input.color(color.new(#64FFDA, 80), "Cloud bull")
+bearCloud  = input.color(color.new(#F43E32, 80), "Cloud bear")
+bullKCloud = input.color(color.new(#64FFDA, 50), "K-Lead cloud bull")
+bearKCloud = input.color(color.new(#F43E32, 50), "K-Lead cloud bear")
+
+btShort = ta.ema(src, shortLen)
+btLead  = ta.ema(src, leadLen)
+btK     = ta.sma(src, kLen)
+
+bull = btShort > btLead
+
+shortCol = btShort > btShort[1] ? bullLine : bearLine
+leadCol  = btLead  > btLead[1]  ? bullLine : bearLine
+kCol     = btK     >= btK[1]    ? bullLine : bearLine
+
+pShort = plot(btShort, "BT Short", shortCol)
+pLead  = plot(btLead,  "BT Lead",  leadCol)
+pK     = plot(btK,     "BT K",     kCol)
+
+fill(pShort, pLead, bull ? bullCloud : bearCloud, "BT Cloud")
+fill(pK,     pLead, bull ? bullKCloud : bearKCloud, "BT K Lead Cloud")
+
+alertcondition(ta.crossover(btShort, btLead),  "Cloud flip bull", "BT Cloud turned bullish")
+alertcondition(ta.crossunder(btShort, btLead), "Cloud flip bear", "BT Cloud turned bearish")

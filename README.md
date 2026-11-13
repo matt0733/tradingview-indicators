@@ -12,6 +12,7 @@ trading. All times are New York unless noted.
 | [Opening Gaps](opening_gaps/) | 1.9.1 | New Week, New Day and RTH opening gaps with mid and quarter levels; RTH per market (equities, Treasuries, energy, metals) |
 | [Sessions](sessions/) | 1.10.0 | Asia, London, NY AM, Lunch and NY PM session boxes with high/low level lines |
 | [Macros](macros/) | 1.2.0 | Boxes over the hourly :50–:10 macro windows with a line at each macro's open |
+| [Matt Cloud](matt_cloud/) | 1.0.0 | A trend cloud from a 4 EMA, 20 EMA and 20 SMA, with alerts when the cloud flips |
 | [Chart Label](chart_label/) | 1.5 | A small table showing ticker, timeframe and date, for screenshots |
 
 Each folder has a README covering its settings and behaviour.
