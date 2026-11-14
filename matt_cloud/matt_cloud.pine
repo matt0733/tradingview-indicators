@@ -1,5 +1,5 @@
 //@version=6
-indicator("Matt Cloud 1.0.2", shorttitle="Matt Cloud", overlay=true)
+indicator("Matt Cloud 1.0.3", shorttitle="Matt Cloud", overlay=true)
 
 // Three moving averages of the source with two clouds between them:
 // a fast 4 EMA (Short), a 20 EMA (Lead) and a 20 SMA (K). Each line is colored
@@ -11,12 +11,12 @@ leadLen  = input.int(20, "Lead EMA length",  minval=1)
 kLen     = input.int(20, "K SMA length",     minval=1)
 src      = input.source(close, "Source")
 
-bullLine   = input.color(color.new(#008000, 50), "Line up")
-bearLine   = input.color(color.new(#FF0000, 50), "Line down")
-bullCloud  = input.color(color.new(#64FFDA, 80), "Cloud bull")
-bearCloud  = input.color(color.new(#F43E32, 80), "Cloud bear")
-bullKCloud = input.color(color.new(#64FFDA, 50), "K-Lead cloud bull")
-bearKCloud = input.color(color.new(#F43E32, 50), "K-Lead cloud bear")
+bullLine   = input.color(color.new(#008000, 25), "Line up")
+bearLine   = input.color(color.new(#FF0000, 25), "Line down")
+bullCloud  = input.color(color.new(#64FFDA, 64), "Cloud bull")
+bearCloud  = input.color(color.new(#F43E32, 64), "Cloud bear")
+bullKCloud = input.color(color.new(#64FFDA, 25), "K-Lead cloud bull")
+bearKCloud = input.color(color.new(#F43E32, 25), "K-Lead cloud bear")
 
 mcShort = ta.ema(src, shortLen)
 mcLead  = ta.ema(src, leadLen)

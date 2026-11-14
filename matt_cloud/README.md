@@ -25,9 +25,9 @@ A trend cloud built from three moving averages, drawn on the price chart.
 | Lead EMA length | 20 | Minimum 1 |
 | K SMA length | 20 | Minimum 1 |
 | Source | close | |
-| Line up / Line down | Green / red, 50% transparent | Line colors by slope |
-| Cloud bull / Cloud bear | Teal / red, 80% transparent | Main cloud |
-| K-Lead cloud bull / bear | Teal / red, 50% transparent | K-Lead cloud |
+| Line up / Line down | Green / red, 25% transparent | Line colors by slope |
+| Cloud bull / Cloud bear | Teal / red, 64% transparent | Main cloud |
+| K-Lead cloud bull / bear | Teal / red, 25% transparent | K-Lead cloud |
 
 ## Alerts
 
@@ -41,6 +41,10 @@ condition.
 
 ## Changes
 
+- 1.0.3: Stronger default colors, matching two 1.0.2 copies stacked on top
+  of each other: lines and K-Lead cloud 25% transparent (was 50%), main
+  cloud 64% (was 80%). Copies already on a chart keep their colors until
+  Reset settings > Defaults.
 - 1.0.2: The three length settings have a minimum of 1. A length of 0 used
   to stop the indicator with a runtime error.
 - 1.0.1: Plot, cloud and variable names use the MC prefix instead of BT;
