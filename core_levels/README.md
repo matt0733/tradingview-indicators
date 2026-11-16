@@ -103,6 +103,10 @@ prior close, as for the RTH ORG. If the close and open are the same price, no
 gap is drawn. Bars break at the halt, so the prices are exact on every intraday
 timeframe up to 4 hours.
 
+Markets that trade through the 17:00 hour, such as 24/7 crypto (XRP, BTC, ETH)
+and spot forex, have no halt and so no NWOG or NDOG; neither is drawn on them.
+This is read from the symbol's hourly bars, so it works on every timeframe.
+
 ## Labels
 
 Labels sit in one column past the current bar. Labels closer together than
@@ -143,6 +147,7 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 
 | Version | Change |
 |---|---|
+| 1.2.1 | No NWOG or NDOG on markets that trade through the 17:00 hour (24/7 crypto, spot forex) |
 | 1.2.0 | Current NWOG and NDOG |
 | 1.1.1 | Defaults: Previous Day High / Low width 2; RTH ORG width 2, Date on, Mid Line and Quarters width 2 and Bold |
 | 1.1.0 | RTH ORG; a settlement Previous Day Close starts on a candle that traded it |
