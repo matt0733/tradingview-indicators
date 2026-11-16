@@ -95,6 +95,9 @@ filled. If the close and open are the same price, no gap is drawn that day.
 | Copper (HG, MHG, QC) | 08:10-13:00 | Settlement |
 | Custom | Custom Hours | Last Trade |
 
+Markets that trade through the 17:00 hour (24/7 crypto, spot forex) have no
+regular session, so no RTH ORG is drawn on them, as for the NWOG and NDOG.
+
 **Market** set to Auto picks the row from the chart's symbol. 1OZ and SIC always
 use Last Trade, because they trade around the clock. Futures holidays are
 skipped, so the next gap runs from the last real session's close.
@@ -158,6 +161,7 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 
 | Version | Change |
 |---|---|
+| 1.4.1 | No RTH ORG on markets that trade through the 17:00 hour (24/7 crypto, spot forex) |
 | 1.4.0 | Abbreviate settings: PMH / PML, PWH / PWL, PDH / PDL and PDC |
 | 1.3.0 | Days setting: show up to 3 previous days' highs and lows, labelled by date (e.g. `Fri 11/13 Previous Daily High`) |
 | 1.2.1 | No NWOG or NDOG on markets that trade through the 17:00 hour (24/7 crypto, spot forex) |

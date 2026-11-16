@@ -1,5 +1,5 @@
 //@version=6
-indicator("Core Levels 1.4.0", shorttitle="Core Levels", overlay=true,
+indicator("Core Levels 1.4.1", shorttitle="Core Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Marks the current set of reference levels for Bar Replay and live charts:
@@ -709,6 +709,7 @@ var float eve_close   = na    // close of the latest bar starting before 17:00
 var int   eve_close_t = na
 // A market that trades in the 17:00 hour has no halt, so no opening gaps: on
 // 24/7 crypto (and spot forex) the "gap" would just be an hour of normal trading.
+// Nor does it have a regular session, so the RTH ORG is hidden there too.
 // Read from hourly bars so 2h-4h charts, whose bars span the hour, see it too.
 bool no_halt = request.security(syminfo.tickerid, "60", ta.cum(hour(time, TZ) == 17 ? 1 : 0), lookahead=barmerge.lookahead_off) > 0
 if gap_ok and not no_halt
@@ -772,9 +773,9 @@ kind_on(int kind) =>
         5 => l_on and intra_ok
         6 => mn_on and intra_ok
         7 => pm_on and intra_ok
-        8 => rt_on and intra_ok
-        9 => rt_on and rt_mid and intra_ok
-        10 => rt_on and rt_qtr and intra_ok
+        8 => rt_on and intra_ok and not no_halt
+        9 => rt_on and rt_mid and intra_ok and not no_halt
+        10 => rt_on and rt_qtr and intra_ok and not no_halt
         11 => nw_on and gap_ok and not no_halt
         12 => nw_on and nw_mid and gap_ok and not no_halt
         13 => nw_on and nw_qtr and gap_ok and not no_halt
