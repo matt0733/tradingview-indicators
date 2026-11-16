@@ -12,7 +12,7 @@ come from the higher-timeframe candle of the bar before.
 |---|---|---|---|
 | Previous Monthly High / Low | `Previous Monthly High` | Last completed month | Monthly and lower |
 | Previous Weekly High / Low | `Previous Weekly High` | Last completed week | Weekly and lower |
-| Previous Day High / Low | `Previous Day High` | Last completed trading day (18:00-17:00 for CME futures) | Daily and lower |
+| Previous Day High / Low | `Previous Day High` | Last completed trading day (18:00-17:00 for CME futures); up to 3 days with **Days** | Daily and lower |
 | Previous Day Close | `Previous Day Close` | That day's settlement (default) or last trade | Daily and lower |
 | Asia High / Low | `Asia High` | Latest completed Asia session, 18:00-01:00 | 1 hour and lower |
 | London High / Low | `London High` | Latest completed London session, 01:00-07:00 | 1 hour and lower |
@@ -21,6 +21,12 @@ come from the higher-timeframe candle of the bar before.
 | RTH ORG | `RTH High 11/06`, `RTH 50% 11/06` | Regular session close to the next regular open, with 50%, 25% and 75% lines | 1 hour and lower |
 | NWOG | `NWOG High 11/08`, `NWOG 50% 11/08` | Friday's 16:59 close to Sunday's 18:00 open, with 50%, 25% and 75% lines | 4 hours and lower |
 | NDOG | `NDOG High 11/05`, `NDOG 50% 11/05` | The 16:59 close to the 18:00 open, Monday to Thursday, with 50%, 25% and 75% lines | 4 hours and lower |
+
+With **Days** set to 2 or 3, the earlier days' highs and lows are drawn too, and
+every previous-day label is named by its trading day, e.g.
+`Fri 11/13 Previous Daily High` and `Thu 11/12 Previous Daily Low`. A CME trading
+day takes the date it ends on, so Friday's runs from Thursday 18:00. The earlier
+days use the Previous Day styling and When Taken setting.
 
 All times are New York. With **Show Price in Label** on, the price follows in
 brackets, e.g. `Previous Day High (28668.75)`.
@@ -122,7 +128,7 @@ line only.
 | General | Label Offset (10 bars), Show Price in Label (on), Spread Overlapping Labels (on), Label Spacing (2% of view), Max Label Move (0 = no limit), Skip Spread When Crowded (off) |
 | Previous Month | On; High and Low each with line color, style, width and text color, size, Bold (blue / maroon, Solid, 2, Small, Bold); When Taken (Keep) |
 | Previous Week | Same as Previous Month (Dotted, 2) |
-| Previous Day | Same (Solid, 2); Previous Day Close (black, Dashed, 1); Close Price (Settlement or Last Trade) |
+| Previous Day | Same (Solid, 2); Days (1, up to 3); Previous Day Close (black, Dashed, 1); Close Price (Settlement or Last Trade) |
 | Asia | On, session (18:00-01:00), High and Low styling (orange, Solid, 1), When Taken (Keep) |
 | London | On, session (01:00-07:00), High and Low styling (blue, Solid, 1), When Taken (Keep) |
 | Midnight Open | On; line and text (black, Dashed, 1) |
@@ -147,6 +153,7 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 
 | Version | Change |
 |---|---|
+| 1.3.0 | Days setting: show up to 3 previous days' highs and lows, labelled by date (e.g. `Fri 11/13 Previous Daily High`) |
 | 1.2.1 | No NWOG or NDOG on markets that trade through the 17:00 hour (24/7 crypto, spot forex) |
 | 1.2.0 | Current NWOG and NDOG |
 | 1.1.1 | Defaults: Previous Day High / Low width 2; RTH ORG width 2, Date on, Mid Line and Quarters width 2 and Bold |

@@ -1,5 +1,5 @@
 //@version=6
-indicator("Core Levels 1.2.1", shorttitle="Core Levels", overlay=true,
+indicator("Core Levels 1.3.0", shorttitle="Core Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Marks the current set of reference levels for Bar Replay and live charts:
@@ -249,6 +249,11 @@ int    nd_qw   = input.int(2, "", minval=1, maxval=10, group=GND, display=displa
 bool   nd_qb   = input.bool(true, "Bold", group=GND, display=display.none, inline="nd4")
 bool   nd_qlbl = input.bool(true, "Label", group=GND, display=display.none, inline="nd4",
     tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
+
+// Declared last so existing chart settings keep their positions; shown at the
+// end of the Previous Day group
+int    d_n     = input.int(1, "Days", minval=1, maxval=3, group=GD, display=display.none,
+    tooltip="How many previous days' highs and lows to show. With 2 or 3, every day's label carries its trading day, e.g. 'Fri 11/13 Previous Daily High'. They use the Previous Day styling and When Taken setting.")
 
 // ===========================================================================
 // TYPES
@@ -528,8 +533,12 @@ const int S_R25 = 17
 const int S_R75 = 18
 const int S_NW  = 19   // NWOG: high, low, 50%, 25%, 75% in slots 19-23
 const int S_ND  = 24   // NDOG: slots 24-28
+const int S_D2H = 29   // 2 days ago high / low
+const int S_D2L = 30
+const int S_D3H = 31   // 3 days ago high / low
+const int S_D3L = 32
 
-var array<Level> lv = array.new<Level>(29)
+var array<Level> lv = array.new<Level>(33)
 
 // One gap's five levels in slots s..s+4, kinds k..k+2 (edges, 50%, quarters).
 // High and Low start where each price was set; 50% and quarters from the open,
@@ -568,6 +577,13 @@ period_hl(Tracker tr, float hp, float lp, int kind, string nm) =>
     int   tl = (tr.full or tr.l <= pl + tol) ? tr.lt : first_t
     [Level.new(kind, true, ph, th, na, false, nm + " High"), Level.new(kind, false, pl, tl, na, false, nm + " Low")]
 
+// A trading day as "Fri 11/13", from its time_tradingday (00:00 UTC of the date)
+day_lbl(int t) =>
+    int m = month(t, "UTC")
+    int d = dayofmonth(t, "UTC")
+    string dw = array.from("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").get(dayofweek(t, "UTC") - 1)
+    dw + " " + (m < 10 ? "0" : "") + str.tostring(m) + "/" + (d < 10 ? "0" : "") + str.tostring(d)
+
 // Session in progress: track it. Session just ended: its high and low replace the
 // previous session's.
 roll_session(Tracker tr, bool inn, bool was, int kind, int ih, int il, string nm) =>
@@ -602,7 +618,16 @@ if new_w and not na(w_tr.h)
     lv.set(S_WH, hi)
     lv.set(S_WL, lo)
 if new_d and not na(d_tr.h)
-    [hi, lo] = period_hl(d_tr, d_hp, d_lp, 2, "Previous Day")
+    // Older days move down a slot, keeping their name, start candle and take
+    if d_n >= 3
+        lv.set(S_D3H, lv.get(S_D2H))
+        lv.set(S_D3L, lv.get(S_D2L))
+    if d_n >= 2
+        lv.set(S_D2H, lv.get(S_DH))
+        lv.set(S_D2L, lv.get(S_DL))
+    // With more than one day shown, each is named by its date: "Fri 11/13 Previous Daily High"
+    string d_nm = d_n >= 2 ? day_lbl(time_tradingday[1]) + " Previous Daily" : "Previous Day"
+    [hi, lo] = period_hl(d_tr, d_hp, d_lp, 2, d_nm)
     lv.set(S_DH, hi)
     lv.set(S_DL, lo)
 // Then start tracking the new period, or keep tracking the current one
