@@ -1,5 +1,5 @@
 //@version=6
-indicator("Core Levels 1.3.0", shorttitle="Core Levels", overlay=true,
+indicator("Core Levels 1.4.0", shorttitle="Core Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Marks the current set of reference levels for Bar Replay and live charts:
@@ -254,6 +254,14 @@ bool   nd_qlbl = input.bool(true, "Label", group=GND, display=display.none, inli
 // end of the Previous Day group
 int    d_n     = input.int(1, "Days", minval=1, maxval=3, group=GD, display=display.none,
     tooltip="How many previous days' highs and lows to show. With 2 or 3, every day's label carries its trading day, e.g. 'Fri 11/13 Previous Daily High'. They use the Previous Day styling and When Taken setting.")
+bool   m_abbr  = input.bool(false, "Abbreviate (PMH / PML)", group=GM, display=display.none,
+    tooltip="Label the previous month's high and low PMH and PML.")
+bool   w_abbr  = input.bool(false, "Abbreviate (PWH / PWL)", group=GW, display=display.none,
+    tooltip="Label the previous week's high and low PWH and PWL.")
+bool   d_abbr  = input.bool(false, "Abbreviate (PDH / PDL)", group=GD, display=display.none,
+    tooltip="Label the previous day's high and low PDH and PDL. With Days at 2 or 3 the trading day stays in front, e.g. 'Fri 11/13 PDH'.")
+bool   pc_abbr = input.bool(false, "Abbreviate (PDC)", group=GD, display=display.none,
+    tooltip="Label the previous day close PDC.")
 
 // ===========================================================================
 // TYPES
@@ -570,12 +578,12 @@ var Tracker p_tr = Tracker.new()
 // the start candle from the chart's own bars. When the chart began partway through
 // the period and its bars never reached that price, the line starts on the chart's
 // first bar. Called only on a rollover bar, before the tracker is reset.
-period_hl(Tracker tr, float hp, float lp, int kind, string nm) =>
+period_hl(Tracker tr, float hp, float lp, int kind, string nm_hi, string nm_lo) =>
     float ph = na(hp) ? tr.h : hp
     float pl = na(lp) ? tr.l : lp
     int   th = (tr.full or tr.h >= ph - tol) ? tr.ht : first_t
     int   tl = (tr.full or tr.l <= pl + tol) ? tr.lt : first_t
-    [Level.new(kind, true, ph, th, na, false, nm + " High"), Level.new(kind, false, pl, tl, na, false, nm + " Low")]
+    [Level.new(kind, true, ph, th, na, false, nm_hi), Level.new(kind, false, pl, tl, na, false, nm_lo)]
 
 // A trading day as "Fri 11/13", from its time_tradingday (00:00 UTC of the date)
 day_lbl(int t) =>
@@ -610,11 +618,11 @@ bool new_w = timeframe.change("W")
 bool new_d = timeframe.change("D")
 
 if new_m and not na(m_tr.h)
-    [hi, lo] = period_hl(m_tr, m_hp, m_lp, 0, "Previous Monthly")
+    [hi, lo] = period_hl(m_tr, m_hp, m_lp, 0, m_abbr ? "PMH" : "Previous Monthly High", m_abbr ? "PML" : "Previous Monthly Low")
     lv.set(S_MH, hi)
     lv.set(S_ML, lo)
 if new_w and not na(w_tr.h)
-    [hi, lo] = period_hl(w_tr, w_hp, w_lp, 1, "Previous Weekly")
+    [hi, lo] = period_hl(w_tr, w_hp, w_lp, 1, w_abbr ? "PWH" : "Previous Weekly High", w_abbr ? "PWL" : "Previous Weekly Low")
     lv.set(S_WH, hi)
     lv.set(S_WL, lo)
 if new_d and not na(d_tr.h)
@@ -626,8 +634,10 @@ if new_d and not na(d_tr.h)
         lv.set(S_D2H, lv.get(S_DH))
         lv.set(S_D2L, lv.get(S_DL))
     // With more than one day shown, each is named by its date: "Fri 11/13 Previous Daily High"
-    string d_nm = d_n >= 2 ? day_lbl(time_tradingday[1]) + " Previous Daily" : "Previous Day"
-    [hi, lo] = period_hl(d_tr, d_hp, d_lp, 2, d_nm)
+    // Abbreviated: "Fri 11/13 PDH", or "PDH" with one day
+    string d_pre = d_n >= 2 ? day_lbl(time_tradingday[1]) + " " : ""
+    string d_nm  = d_n >= 2 ? "Previous Daily" : "Previous Day"
+    [hi, lo] = period_hl(d_tr, d_hp, d_lp, 2, d_pre + (d_abbr ? "PDH" : d_nm + " High"), d_pre + (d_abbr ? "PDL" : d_nm + " Low"))
     lv.set(S_DH, hi)
     lv.set(S_DL, lo)
 // Then start tracking the new period, or keep tracking the current one
@@ -652,7 +662,7 @@ else
 if new_d and bar_index > 0
     float pc = cl_md == "Settlement" and not na(d_cp) ? d_cp : close[1]
     int   pt = cl_md == "Settlement" and pc != close[1] ? touch_t(pc, time[1]) : time[1]
-    lv.set(S_PC, Level.new(3, true, pc, pt, na, false, "Previous Day Close"))
+    lv.set(S_PC, Level.new(3, true, pc, pt, na, false, pc_abbr ? "PDC" : "Previous Day Close"))
 
 // Sessions (New York time)
 bool a_in = not na(time(timeframe.period, a_sess, TZ))

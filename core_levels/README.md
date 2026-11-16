@@ -28,6 +28,11 @@ every previous-day label is named by its trading day, e.g.
 day takes the date it ends on, so Friday's runs from Thursday 18:00. The earlier
 days use the Previous Day styling and When Taken setting.
 
+Each of these can be shortened with its own **Abbreviate** setting: Previous
+Month to `PMH` / `PML`, Previous Week to `PWH` / `PWL`, Previous Day to `PDH` /
+`PDL` (keeping the date in front with Days at 2 or 3, e.g. `Fri 11/13 PDH`), and
+Previous Day Close to `PDC`. All are off by default.
+
 All times are New York. With **Show Price in Label** on, the price follows in
 brackets, e.g. `Previous Day High (28668.75)`.
 
@@ -126,9 +131,9 @@ line only.
 | Section | Settings (default) |
 |---|---|
 | General | Label Offset (10 bars), Show Price in Label (on), Spread Overlapping Labels (on), Label Spacing (2% of view), Max Label Move (0 = no limit), Skip Spread When Crowded (off) |
-| Previous Month | On; High and Low each with line color, style, width and text color, size, Bold (blue / maroon, Solid, 2, Small, Bold); When Taken (Keep) |
-| Previous Week | Same as Previous Month (Dotted, 2) |
-| Previous Day | Same (Solid, 2); Days (1, up to 3); Previous Day Close (black, Dashed, 1); Close Price (Settlement or Last Trade) |
+| Previous Month | On; High and Low each with line color, style, width and text color, size, Bold (blue / maroon, Solid, 2, Small, Bold); When Taken (Keep); Abbreviate (off) |
+| Previous Week | Same as Previous Month (Dotted, 2), Abbreviate (off) |
+| Previous Day | Same (Solid, 2); Days (1, up to 3); Abbreviate PDH / PDL (off); Abbreviate PDC (off); Previous Day Close (black, Dashed, 1); Close Price (Settlement or Last Trade) |
 | Asia | On, session (18:00-01:00), High and Low styling (orange, Solid, 1), When Taken (Keep) |
 | London | On, session (01:00-07:00), High and Low styling (blue, Solid, 1), When Taken (Keep) |
 | Midnight Open | On; line and text (black, Dashed, 1) |
@@ -153,6 +158,7 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 
 | Version | Change |
 |---|---|
+| 1.4.0 | Abbreviate settings: PMH / PML, PWH / PWL, PDH / PDL and PDC |
 | 1.3.0 | Days setting: show up to 3 previous days' highs and lows, labelled by date (e.g. `Fri 11/13 Previous Daily High`) |
 | 1.2.1 | No NWOG or NDOG on markets that trade through the 17:00 hour (24/7 crypto, spot forex) |
 | 1.2.0 | Current NWOG and NDOG |
