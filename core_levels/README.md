@@ -148,8 +148,8 @@ line only.
 | Previous Day | Same (Solid, 2); Days (1, up to 3); Abbreviate PDH / PDL (off); Abbreviate PDC (off); Previous Day Close (black, Dashed, 1); Close Price (Settlement or Last Trade) |
 | Asia | On, session (18:00-01:00), High and Low styling (orange, Solid, 1), When Taken (Keep) |
 | London | On, session (01:00-07:00), High and Low styling (blue, Solid, 1), When Taken (Keep) |
-| NY AM | On, session (07:00-11:30), High and Low styling (green, Solid, 1), When Taken (Keep); at the end of the settings |
-| NY PM | On, session (13:30-16:00), High and Low styling (purple, Solid, 1), When Taken (Keep); at the end of the settings |
+| NY AM | On, session (07:00-11:30), High and Low styling (green, Solid, 1), When Taken (Keep) |
+| NY PM | On, session (13:30-16:00), High and Low styling (purple, Solid, 1), When Taken (Keep) |
 | Midnight Open | On; line and text (black, Dashed, 1) |
 | Premarket | On; High and Low styling (red, Solid, 1); When Taken (Keep) |
 | RTH ORG | On; line (red, Solid, 2); text (Small, Middle, Date on, Bold); Mid Line (Dotted, 2, Bold, label on); Quarters (Dotted, 2, Bold, labels on); Market (Auto); Custom Hours (09:30-16:15); Close Price (Auto) |
@@ -173,6 +173,7 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 
 | Version | Change |
 |---|---|
+| 1.6.0 | Settings rearranged: Asia, London, NY AM and NY PM together; RTH ORG, NWOG and NDOG at the bottom; Days and Abbreviate within their sections. Remove the indicator and add it again after updating |
 | 1.5.2 | Label prices shown to the market's decimals instead of rounded to the tick (silver settlements read exactly) |
 | 1.5.1 | Asia, London, NY AM and NY PM measured on 1-minute bars, so they're exact on every timeframe (the 1-hour NY PM High was off in 1.5.0) |
 | 1.5.0 | NY AM and NY PM highs and lows |

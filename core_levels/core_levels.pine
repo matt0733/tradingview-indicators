@@ -1,5 +1,5 @@
 //@version=6
-indicator("Core Levels 1.5.2", shorttitle="Core Levels", overlay=true,
+indicator("Core Levels 1.6.0", shorttitle="Core Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Marks the current set of reference levels for Bar Replay and live charts:
@@ -46,6 +46,8 @@ color  m_tcol2 = input.color(#801922, "Low Text", group=GM, display=display.none
 string m_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GM, display=display.none, inline="m4")
 bool   m_tb2   = input.bool(true, "Bold", group=GM, display=display.none, inline="m4")
 string m_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GM, display=display.none, tooltip=TAKE_TIP)
+bool   m_abbr  = input.bool(false, "Abbreviate (PMH / PML)", group=GM, display=display.none,
+    tooltip="Label the previous month's high and low PMH and PML.")
 
 string GW = "Previous Week"
 bool   w_on    = input.bool(true, "Previous Weekly High / Low", group=GW, display=display.none,
@@ -63,6 +65,8 @@ color  w_tcol2 = input.color(#801922, "Low Text", group=GW, display=display.none
 string w_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GW, display=display.none, inline="w4")
 bool   w_tb2   = input.bool(true, "Bold", group=GW, display=display.none, inline="w4")
 string w_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GW, display=display.none, tooltip=TAKE_TIP)
+bool   w_abbr  = input.bool(false, "Abbreviate (PWH / PWL)", group=GW, display=display.none,
+    tooltip="Label the previous week's high and low PWH and PWL.")
 
 string GD = "Previous Day"
 bool   d_on    = input.bool(true, "Previous Day High / Low", group=GD, display=display.none,
@@ -80,6 +84,10 @@ color  d_tcol2 = input.color(#801922, "Low Text", group=GD, display=display.none
 string d_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GD, display=display.none, inline="d4")
 bool   d_tb2   = input.bool(true, "Bold", group=GD, display=display.none, inline="d4")
 string d_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GD, display=display.none, tooltip=TAKE_TIP)
+int    d_n     = input.int(1, "Days", minval=1, maxval=3, group=GD, display=display.none,
+    tooltip="How many previous days' highs and lows to show. With 2 or 3, every day's label carries its trading day, e.g. 'Fri 11/13 Previous Daily High'. They use the Previous Day styling and When Taken setting.")
+bool   d_abbr  = input.bool(false, "Abbreviate (PDH / PDL)", group=GD, display=display.none,
+    tooltip="Label the previous day's high and low PDH and PDL. With Days at 2 or 3 the trading day stays in front, e.g. 'Fri 11/13 PDH'.")
 
 bool   pc_on   = input.bool(true, "Previous Day Close", group=GD, display=display.none,
     tooltip="The close of the last completed trading day. The line starts on that day's last candle and always runs to its label.")
@@ -91,6 +99,8 @@ string pc_tsz  = input.string("Small", "", options=["Tiny","Small","Normal","Lar
 bool   pc_tb   = input.bool(true, "Bold", group=GD, display=display.none, inline="pc2")
 string cl_md   = input.string("Settlement", "Close Price", options=["Settlement","Last Trade"], group=GD, display=display.none,
     tooltip="Settlement: the daily candle's close, which is the settlement price for CME futures. Last Trade: the close of the day's last chart candle.")
+bool   pc_abbr = input.bool(false, "Abbreviate (PDC)", group=GD, display=display.none,
+    tooltip="Label the previous day close PDC.")
 
 // ===========================================================================
 // INPUTS - SESSIONS
@@ -130,6 +140,41 @@ color  l_tcol2 = input.color(#2196F3, "Low Text", group=GL, display=display.none
 string l_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GL, display=display.none, inline="l4")
 bool   l_tb2   = input.bool(true, "Bold", group=GL, display=display.none, inline="l4")
 string l_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GL, display=display.none, tooltip=TAKE_TIP)
+
+// NY AM and NY PM (times and colors from Sessions)
+string GAM = "NY AM"
+bool   am_on    = input.bool(true, "NY AM High / Low", group=GAM, display=display.none, inline="am0")
+string am_sess  = input.session("0700-1130", "", group=GAM, display=display.none, inline="am0", tooltip=SESS_TIP)
+color  am_lcol  = input.color(#4CAF50, "High Line", group=GAM, display=display.none, inline="am1")
+string am_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GAM, display=display.none, inline="am1")
+int    am_lw    = input.int(1, "", minval=1, maxval=10, group=GAM, display=display.none, inline="am1")
+color  am_tcol  = input.color(#4CAF50, "High Text", group=GAM, display=display.none, inline="am2")
+string am_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GAM, display=display.none, inline="am2")
+bool   am_tb    = input.bool(true, "Bold", group=GAM, display=display.none, inline="am2")
+color  am_lcol2 = input.color(#4CAF50, "Low Line", group=GAM, display=display.none, inline="am3")
+string am_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GAM, display=display.none, inline="am3")
+int    am_lw2   = input.int(1, "", minval=1, maxval=10, group=GAM, display=display.none, inline="am3")
+color  am_tcol2 = input.color(#4CAF50, "Low Text", group=GAM, display=display.none, inline="am4")
+string am_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GAM, display=display.none, inline="am4")
+bool   am_tb2   = input.bool(true, "Bold", group=GAM, display=display.none, inline="am4")
+string am_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GAM, display=display.none, tooltip=TAKE_TIP)
+
+string GPM = "NY PM"
+bool   pm2_on    = input.bool(true, "NY PM High / Low", group=GPM, display=display.none, inline="pm20")
+string pm2_sess  = input.session("1330-1600", "", group=GPM, display=display.none, inline="pm20", tooltip=SESS_TIP)
+color  pm2_lcol  = input.color(#9C27B0, "High Line", group=GPM, display=display.none, inline="pm21")
+string pm2_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GPM, display=display.none, inline="pm21")
+int    pm2_lw    = input.int(1, "", minval=1, maxval=10, group=GPM, display=display.none, inline="pm21")
+color  pm2_tcol  = input.color(#9C27B0, "High Text", group=GPM, display=display.none, inline="pm22")
+string pm2_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GPM, display=display.none, inline="pm22")
+bool   pm2_tb    = input.bool(true, "Bold", group=GPM, display=display.none, inline="pm22")
+color  pm2_lcol2 = input.color(#9C27B0, "Low Line", group=GPM, display=display.none, inline="pm23")
+string pm2_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GPM, display=display.none, inline="pm23")
+int    pm2_lw2   = input.int(1, "", minval=1, maxval=10, group=GPM, display=display.none, inline="pm23")
+color  pm2_tcol2 = input.color(#9C27B0, "Low Text", group=GPM, display=display.none, inline="pm24")
+string pm2_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GPM, display=display.none, inline="pm24")
+bool   pm2_tb2   = input.bool(true, "Bold", group=GPM, display=display.none, inline="pm24")
+string pm2_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GPM, display=display.none, tooltip=TAKE_TIP)
 
 string GN = "Midnight Open"
 bool   mn_on   = input.bool(true, "Midnight Open", group=GN, display=display.none,
@@ -249,55 +294,6 @@ int    nd_qw   = input.int(2, "", minval=1, maxval=10, group=GND, display=displa
 bool   nd_qb   = input.bool(true, "Bold", group=GND, display=display.none, inline="nd4")
 bool   nd_qlbl = input.bool(true, "Label", group=GND, display=display.none, inline="nd4",
     tooltip="Show the 25% and 75% labels. Off draws the quarter lines without any text.")
-
-// Declared last so existing chart settings keep their positions; shown at the
-// end of the Previous Day group
-int    d_n     = input.int(1, "Days", minval=1, maxval=3, group=GD, display=display.none,
-    tooltip="How many previous days' highs and lows to show. With 2 or 3, every day's label carries its trading day, e.g. 'Fri 11/13 Previous Daily High'. They use the Previous Day styling and When Taken setting.")
-bool   m_abbr  = input.bool(false, "Abbreviate (PMH / PML)", group=GM, display=display.none,
-    tooltip="Label the previous month's high and low PMH and PML.")
-bool   w_abbr  = input.bool(false, "Abbreviate (PWH / PWL)", group=GW, display=display.none,
-    tooltip="Label the previous week's high and low PWH and PWL.")
-bool   d_abbr  = input.bool(false, "Abbreviate (PDH / PDL)", group=GD, display=display.none,
-    tooltip="Label the previous day's high and low PDH and PDL. With Days at 2 or 3 the trading day stays in front, e.g. 'Fri 11/13 PDH'.")
-bool   pc_abbr = input.bool(false, "Abbreviate (PDC)", group=GD, display=display.none,
-    tooltip="Label the previous day close PDC.")
-
-// NY AM and NY PM (times and colors from Sessions); declared last, so these
-// groups sit at the end of the settings
-string GAM = "NY AM"
-bool   am_on    = input.bool(true, "NY AM High / Low", group=GAM, display=display.none, inline="am0")
-string am_sess  = input.session("0700-1130", "", group=GAM, display=display.none, inline="am0", tooltip=SESS_TIP)
-color  am_lcol  = input.color(#4CAF50, "High Line", group=GAM, display=display.none, inline="am1")
-string am_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GAM, display=display.none, inline="am1")
-int    am_lw    = input.int(1, "", minval=1, maxval=10, group=GAM, display=display.none, inline="am1")
-color  am_tcol  = input.color(#4CAF50, "High Text", group=GAM, display=display.none, inline="am2")
-string am_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GAM, display=display.none, inline="am2")
-bool   am_tb    = input.bool(true, "Bold", group=GAM, display=display.none, inline="am2")
-color  am_lcol2 = input.color(#4CAF50, "Low Line", group=GAM, display=display.none, inline="am3")
-string am_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GAM, display=display.none, inline="am3")
-int    am_lw2   = input.int(1, "", minval=1, maxval=10, group=GAM, display=display.none, inline="am3")
-color  am_tcol2 = input.color(#4CAF50, "Low Text", group=GAM, display=display.none, inline="am4")
-string am_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GAM, display=display.none, inline="am4")
-bool   am_tb2   = input.bool(true, "Bold", group=GAM, display=display.none, inline="am4")
-string am_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GAM, display=display.none, tooltip=TAKE_TIP)
-
-string GPM = "NY PM"
-bool   pm2_on    = input.bool(true, "NY PM High / Low", group=GPM, display=display.none, inline="pm20")
-string pm2_sess  = input.session("1330-1600", "", group=GPM, display=display.none, inline="pm20", tooltip=SESS_TIP)
-color  pm2_lcol  = input.color(#9C27B0, "High Line", group=GPM, display=display.none, inline="pm21")
-string pm2_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GPM, display=display.none, inline="pm21")
-int    pm2_lw    = input.int(1, "", minval=1, maxval=10, group=GPM, display=display.none, inline="pm21")
-color  pm2_tcol  = input.color(#9C27B0, "High Text", group=GPM, display=display.none, inline="pm22")
-string pm2_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GPM, display=display.none, inline="pm22")
-bool   pm2_tb    = input.bool(true, "Bold", group=GPM, display=display.none, inline="pm22")
-color  pm2_lcol2 = input.color(#9C27B0, "Low Line", group=GPM, display=display.none, inline="pm23")
-string pm2_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GPM, display=display.none, inline="pm23")
-int    pm2_lw2   = input.int(1, "", minval=1, maxval=10, group=GPM, display=display.none, inline="pm23")
-color  pm2_tcol2 = input.color(#9C27B0, "Low Text", group=GPM, display=display.none, inline="pm24")
-string pm2_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GPM, display=display.none, inline="pm24")
-bool   pm2_tb2   = input.bool(true, "Bold", group=GPM, display=display.none, inline="pm24")
-string pm2_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GPM, display=display.none, tooltip=TAKE_TIP)
 
 // ===========================================================================
 // TYPES
