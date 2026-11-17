@@ -1,5 +1,5 @@
 //@version=6
-indicator("Core Levels 1.5.1", shorttitle="Core Levels", overlay=true,
+indicator("Core Levels 1.5.2", shorttitle="Core Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Marks the current set of reference levels for Bar Replay and live charts:
@@ -367,10 +367,16 @@ pad(int n, int w) =>
         r := "0" + r
     r
 
+// Decimal prices are shown to the price scale's decimals rather than rounded to
+// the tick: silver ticks in 0.005 but settles to 0.001, so a 46.859 settlement
+// reads 46.859, not 46.860
+int    PX_DEC = int(math.round(math.log10(syminfo.pricescale)))
+string PX_FMT = PX_DEC > 0 ? "0." + str.repeat("0", PX_DEC) : "0"
+
 fmt_px(float p) =>
     int ps = syminfo.pricescale
     if not array.from(4, 8, 16, 32, 64, 128, 256).includes(ps)
-        str.tostring(p, format.mintick)
+        str.tostring(p, PX_FMT)
     else
         float a = math.abs(p)
         int   h = int(math.floor(a + 1e-9))

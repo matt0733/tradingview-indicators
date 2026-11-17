@@ -36,7 +36,10 @@ Month to `PMH` / `PML`, Previous Week to `PWH` / `PWL`, Previous Day to `PDH` /
 Previous Day Close to `PDC`. All are off by default.
 
 All times are New York. With **Show Price in Label** on, the price follows in
-brackets, e.g. `Previous Day High (28668.75)`.
+brackets, e.g. `Previous Day High (28668.75)`. Prices are shown to the market's
+decimals rather than rounded to its tick, so a silver settlement of 46.859 reads
+46.859 (silver ticks in 0.005), and a midpoint of 27299.125 reads 27299.13.
+Treasuries keep their 32nds format.
 
 ### When each level changes
 
@@ -170,6 +173,7 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 
 | Version | Change |
 |---|---|
+| 1.5.2 | Label prices shown to the market's decimals instead of rounded to the tick (silver settlements read exactly) |
 | 1.5.1 | Asia, London, NY AM and NY PM measured on 1-minute bars, so they're exact on every timeframe (the 1-hour NY PM High was off in 1.5.0) |
 | 1.5.0 | NY AM and NY PM highs and lows |
 | 1.4.1 | No RTH ORG on markets that trade through the 17:00 hour (24/7 crypto, spot forex) |
