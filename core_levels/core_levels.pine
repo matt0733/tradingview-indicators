@@ -1,5 +1,5 @@
 //@version=6
-indicator("Core Levels 1.4.1", shorttitle="Core Levels", overlay=true,
+indicator("Core Levels 1.5.1", shorttitle="Core Levels", overlay=true,
           max_lines_count=500, max_labels_count=500)
 
 // Marks the current set of reference levels for Bar Replay and live charts:
@@ -263,11 +263,48 @@ bool   d_abbr  = input.bool(false, "Abbreviate (PDH / PDL)", group=GD, display=d
 bool   pc_abbr = input.bool(false, "Abbreviate (PDC)", group=GD, display=display.none,
     tooltip="Label the previous day close PDC.")
 
+// NY AM and NY PM (times and colors from Sessions); declared last, so these
+// groups sit at the end of the settings
+string GAM = "NY AM"
+bool   am_on    = input.bool(true, "NY AM High / Low", group=GAM, display=display.none, inline="am0")
+string am_sess  = input.session("0700-1130", "", group=GAM, display=display.none, inline="am0", tooltip=SESS_TIP)
+color  am_lcol  = input.color(#4CAF50, "High Line", group=GAM, display=display.none, inline="am1")
+string am_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GAM, display=display.none, inline="am1")
+int    am_lw    = input.int(1, "", minval=1, maxval=10, group=GAM, display=display.none, inline="am1")
+color  am_tcol  = input.color(#4CAF50, "High Text", group=GAM, display=display.none, inline="am2")
+string am_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GAM, display=display.none, inline="am2")
+bool   am_tb    = input.bool(true, "Bold", group=GAM, display=display.none, inline="am2")
+color  am_lcol2 = input.color(#4CAF50, "Low Line", group=GAM, display=display.none, inline="am3")
+string am_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GAM, display=display.none, inline="am3")
+int    am_lw2   = input.int(1, "", minval=1, maxval=10, group=GAM, display=display.none, inline="am3")
+color  am_tcol2 = input.color(#4CAF50, "Low Text", group=GAM, display=display.none, inline="am4")
+string am_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GAM, display=display.none, inline="am4")
+bool   am_tb2   = input.bool(true, "Bold", group=GAM, display=display.none, inline="am4")
+string am_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GAM, display=display.none, tooltip=TAKE_TIP)
+
+string GPM = "NY PM"
+bool   pm2_on    = input.bool(true, "NY PM High / Low", group=GPM, display=display.none, inline="pm20")
+string pm2_sess  = input.session("1330-1600", "", group=GPM, display=display.none, inline="pm20", tooltip=SESS_TIP)
+color  pm2_lcol  = input.color(#9C27B0, "High Line", group=GPM, display=display.none, inline="pm21")
+string pm2_lsty  = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GPM, display=display.none, inline="pm21")
+int    pm2_lw    = input.int(1, "", minval=1, maxval=10, group=GPM, display=display.none, inline="pm21")
+color  pm2_tcol  = input.color(#9C27B0, "High Text", group=GPM, display=display.none, inline="pm22")
+string pm2_tsz   = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GPM, display=display.none, inline="pm22")
+bool   pm2_tb    = input.bool(true, "Bold", group=GPM, display=display.none, inline="pm22")
+color  pm2_lcol2 = input.color(#9C27B0, "Low Line", group=GPM, display=display.none, inline="pm23")
+string pm2_lsty2 = input.string("Solid", "", options=["Solid","Dashed","Dotted"], group=GPM, display=display.none, inline="pm23")
+int    pm2_lw2   = input.int(1, "", minval=1, maxval=10, group=GPM, display=display.none, inline="pm23")
+color  pm2_tcol2 = input.color(#9C27B0, "Low Text", group=GPM, display=display.none, inline="pm24")
+string pm2_tsz2  = input.string("Small", "", options=["Tiny","Small","Normal","Large"], group=GPM, display=display.none, inline="pm24")
+bool   pm2_tb2   = input.bool(true, "Bold", group=GPM, display=display.none, inline="pm24")
+string pm2_take  = input.string("Keep", "When Taken", options=["Keep","Stop at take","Remove"], group=GPM, display=display.none, tooltip=TAKE_TIP)
+
 // ===========================================================================
 // TYPES
 // ===========================================================================
 // Kinds, longest period first (ties in the label column put the longer one on top):
 // 0 month, 1 week, 2 day, 3 day close, 4 Asia, 5 London, 6 midnight, 7 premarket,
+// (17 NY AM, 18 NY PM: session highs and lows added later, after the gaps)
 // 8 RTH gap high/low, 9 RTH 50%, 10 RTH 25%/75%, 11-13 the same for the NWOG,
 // 14-16 for the NDOG
 type Cfg
@@ -293,6 +330,7 @@ type Level
     int    take_t         // open time of the candle that took it, na while untaken
     bool   live = false   // still forming (premarket before 09:00): not takeable yet
     string name           // label text before the price; "" draws the line without a label
+    int    ok_t = 0       // takes count only on candles opening at or after this time
 
 // Running high/low of a period or session, measured on chart bars
 type Tracker
@@ -545,8 +583,16 @@ const int S_D2H = 29   // 2 days ago high / low
 const int S_D2L = 30
 const int S_D3H = 31   // 3 days ago high / low
 const int S_D3L = 32
+const int S_AMH = 33   // NY AM high / low
+const int S_AML = 34
+const int S_PMH = 35   // NY PM high / low
+const int S_PML = 36
 
-var array<Level> lv = array.new<Level>(33)
+var array<Level> lv = array.new<Level>(37)
+
+// Gap kinds (RTH ORG, NWOG, NDOG): one style for both edges, no takes
+is_gap(int kind) =>
+    kind >= 8 and kind <= 16
 
 // One gap's five levels in slots s..s+4, kinds k..k+2 (edges, 50%, quarters).
 // High and Low start where each price was set; 50% and quarters from the open,
@@ -569,8 +615,6 @@ var int first_t = time
 var Tracker m_tr = Tracker.new()
 var Tracker w_tr = Tracker.new()
 var Tracker d_tr = Tracker.new()
-var Tracker a_tr = Tracker.new()
-var Tracker l_tr = Tracker.new()
 var Tracker p_tr = Tracker.new()
 
 // At a rollover, the completed period's high and low. The price comes from the
@@ -592,17 +636,56 @@ day_lbl(int t) =>
     string dw = array.from("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").get(dayofweek(t, "UTC") - 1)
     dw + " " + (m < 10 ? "0" : "") + str.tostring(m) + "/" + (d < 10 ? "0" : "") + str.tostring(d)
 
-// Session in progress: track it. Session just ended: its high and low replace the
-// previous session's.
-roll_session(Tracker tr, bool inn, bool was, int kind, int ih, int il, string nm) =>
+// Run on 1-minute bars: the latest completed session's high and low with the
+// minute each was set, and the time of the first minute after it ended.
+sess_1m(string sess) =>
+    var float ch  = na
+    var float cl  = na
+    var int   cht = na
+    var int   clt = na
+    var bool  was = false
+    var float fh  = na
+    var float fl  = na
+    var int   fht = na
+    var int   flt = na
+    var int   fend = na
+    bool inn = not na(time(timeframe.period, sess, TZ))
     if inn
-        if not was
-            trk_reset(tr)
+        if not was or na(ch)
+            ch  := high
+            cl  := low
+            cht := time
+            clt := time
         else
-            trk_update(tr)
-    else if was and not na(tr.h)
-        lv.set(ih, Level.new(kind, true,  tr.h, tr.ht, na, false, nm + " High"))
-        lv.set(il, Level.new(kind, false, tr.l, tr.lt, na, false, nm + " Low"))
+            if high > ch
+                ch  := high
+                cht := time
+            if low < cl
+                cl  := low
+                clt := time
+    else if was and not na(ch)
+        fh   := ch
+        fl   := cl
+        fht  := cht
+        flt  := clt
+        fend := time
+    was := inn
+    [fh, fht, fl, flt, fend]
+
+all_sess() =>
+    [ah, aht, al, alt, ae]     = sess_1m(a_sess)
+    [lh, lht, ll, llt, le]     = sess_1m(l_sess)
+    [mh, mht, ml, mlt, me]     = sess_1m(am_sess)
+    [ph, pht, pl, plt, pe]     = sess_1m(pm2_sess)
+    [ah, aht, al, alt, ae, lh, lht, ll, llt, le, mh, mht, ml, mlt, me, ph, pht, pl, plt, pe]
+
+// A session just ended: its high and low replace the previous session's. Lines
+// start on the chart candle holding the minute that set each price; takes count
+// from the first candle opening after the session ended.
+set_sess(float h, int ht, float l, int lt, int e, int kind, int ih, int il, string nm) =>
+    if not na(e) and e != nz(e[1])
+        lv.set(ih, Level.new(kind, true,  h, snap_t(ht), na, false, nm + " High", e))
+        lv.set(il, Level.new(kind, false, l, snap_t(lt), na, false, nm + " Low",  e))
     true
 
 // ===========================================================================
@@ -665,11 +748,18 @@ if new_d and bar_index > 0
     lv.set(S_PC, Level.new(3, true, pc, pt, na, false, pc_abbr ? "PDC" : "Previous Day Close"))
 
 // Sessions (New York time)
-bool a_in = not na(time(timeframe.period, a_sess, TZ))
-bool l_in = not na(time(timeframe.period, l_sess, TZ))
+// Asia, London, NY AM and NY PM are measured on 1-minute bars, so session times
+// that don't fall on the chart's candle boundaries are still exact. Seconds
+// charts use their own bars. With lookahead off, each chart candle gets the
+// state at its last minute, so nothing looks ahead in Bar Replay.
+string s_tf = timeframe.in_seconds() < 60 ? timeframe.period : "1"
+[ah, aht, al, alt, ae, lh, lht, ll, llt, le, mh, mht, ml, mlt, me, ph, pht, pl, plt, pe] = request.security(syminfo.tickerid, s_tf, all_sess(), lookahead=barmerge.lookahead_off)
+if intra_ok
+    set_sess(ah, aht, al, alt, ae, 4,  S_AH,  S_AL,  "Asia")
+    set_sess(lh, lht, ll, llt, le, 5,  S_LH,  S_LL,  "London")
+    set_sess(mh, mht, ml, mlt, me, 17, S_AMH, S_AML, "NY AM")
+    set_sess(ph, pht, pl, plt, pe, 18, S_PMH, S_PML, "NY PM")
 bool p_in = not na(time(timeframe.period, "0700-0900", TZ))
-roll_session(a_tr, a_in, a_in[1], 4, S_AH, S_AL, "Asia")
-roll_session(l_tr, l_in, l_in[1], 5, S_LH, S_LL, "London")
 
 // Midnight Open: the first candle of the New York day, if it opens in the 00:00 hour
 // (the Sunday 18:00 futures open also starts a new date, so the hour is checked)
@@ -728,7 +818,7 @@ if gap_ok and not no_halt
 // and the gaps have no takes.
 for x in lv
     if not na(x)
-        if x.kind != 3 and x.kind != 6 and x.kind < 8 and not x.live and na(x.take_t)
+        if x.kind != 3 and x.kind != 6 and not is_gap(x.kind) and not x.live and na(x.take_t) and time >= x.ok_t
             if x.is_hi ? high >= x.price : low <= x.price
                 x.take_t := time
 
@@ -750,6 +840,8 @@ cfg_of(int kind) =>
         2 => Cfg.new(d_lcol, d_lsty, d_lw, d_tcol, d_tsz, d_tb, d_lcol2, d_lsty2, d_lw2, d_tcol2, d_tsz2, d_tb2, d_take)
         3 => Cfg.new(pc_lcol, pc_lsty, pc_lw, pc_tcol, pc_tsz, pc_tb, pc_lcol, pc_lsty, pc_lw, pc_tcol, pc_tsz, pc_tb, "Keep")
         4 => Cfg.new(a_lcol, a_lsty, a_lw, a_tcol, a_tsz, a_tb, a_lcol2, a_lsty2, a_lw2, a_tcol2, a_tsz2, a_tb2, a_take)
+        17 => Cfg.new(am_lcol, am_lsty, am_lw, am_tcol, am_tsz, am_tb, am_lcol2, am_lsty2, am_lw2, am_tcol2, am_tsz2, am_tb2, am_take)
+        18 => Cfg.new(pm2_lcol, pm2_lsty, pm2_lw, pm2_tcol, pm2_tsz, pm2_tb, pm2_lcol2, pm2_lsty2, pm2_lw2, pm2_tcol2, pm2_tsz2, pm2_tb2, pm2_take)
         5 => Cfg.new(l_lcol, l_lsty, l_lw, l_tcol, l_tsz, l_tb, l_lcol2, l_lsty2, l_lw2, l_tcol2, l_tsz2, l_tb2, l_take)
         6 => Cfg.new(mn_lcol, mn_lsty, mn_lw, mn_tcol, mn_tsz, mn_tb, mn_lcol, mn_lsty, mn_lw, mn_tcol, mn_tsz, mn_tb, "Keep")
         8 => Cfg.new(rt_lcol, rt_lsty, rt_lw, rt_tcol, rt_tsz, rt_tb, rt_lcol, rt_lsty, rt_lw, rt_tcol, rt_tsz, rt_tb, "Keep")
@@ -771,6 +863,8 @@ kind_on(int kind) =>
         3 => pc_on and tf_vis("D")
         4 => a_on and intra_ok
         5 => l_on and intra_ok
+        17 => am_on and intra_ok
+        18 => pm2_on and intra_ok
         6 => mn_on and intra_ok
         7 => pm_on and intra_ok
         8 => rt_on and intra_ok and not no_halt
@@ -815,7 +909,7 @@ if barstate.islast
             Cfg  c    = cfg_of(a.kind)
             bool tkn  = not na(a.take_t)
             if not (tkn and c.take == "Remove")
-                bool   lo   = not a.is_hi and a.kind < 8   // gap lows use the gap's one style
+                bool   lo   = not a.is_hi and not is_gap(a.kind)   // gap lows use the gap's one style
                 color  lcol = lo ? c.lcol2 : c.lcol
                 color  tcol = lo ? c.tcol2 : c.tcol
                 string lsty = lo ? c.lsty2 : c.lsty
@@ -839,7 +933,7 @@ if barstate.islast
                     lns.push(fut)
                 if not stop and txt != ""
                     line  fut = lns.last()
-                    label lb  = label.new(x_lbl, a.price, txt, xloc=xloc.bar_index, style=a.kind >= 8 ? lbl_sty(gap_tpos(a.kind)) : label.style_label_left,
+                    label lb  = label.new(x_lbl, a.price, txt, xloc=xloc.bar_index, style=is_gap(a.kind) ? lbl_sty(gap_tpos(a.kind)) : label.style_label_left,
                                           color=color.new(color.white, 100), textcolor=tcol,
                                           size=lbl_sz(tsz), textalign=text.align_left,
                                           text_formatting=bold ? text.format_bold : text.format_none)

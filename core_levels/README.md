@@ -16,6 +16,8 @@ come from the higher-timeframe candle of the bar before.
 | Previous Day Close | `Previous Day Close` | That day's settlement (default) or last trade | Daily and lower |
 | Asia High / Low | `Asia High` | Latest completed Asia session, 18:00-01:00 | 1 hour and lower |
 | London High / Low | `London High` | Latest completed London session, 01:00-07:00 | 1 hour and lower |
+| NY AM High / Low | `NY AM High` | Latest completed NY AM session, 07:00-11:30 | 1 hour and lower |
+| NY PM High / Low | `NY PM High` | Latest completed NY PM session, 13:30-16:00 | 1 hour and lower |
 | Midnight Open | `Midnight Open` | Open of today's 00:00 candle | 1 hour and lower |
 | Premarket High / Low | `Premarket High` | 07:00-09:00 high and low | 1 hour and lower |
 | RTH ORG | `RTH High 11/06`, `RTH 50% 11/06` | Regular session close to the next regular open, with 50%, 25% and 75% lines | 1 hour and lower |
@@ -43,8 +45,12 @@ brackets, e.g. `Previous Day High (28668.75)`.
   with its first trading session.
 - **Previous Day Close:** replaced at the same time as the previous day's high
   and low.
-- **Asia and London:** appear when the session ends, at 01:00 and 07:00, and
-  stay until the next one ends. The session times can be changed.
+- **Asia, London, NY AM and NY PM:** appear when the session ends (01:00,
+  07:00, 11:30 and 16:00) and stay until the next one ends. The session times
+  can be changed. The highs and lows are measured on 1-minute bars whatever the
+  chart's timeframe, so a session ending at 11:30 is exact on a 1-hour chart.
+  On a chart whose candles straddle the session's end, takes count from the
+  first candle that opens after it ends.
 - **Midnight Open:** set on the 00:00 candle and replaced at the next midnight.
 - **Premarket:** appears at 07:00 and follows new highs and lows until 09:00,
   then holds until the next day's 07:00. It can only be taken after 09:00.
@@ -139,13 +145,16 @@ line only.
 | Previous Day | Same (Solid, 2); Days (1, up to 3); Abbreviate PDH / PDL (off); Abbreviate PDC (off); Previous Day Close (black, Dashed, 1); Close Price (Settlement or Last Trade) |
 | Asia | On, session (18:00-01:00), High and Low styling (orange, Solid, 1), When Taken (Keep) |
 | London | On, session (01:00-07:00), High and Low styling (blue, Solid, 1), When Taken (Keep) |
+| NY AM | On, session (07:00-11:30), High and Low styling (green, Solid, 1), When Taken (Keep); at the end of the settings |
+| NY PM | On, session (13:30-16:00), High and Low styling (purple, Solid, 1), When Taken (Keep); at the end of the settings |
 | Midnight Open | On; line and text (black, Dashed, 1) |
 | Premarket | On; High and Low styling (red, Solid, 1); When Taken (Keep) |
 | RTH ORG | On; line (red, Solid, 2); text (Small, Middle, Date on, Bold); Mid Line (Dotted, 2, Bold, label on); Quarters (Dotted, 2, Bold, labels on); Market (Auto); Custom Hours (09:30-16:15); Close Price (Auto) |
 | NWOG | On; line (purple, Solid, 2); text (Small, Middle, Date on, Bold); Mid Line (Dotted, 2, Bold, label on); Quarters (Dotted, 2, Bold, labels on) |
 | NDOG | Same as NWOG, in blue |
 
-Default colors follow Key Levels + Gaps and Sessions. Premarket and RTH ORG share
+Default colors follow Key Levels + Gaps and Sessions; the NY AM and NY PM times
+and colors come from Sessions. Premarket and RTH ORG share
 the same red by default, and the NDOG uses the same blue as the previous highs.
 
 ## Limits
@@ -153,7 +162,7 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 - **Weekends and the daily break, live:** a day, week or month counts as
   finished only when the next one opens. Over a weekend the previous day is
   still Thursday until Sunday's 18:00 open. Bar Replay is not affected.
-- **Session levels need intraday bars:** Asia, London, Midnight Open,
+- **Session levels need intraday bars:** Asia, London, NY AM, NY PM, Midnight Open,
   Premarket and the RTH ORG show on 1-hour and lower charts only, and the
   NWOG and NDOG on 4-hour and lower; none of them on range or tick charts.
 
@@ -161,6 +170,8 @@ the same red by default, and the NDOG uses the same blue as the previous highs.
 
 | Version | Change |
 |---|---|
+| 1.5.1 | Asia, London, NY AM and NY PM measured on 1-minute bars, so they're exact on every timeframe (the 1-hour NY PM High was off in 1.5.0) |
+| 1.5.0 | NY AM and NY PM highs and lows |
 | 1.4.1 | No RTH ORG on markets that trade through the 17:00 hour (24/7 crypto, spot forex) |
 | 1.4.0 | Abbreviate settings: PMH / PML, PWH / PWL, PDH / PDL and PDC |
 | 1.3.0 | Days setting: show up to 3 previous days' highs and lows, labelled by date (e.g. `Fri 11/13 Previous Daily High`) |
